@@ -33,9 +33,9 @@
 
     <!-- EditText hints -->
     <string name="hint_webhook_url">Webhook URL</string>
-    <string name="hint_bearer_token">Auth token</string>
-    <string name="hint_auth_header_name">Auth header name (e.g. Authorization or key)</string>
-    <string name="hint_auth_header_prefix">Value prefix (\"Bearer \" or empty for raw token)</string>
+    <string name="hint_bearer_token">Auth token (tap the eye to show)</string>
+    <string name="hint_auth_header_name">Auth header name — e.g. Authorization, or \"key\" for n8n</string>
+    <string name="hint_auth_header_prefix">Token prefix — \"Bearer \" or leave EMPTY for a raw token</string>
     <string name="hint_interval_minutes">Interval (minutes, ≥15)</string>
     <string name="hint_threshold_count">Threshold count</string>
     <string name="hint_excluded_packages">com.example.app</string>
@@ -52,7 +52,8 @@
     <string name="rb_manual">Manual</string>
 
     <!-- Switch labels -->
-    <string name="sw_require_unmetered">Require Wi-Fi (unmetered)</string>
+    <string name="sw_require_unmetered">Upload only on Wi-Fi (skip mobile data)</string>
+    <string name="auth_tip">Sends header \"[name]: [prefix][token]\". For n8n Header Auth: set the name to your header (e.g. \"key\") and clear the prefix so the raw token is sent.</string>
     <string name="sw_require_charging">Require charging</string>
     <string name="sw_capture_body">Capture notification body</string>
     <string name="switch_gzip">Gzip upload body (off for n8n compatibility)</string>

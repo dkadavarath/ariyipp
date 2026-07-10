@@ -70,10 +70,22 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        applyWindowInsets()
         bindViews()
         setupClickListeners()
         loadSettings()
         requestNotificationPermissionIfNeeded()
+    }
+
+    /** targetSdk 35 is edge-to-edge: pad the scroll root for the status/navigation bars so
+     *  the top content isn't drawn under the system bars. */
+    private fun applyWindowInsets() {
+        val root = findViewById<android.view.View>(R.id.root_scroll)
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+            val bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            v.setPadding(v.paddingLeft, bars.top, v.paddingRight, bars.bottom)
+            insets
+        }
     }
 
     /** Android 13+ requires runtime consent to post the upload-failure alerts. */

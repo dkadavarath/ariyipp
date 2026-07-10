@@ -11,6 +11,20 @@
 # Keep WorkManager workers
 -keep class com.noti.logger.work.** { *; }
 
-# Keep serialization
+# ---- kotlinx.serialization ----
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.AnnotationsKt
+# Keep generated serializers for our @Serializable payload models
+-keepclassmembers class com.noti.logger.upload.** {
+    *** Companion;
+}
+-keepclasseswithmembers class com.noti.logger.upload.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+-keep,includedescriptorclasses class com.noti.logger.upload.**$$serializer { *; }
+
+# ---- Tink / androidx.security.crypto (EncryptedSharedPreferences) ----
+# Tink loads key-type managers reflectively; keep them to avoid keyset failures under R8.
+-keep class com.google.crypto.tink.** { *; }
+-keep class com.google.crypto.tink.shaded.protobuf.** { *; }
+-dontwarn com.google.crypto.tink.**

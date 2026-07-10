@@ -16,3 +16,5 @@ captures/
 .idea/
 *.iml
 .DS_Store
+keystore.properties
+release-keystore.jks
