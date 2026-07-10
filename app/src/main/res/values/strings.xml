@@ -43,8 +43,19 @@
     <string name="hint_retention_days">Retention days</string>
 
     <!-- Field labels -->
-    <string name="label_excluded_packages">Excluded packages (one per line)</string>
+    <string name="label_included_apps">Included apps</string>
     <string name="label_excluded_keywords">Excluded keywords (one per line)</string>
+
+    <!-- App picker -->
+    <string name="picker_title">Choose apps to capture</string>
+    <string name="picker_search_hint">Search apps</string>
+    <string name="picker_select_all">Select all</string>
+    <string name="picker_clear">Clear</string>
+    <string name="picker_done">Done</string>
+    <string name="picker_selected_count">%1$d selected</string>
+    <string name="btn_choose_apps">Choose apps</string>
+    <string name="included_apps_summary_all">All apps (no filter)</string>
+    <string name="included_apps_summary_some">%1$d app(s) selected</string>
 
     <!-- RadioButton labels -->
     <string name="rb_periodic">Periodic</string>

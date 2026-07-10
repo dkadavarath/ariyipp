@@ -1,7 +1,8 @@
 package com.noti.logger.redact
 
 data class RedactionConfig(
-    val excludedPackages: Set<String>,
+    /** Allowlist: when non-empty, only these packages are captured. Empty ⇒ capture all apps. */
+    val includedPackages: Set<String>,
     val excludedKeywords: List<String>,
     val captureBody: Boolean
 )
@@ -28,7 +29,8 @@ sealed interface RedactedResult {
 class RedactionRules(private val config: RedactionConfig) {
 
     fun apply(raw: RawNotification): RedactedResult {
-        if (raw.packageName in config.excludedPackages) {
+        // Allowlist: empty ⇒ no package filter; non-empty ⇒ drop anything not listed.
+        if (config.includedPackages.isNotEmpty() && raw.packageName !in config.includedPackages) {
             return RedactedResult.Dropped
         }
 

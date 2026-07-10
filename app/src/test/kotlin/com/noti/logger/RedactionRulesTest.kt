@@ -20,34 +20,47 @@ class RedactionRulesTest {
         category: String? = "msg"
     ) = RawNotification(packageName, title, text, bigText, subText, category)
 
-    // ---- Excluded package ----
+    // ---- Included-packages allowlist ----
 
     @Test
-    fun `excluded package returns Dropped`() {
+    fun `empty include list captures all packages`() {
         val rules = RedactionRules(
             RedactionConfig(
-                excludedPackages = setOf("com.evil.spam"),
+                includedPackages = emptySet(),
                 excludedKeywords = emptyList(),
                 captureBody = true
             )
         )
-        val result = rules.apply(makeRaw(packageName = "com.evil.spam"))
-        assertEquals(RedactedResult.Dropped, result)
+        val result = rules.apply(makeRaw(packageName = "com.any.app"))
+        assertTrue(result is RedactedResult.Kept)
     }
 
     @Test
-    fun `non-excluded package with captureBody true returns Kept with content`() {
+    fun `package in include list is Kept`() {
         val rules = RedactionRules(
             RedactionConfig(
-                excludedPackages = setOf("com.evil.spam"),
+                includedPackages = setOf("com.whatsapp", "com.slack"),
                 excludedKeywords = emptyList(),
                 captureBody = true
             )
         )
-        val raw = makeRaw(title = "Hi", text = "There")
+        val raw = makeRaw(packageName = "com.whatsapp", title = "Hi", text = "There")
         val result = rules.apply(raw) as RedactedResult.Kept
         assertEquals("Hi", result.title)
         assertEquals("There", result.text)
+    }
+
+    @Test
+    fun `package not in non-empty include list returns Dropped`() {
+        val rules = RedactionRules(
+            RedactionConfig(
+                includedPackages = setOf("com.whatsapp"),
+                excludedKeywords = emptyList(),
+                captureBody = true
+            )
+        )
+        val result = rules.apply(makeRaw(packageName = "com.other.app"))
+        assertEquals(RedactedResult.Dropped, result)
     }
 
     // ---- Excluded keywords ----
@@ -56,7 +69,7 @@ class RedactionRulesTest {
     fun `keyword in title (case-insensitive) returns Dropped`() {
         val rules = RedactionRules(
             RedactionConfig(
-                excludedPackages = emptySet(),
+                includedPackages = emptySet(),
                 excludedKeywords = listOf("PASSWORD"),
                 captureBody = true
             )
@@ -69,7 +82,7 @@ class RedactionRulesTest {
     fun `keyword in text (case-insensitive) returns Dropped`() {
         val rules = RedactionRules(
             RedactionConfig(
-                excludedPackages = emptySet(),
+                includedPackages = emptySet(),
                 excludedKeywords = listOf("otp"),
                 captureBody = true
             )
@@ -82,7 +95,7 @@ class RedactionRulesTest {
     fun `keyword in bigText returns Dropped`() {
         val rules = RedactionRules(
             RedactionConfig(
-                excludedPackages = emptySet(),
+                includedPackages = emptySet(),
                 excludedKeywords = listOf("secret"),
                 captureBody = true
             )
@@ -95,7 +108,7 @@ class RedactionRulesTest {
     fun `keyword in subText returns Dropped`() {
         val rules = RedactionRules(
             RedactionConfig(
-                excludedPackages = emptySet(),
+                includedPackages = emptySet(),
                 excludedKeywords = listOf("confidential"),
                 captureBody = true
             )
@@ -108,7 +121,7 @@ class RedactionRulesTest {
     fun `keyword not present returns Kept`() {
         val rules = RedactionRules(
             RedactionConfig(
-                excludedPackages = emptySet(),
+                includedPackages = emptySet(),
                 excludedKeywords = listOf("password"),
                 captureBody = true
             )
@@ -123,7 +136,7 @@ class RedactionRulesTest {
     fun `captureBody false returns Kept with null bodies`() {
         val rules = RedactionRules(
             RedactionConfig(
-                excludedPackages = emptySet(),
+                includedPackages = emptySet(),
                 excludedKeywords = emptyList(),
                 captureBody = false
             )
@@ -141,7 +154,7 @@ class RedactionRulesTest {
         // Verify that a Kept result is returned (not Dropped) so the caller can still log metadata.
         val rules = RedactionRules(
             RedactionConfig(
-                excludedPackages = emptySet(),
+                includedPackages = emptySet(),
                 excludedKeywords = emptyList(),
                 captureBody = false
             )
@@ -160,7 +173,7 @@ class RedactionRulesTest {
     fun `normal notification with all fields is Kept unchanged`() {
         val rules = RedactionRules(
             RedactionConfig(
-                excludedPackages = emptySet(),
+                includedPackages = emptySet(),
                 excludedKeywords = emptyList(),
                 captureBody = true
             )
@@ -177,7 +190,7 @@ class RedactionRulesTest {
     fun `null fields in raw are preserved as null in Kept`() {
         val rules = RedactionRules(
             RedactionConfig(
-                excludedPackages = emptySet(),
+                includedPackages = emptySet(),
                 excludedKeywords = emptyList(),
                 captureBody = true
             )

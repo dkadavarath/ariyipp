@@ -12,6 +12,7 @@ import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import androidx.lifecycle.lifecycleScope
@@ -54,9 +55,26 @@ class MainActivity : AppCompatActivity() {
 
     // Section 4 – Capture / Privacy
     private lateinit var swCaptureBody: SwitchCompat
-    private lateinit var etExcludedPackages: EditText
+    private lateinit var tvIncludedAppsSummary: TextView
+    private lateinit var btnChooseApps: Button
     private lateinit var etExcludedKeywords: EditText
     private lateinit var etRetentionDays: EditText
+
+    /** Working copy of the included-apps allowlist, edited via the picker, persisted on Save. */
+    private val includedPackages = linkedSetOf<String>()
+
+    private val appPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val picked = result.data?.getStringArrayExtra(AppPickerActivity.EXTRA_SELECTED)
+            if (picked != null) {
+                includedPackages.clear()
+                includedPackages.addAll(picked)
+                updateIncludedAppsSummary()
+            }
+        }
+    }
 
     // Section 5 – Actions
     private lateinit var btnSave: Button
@@ -131,7 +149,8 @@ class MainActivity : AppCompatActivity() {
         swRequireCharging = findViewById(R.id.sw_require_charging)
 
         swCaptureBody = findViewById(R.id.sw_capture_body)
-        etExcludedPackages = findViewById(R.id.et_excluded_packages)
+        tvIncludedAppsSummary = findViewById(R.id.tv_included_apps_summary)
+        btnChooseApps = findViewById(R.id.btn_choose_apps)
         etExcludedKeywords = findViewById(R.id.et_excluded_keywords)
         etRetentionDays = findViewById(R.id.et_retention_days)
 
@@ -176,6 +195,20 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnPurgeNow.setOnClickListener { purgeNow() }
+
+        btnChooseApps.setOnClickListener {
+            val intent = Intent(this, AppPickerActivity::class.java)
+                .putExtra(AppPickerActivity.EXTRA_SELECTED, includedPackages.toTypedArray())
+            appPickerLauncher.launch(intent)
+        }
+    }
+
+    private fun updateIncludedAppsSummary() {
+        tvIncludedAppsSummary.text = if (includedPackages.isEmpty()) {
+            getString(R.string.included_apps_summary_all)
+        } else {
+            getString(R.string.included_apps_summary_some, includedPackages.size)
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -202,7 +235,9 @@ class MainActivity : AppCompatActivity() {
         swRequireCharging.isChecked = s.requireCharging
 
         swCaptureBody.isChecked = s.captureBody
-        etExcludedPackages.setText(s.excludedPackages.joinToString("\n"))
+        includedPackages.clear()
+        includedPackages.addAll(s.includedPackages)
+        updateIncludedAppsSummary()
         etExcludedKeywords.setText(s.excludedKeywords.joinToString("\n"))
         etRetentionDays.setText(s.retentionDays.toString())
     }
@@ -235,11 +270,7 @@ class MainActivity : AppCompatActivity() {
         s.requireCharging = swRequireCharging.isChecked
 
         s.captureBody = swCaptureBody.isChecked
-        s.excludedPackages = etExcludedPackages.text.toString()
-            .lines()
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-            .toSet()
+        s.includedPackages = includedPackages.toSet()
         s.excludedKeywords = etExcludedKeywords.text.toString()
             .lines()
             .map { it.trim() }

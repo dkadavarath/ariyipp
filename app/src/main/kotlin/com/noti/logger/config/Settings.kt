@@ -104,10 +104,11 @@ class Settings private constructor(private val prefs: SharedPreferences) {
 
     // ---- Redaction / privacy ----
 
-    var excludedPackages: Set<String>
-        get() = prefs.getStringSet(KEY_EXCLUDED_PACKAGES, emptySet()) ?: emptySet()
+    /** Allowlist of package names to capture. Empty ⇒ capture all apps. */
+    var includedPackages: Set<String>
+        get() = prefs.getStringSet(KEY_INCLUDED_PACKAGES, emptySet()) ?: emptySet()
         set(value) {
-            prefs.edit().putStringSet(KEY_EXCLUDED_PACKAGES, value).apply()
+            prefs.edit().putStringSet(KEY_INCLUDED_PACKAGES, value).apply()
         }
 
     /** Newline-delimited so multi-word keywords (e.g. "verification code") survive round-trip. */
@@ -152,7 +153,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
     // ---- Derived ----
 
     fun redactionConfig(): RedactionConfig = RedactionConfig(
-        excludedPackages = excludedPackages,
+        includedPackages = includedPackages,
         excludedKeywords = excludedKeywords,
         captureBody = captureBody
     )
@@ -174,7 +175,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_THRESHOLD_COUNT = "threshold_count"
         private const val KEY_REQUIRE_UNMETERED = "require_unmetered"
         private const val KEY_REQUIRE_CHARGING = "require_charging"
-        private const val KEY_EXCLUDED_PACKAGES = "excluded_packages"
+        private const val KEY_INCLUDED_PACKAGES = "included_packages"
         private const val KEY_EXCLUDED_KEYWORDS = "excluded_keywords"
         private const val KEY_CAPTURE_BODY = "capture_body"
         private const val KEY_RETENTION_DAYS = "retention_days"
