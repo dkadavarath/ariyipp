@@ -1,0 +1,18 @@
+# Secrets — never commit
+creds.txt
+local.properties
+*.keystore
+*.jks
+
+# Build output
+build/
+.gradle/
+.kotlin/
+*.apk
+*.aab
+captures/
+
+# IDE
+.idea/
+*.iml
+.DS_Store

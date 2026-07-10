@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">noti</string>
+
+    <!-- Generic -->
+    <string name="loading">…</string>
+    <string name="never">Never</string>
+
+    <!-- Permission status labels -->
+    <string name="granted">GRANTED</string>
+    <string name="not_granted">NOT GRANTED</string>
+    <string name="exempt">EXEMPT</string>
+    <string name="not_exempt">NOT EXEMPT</string>
+
+    <!-- Permission status messages -->
+    <string name="notification_access_status">Notification access: %1$s</string>
+    <string name="battery_optimization_status">Battery optimization: %1$s</string>
+
+    <!-- Section headers -->
+    <string name="section_permissions">Permissions</string>
+    <string name="section_webhook">Webhook Configuration</string>
+    <string name="section_trigger">Trigger Configuration</string>
+    <string name="section_capture">Capture &amp; Privacy</string>
+    <string name="section_actions">Actions</string>
+    <string name="section_status">Status</string>
+
+    <!-- Buttons -->
+    <string name="btn_grant_notification">Grant notification access</string>
+    <string name="btn_ignore_battery">Ignore battery optimization</string>
+    <string name="btn_save">Save settings</string>
+    <string name="btn_sync_now">Sync now</string>
+    <string name="btn_purge_now">Purge old data now</string>
+
+    <!-- EditText hints -->
+    <string name="hint_webhook_url">Webhook URL</string>
+    <string name="hint_bearer_token">Auth token</string>
+    <string name="hint_auth_header_name">Auth header name (e.g. Authorization or key)</string>
+    <string name="hint_auth_header_prefix">Value prefix (\"Bearer \" or empty for raw token)</string>
+    <string name="hint_interval_minutes">Interval (minutes, ≥15)</string>
+    <string name="hint_threshold_count">Threshold count</string>
+    <string name="hint_excluded_packages">com.example.app</string>
+    <string name="hint_excluded_keywords">verification code</string>
+    <string name="hint_retention_days">Retention days</string>
+
+    <!-- Field labels -->
+    <string name="label_excluded_packages">Excluded packages (one per line)</string>
+    <string name="label_excluded_keywords">Excluded keywords (one per line)</string>
+
+    <!-- RadioButton labels -->
+    <string name="rb_periodic">Periodic</string>
+    <string name="rb_threshold">Threshold</string>
+    <string name="rb_manual">Manual</string>
+
+    <!-- Switch labels -->
+    <string name="sw_require_unmetered">Require Wi-Fi (unmetered)</string>
+    <string name="sw_require_charging">Require charging</string>
+    <string name="sw_capture_body">Capture notification body</string>
+    <string name="switch_gzip">Gzip upload body (off for n8n compatibility)</string>
+
+    <!-- Toasts / feedback -->
+    <string name="settings_saved">Saved</string>
+    <string name="sync_enqueued">Sync enqueued</string>
+    <string name="purge_result">Purged %1$d record(s)</string>
+
+    <!-- Status section -->
+    <string name="status_total">Total captured: %1$d</string>
+    <string name="status_pending">Pending: %1$d</string>
+    <string name="status_last_upload">Last upload: %1$s (%2$s)</string>
+    <string name="status_device_id">Device ID: %1$s</string>
+</resources>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+        Default: require TLS for every webhook. Notification content (and the auth token) must
+        not travel in cleartext, so production endpoints must be https:// (the app's own webhook is).
+    -->
+    <base-config cleartextTrafficPermitted="false" />
+
+    <!--
+        Cleartext is permitted only to loopback / the emulator host, for local development and
+        instrumented tests. To use a plain-http webhook on your LAN, add its host below, e.g.
+        <domain includeSubdomains="true">192.168.1.50</domain>
+    -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>
