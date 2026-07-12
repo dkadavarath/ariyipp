@@ -41,6 +41,7 @@
     <string name="hint_excluded_packages">com.example.app</string>
     <string name="hint_excluded_keywords">verification code</string>
     <string name="hint_retention_days">Retention days</string>
+    <string name="hint_dedupe_window">Ignore duplicate window (seconds, 0 = off)</string>
 
     <!-- Field labels -->
     <string name="label_included_apps">Included apps</string>

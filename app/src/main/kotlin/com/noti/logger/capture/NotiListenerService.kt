@@ -11,6 +11,7 @@ import com.noti.logger.redact.RawNotification
 import com.noti.logger.redact.RedactedResult
 import com.noti.logger.redact.RedactionRules
 import com.noti.logger.util.AppLabelCache
+import com.noti.logger.util.contentHash
 import com.noti.logger.work.UploadScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +22,11 @@ import kotlinx.coroutines.launch
 
 class NotiListenerService : NotificationListenerService() {
 
+    // Single-threaded so the dedup check + insert per notification can't race for rapid bursts.
+    // Declared BEFORE `scope` so it is initialized when the first newScope() runs.
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val serialIo = Dispatchers.IO.limitedParallelism(1)
+
     // Recreated on every (re)connect: the system routinely disconnects/reconnects
     // listeners (e.g. during Doze), and a once-cancelled scope would silently drop
     // all subsequent notifications. @Volatile so the callback thread sees fresh refs.
@@ -29,7 +35,7 @@ class NotiListenerService : NotificationListenerService() {
 
     private val labelCache: AppLabelCache by lazy { AppLabelCache(applicationContext) }
 
-    private fun newScope() = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private fun newScope() = CoroutineScope(SupervisorJob() + serialIo)
 
     override fun onListenerConnected() {
         super.onListenerConnected()
@@ -81,6 +87,20 @@ class NotiListenerService : NotificationListenerService() {
 
             val kept = result as RedactedResult.Kept
 
+            val dao = NotiDatabase.get(applicationContext).notificationDao()
+
+            // Content signature from RAW fields (works even in metadata-only mode).
+            val hash = contentHash(packageName, title, text, bigText, subText)
+
+            // Duplicate suppression: drop identical content already captured within the window.
+            val windowSeconds = settings.dedupeWindowSeconds
+            val now = System.currentTimeMillis()
+            if (windowSeconds > 0 &&
+                dao.countRecentByHash(hash, now - windowSeconds.toLong() * 1000L) > 0
+            ) {
+                return@launch
+            }
+
             // uid: stable concat so the unique DB index deduplicates re-posts of the same sbnKey
             val uid = "${settings.deviceId}|$sbnKey|$postTime"
 
@@ -95,10 +115,10 @@ class NotiListenerService : NotificationListenerService() {
                 subText = kept.subText,
                 category = category,
                 sbnKey = sbnKey,
-                createdAt = System.currentTimeMillis()
+                contentHash = hash,
+                createdAt = now
             )
 
-            val dao = NotiDatabase.get(applicationContext).notificationDao()
             val rowId = dao.insert(entity)
 
             if (rowId != -1L &&

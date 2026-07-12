@@ -59,6 +59,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnChooseApps: Button
     private lateinit var etExcludedKeywords: EditText
     private lateinit var etRetentionDays: EditText
+    private lateinit var etDedupeWindow: EditText
 
     /** Working copy of the included-apps allowlist, edited via the picker, persisted on Save. */
     private val includedPackages = linkedSetOf<String>()
@@ -153,6 +154,7 @@ class MainActivity : AppCompatActivity() {
         btnChooseApps = findViewById(R.id.btn_choose_apps)
         etExcludedKeywords = findViewById(R.id.et_excluded_keywords)
         etRetentionDays = findViewById(R.id.et_retention_days)
+        etDedupeWindow = findViewById(R.id.et_dedupe_window)
 
         btnSave = findViewById(R.id.btn_save)
         btnSyncNow = findViewById(R.id.btn_sync_now)
@@ -240,6 +242,7 @@ class MainActivity : AppCompatActivity() {
         updateIncludedAppsSummary()
         etExcludedKeywords.setText(s.excludedKeywords.joinToString("\n"))
         etRetentionDays.setText(s.retentionDays.toString())
+        etDedupeWindow.setText(s.dedupeWindowSeconds.toString())
     }
 
     private fun saveSettings() {
@@ -276,6 +279,7 @@ class MainActivity : AppCompatActivity() {
             .map { it.trim() }
             .filter { it.isNotBlank() }
         s.retentionDays = etRetentionDays.text.toString().toIntOrNull() ?: s.retentionDays
+        s.dedupeWindowSeconds = etDedupeWindow.text.toString().toIntOrNull() ?: s.dedupeWindowSeconds
 
         UploadScheduler.applyFromSettings(this)
         Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show()

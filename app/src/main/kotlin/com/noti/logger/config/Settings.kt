@@ -136,6 +136,14 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putInt(KEY_RETENTION_DAYS, value).apply()
         }
 
+    /** Duplicate-suppression window in seconds. Identical content from the same app within this
+     *  window is dropped. Default 1 day; 0 disables dedup. */
+    var dedupeWindowSeconds: Int
+        get() = prefs.getInt(KEY_DEDUPE_WINDOW_SECONDS, 86_400)
+        set(value) {
+            prefs.edit().putInt(KEY_DEDUPE_WINDOW_SECONDS, value.coerceAtLeast(0)).apply()
+        }
+
     // ---- Status ----
 
     var lastUploadAtMs: Long
@@ -179,6 +187,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_EXCLUDED_KEYWORDS = "excluded_keywords"
         private const val KEY_CAPTURE_BODY = "capture_body"
         private const val KEY_RETENTION_DAYS = "retention_days"
+        private const val KEY_DEDUPE_WINDOW_SECONDS = "dedupe_window_seconds"
         private const val KEY_LAST_UPLOAD_AT_MS = "last_upload_at_ms"
         private const val KEY_LAST_UPLOAD_RESULT = "last_upload_result"
 
