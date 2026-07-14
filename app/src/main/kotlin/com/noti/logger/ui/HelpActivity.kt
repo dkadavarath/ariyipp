@@ -8,7 +8,6 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.google.android.material.appbar.MaterialToolbar
 import com.noti.logger.R
 
 class HelpActivity : AppCompatActivity() {
@@ -35,7 +34,8 @@ class HelpActivity : AppCompatActivity() {
             insets
         }
 
-        findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
+        setSupportActionBar(findViewById(R.id.toolbar))
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         val container = findViewById<LinearLayout>(R.id.help_container)
         val inflater = LayoutInflater.from(this)
@@ -45,5 +45,10 @@ class HelpActivity : AppCompatActivity() {
             card.findViewById<TextView>(R.id.tv_topic_body).setText(bodyRes)
             container.addView(card)
         }
+    }
+
+    override fun onSupportNavigateUp(): Boolean {
+        finish()
+        return true
     }
 }

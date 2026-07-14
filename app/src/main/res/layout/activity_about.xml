@@ -13,9 +13,7 @@
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            app:title="@string/about_title"
-            app:navigationIcon="@android:drawable/ic_menu_revert" />
+            android:layout_height="?attr/actionBarSize" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <ScrollView
@@ -88,6 +86,34 @@
                         android:textAppearance="?attr/textAppearanceBodySmall"
                         android:alpha="0.6"
                         android:textIsSelectable="true" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.Material3.CardView.Filled"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/about_whats_new"
+                        android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/about_changelog"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:lineSpacingExtra="2dp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>

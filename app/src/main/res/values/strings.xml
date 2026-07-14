@@ -15,6 +15,8 @@
     <string name="about_description">noti captures your device notifications to a local database and forwards them, in batches, to a webhook you configure. It is built to be lightweight and battery-friendly: notifications are captured event-driven (no background polling), and uploads are deferred and batched.</string>
     <string name="about_project_url">https://github.com/dkadavarath/noti</string>
     <string name="about_device_id">Device ID: %1$s</string>
+    <string name="about_whats_new">What\'s new</string>
+    <string name="about_changelog">v1.5 — Faster capture &amp; upload (less CPU/battery); change notes here; standard back navigation.\n\nv1.4 — New app icon, splash screen, About &amp; Help screens.\n\nv1.3 — Ignore duplicate notifications (content + time window).\n\nv1.2 — Material 3 redesign; choose which apps to capture.\n\nv1.1 — UI fixes; clearer auth setup; show-token toggle.\n\nv1.0 — Initial release.</string>
 
     <!-- Help screen -->
     <string name="help_title">Help</string>
