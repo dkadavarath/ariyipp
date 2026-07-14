@@ -1,71 +1,137 @@
 # noti
 
-A deliberately lightweight, native-Kotlin Android app that logs **all** notifications to a
-local database and forwards them, in batches, to an external webhook (e.g. an n8n webhook
-node). Optimized for minimal battery, CPU, and memory — and to keep working under Doze /
-aggressive battery optimization.
+![Platform](https://img.shields.io/badge/platform-Android-3ddc84)
+![minSdk](https://img.shields.io/badge/minSdk-26-1565c0)
+![targetSdk](https://img.shields.io/badge/targetSdk-35-1565c0)
+![Release](https://img.shields.io/badge/release-v1.4-1565c0)
+![Language](https://img.shields.io/badge/kotlin-100%25-7f52ff)
 
-## Architecture
+A deliberately **lightweight**, native-Kotlin Android app that logs your device notifications to
+a local database and forwards them, in batches, to a **webhook** you configure (e.g. an
+[n8n](https://n8n.io) webhook node). Built to sip battery, CPU, and memory — and to keep
+capturing under Doze / aggressive battery optimization.
+
+## Screens
+
+| Settings | About | Help |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/main.png" width="240"> | <img src="docs/screenshots/about.png" width="240"> | <img src="docs/screenshots/help.png" width="240"> |
+
+*(Material 3 UI with Material You dynamic color on Android 12+; the accent adapts to your wallpaper.)*
+
+## Features
+
+- **Captures every notification** via a system-bound `NotificationListenerService` — event-driven,
+  no polling, no foreground service, no wakelocks. Survives Doze (verified: notifications posted
+  during deep Doze are still captured).
+- **Local outbox** — Room/SQLite stores notifications durably so nothing is lost while offline.
+- **Batched webhook upload** via WorkManager — deferrable, gzip-optional, with per-record
+  success/failure handling and automatic retry.
+- **Included-apps allowlist** — pick exactly which apps to capture from a searchable list of
+  installed apps (empty = capture all).
+- **Duplicate suppression** — apps that re-post the same notification are collapsed by content
+  hash within a configurable time window (default 1 day).
+- **Privacy controls** — metadata-only mode (drop notification bodies), keyword exclusions
+  (e.g. skip anything containing “OTP”), and time-based retention/purge.
+- **Flexible triggers** — periodic, threshold (after N pending), or manual; optionally Wi-Fi-only
+  and/or charging-only.
+- **Configurable auth** — send the token in any header (`Authorization: Bearer …`, or a custom
+  header like `key` for n8n Header Auth).
+
+## How it works
 
 ```
-[System] --onNotificationPosted--> NotiListenerService --redact--> Room DB (outbox)
-                                                                        |
-                                        WorkManager (deferrable job) ---+--> gzip POST
-                                                                                   |
-                                                              Authorization: Bearer <token>
-                                                                                   v
-                                                                        Your webhook (n8n)
+[System] --onNotificationPosted--> NotiListenerService --redact/dedupe--> Room DB (outbox)
+                                                                              |
+                                          WorkManager (deferrable job) -------+--> JSON POST
+                                                                                     |
+                                                            <auth-header>: <token>   |
+                                                                                     v
+                                                                          Your webhook (n8n)
 ```
 
-- **Capture:** `NotificationListenerService` is bound and kept alive **by the system**. It is
-  event-driven and survives Doze / app-standby **without** a foreground service or wakelock —
-  the single biggest battery win. (Verified: notifications posted during deep Doze are still captured.)
-- **Storage:** Room/SQLite acts as a durable **outbox** (`uploaded` flag), so nothing is lost offline.
-- **Upload:** `WorkManager` runs a deferrable `CoroutineWorker` that coalesces uploads into Doze
-  maintenance windows, respecting network/charging constraints. Payloads are gzipped to minimize
-  radio-on time. No listening socket, no persistent notification, no foreground service.
+- **Capture** — `NotificationListenerService` is bound and kept alive **by the system**, so it
+  works without a foreground service or wakelock. This is the single biggest battery win.
+- **Storage** — a Room table acts as an outbox (`uploaded` flag); a content-hash column powers
+  time-windowed duplicate detection.
+- **Upload** — a `CoroutineWorker` pulls pending rows, POSTs them in batches, and reconciles the
+  response per-record. Deferred into Doze maintenance windows and constraint-aware.
 
-### Why push to a webhook (not host an on-device API)
-A phone behind carrier/NAT is not reliably internet-reachable, and holding an inbound socket open
-fights Doze and drains battery. Outbound batched pushes are the battery-optimal topology.
+**Why push to a webhook instead of hosting an on-device API?** A phone behind carrier/NAT isn’t
+reliably reachable, and holding an inbound socket open fights Doze and drains battery. Outbound
+batched pushes are the battery-optimal topology.
 
-## Modules (`app/src/main/kotlin/com/noti/logger/`)
-- `capture/NotiListenerService.kt` — captures, redacts, inserts (off the callback thread).
-- `data/` — `NotificationEntity`, `NotificationDao`, `NotiDatabase` (Room, WAL, indexed).
-- `redact/RedactionRules.kt` — drop excluded packages/keywords; optional metadata-only mode.
-- `upload/` — `PayloadModels` (snake_case JSON), `Uploader` (HttpURLConnection + gzip).
-- `work/` — `UploadWorker`, `UploadScheduler` (periodic / threshold / manual triggers + constraints).
-- `config/Settings.kt` — EncryptedSharedPreferences (webhook URL, bearer token, trigger config, etc.).
-- `util/AppLabelCache.kt` — LruCache over PackageManager label lookups.
-- `boot/BootReceiver.kt`, `NotiApp.kt` — re-arm periodic work on boot / launch.
-- `ui/MainActivity.kt` — single scrollable screen: onboarding, settings, status.
+## Install
+
+Grab the latest signed APK from **[Releases](https://github.com/dkadavarath/noti/releases/latest)**
+(`noti-vX.Y.apk`) and sideload it:
+
+```
+adb install noti-v1.4.apk
+```
+
+Google Play Protect may warn on a sideloaded app that reads notifications — choose *Install anyway*
+/ *Install without scanning*. Updates install in place (same signing key), preserving your data.
+
+## Configure on device
+
+1. **Grant access** — open the app, tap *Grant notification access* and enable noti in the system
+   list. Tap *Ignore battery optimization* so uploads run reliably.
+2. **Webhook** — enter your **Webhook URL** and **auth token**. By default the token is sent as
+   `Authorization: Bearer <token>`. For an **n8n Header Auth** credential, set *Auth header name* to
+   `key` and clear the *Token prefix* so the raw token is sent as `key: <token>`. Tap the eye icon
+   to reveal the token. Prefer an **https** URL — content is sensitive.
+3. **Choose apps** (optional) — under *Included apps*, tap *Choose apps* to limit capture to
+   specific apps. Leave empty to capture all.
+4. **Tune** (optional) — trigger mode, Wi-Fi/charging constraints, duplicate window, metadata-only
+   mode, excluded keywords, retention. Tap **Save**. Use **Sync now** to push immediately.
 
 ## Webhook contract
+
 ```
 POST <webhook_url>
-<auth-header>: <auth-value>
+<auth-header>: <auth-value>          # e.g. "Authorization: Bearer <token>" or "key: <token>"
 Content-Type: application/json
-Content-Encoding: gzip
+Content-Encoding: gzip               # only when gzip is enabled in Settings
 
 { "batch": [ { "device_id","uid","package","app_label","post_time","title","text",
                "big_text","sub_text","category" } ] }
 ```
-The endpoint replies **HTTP 200** with per-uid results:
-```
-[ { "success": ["<uid>", ...], "failure": ["<error msg with uid>", ...] } ]
-```
-The app **deletes only uids listed in `success`**; every other uid in the batch stays pending and
-is retried, with the user alerted about failures. `uid` is stable/unique → dedupe idempotently.
-Non-2xx: 5xx/network → silent retry; 4xx → alert + retry (transport/auth issue).
 
-**Configurable auth header.** Defaults to `Authorization: Bearer <token>`. For an n8n
-**Header Auth** credential, set *Auth header name* = `key` and clear the *Value prefix* so the raw
-token is sent as `key: <token>`. Configured in the app's Settings screen (or `Settings.kt`).
+`post_time` is an ISO-8601 UTC string; `uid` is stable and unique (ideal as a primary key for
+idempotent inserts). The endpoint should reply **HTTP 200** with per-uid results:
 
-### Live end-to-end test against a real webhook
-`LiveWebhookTest` runs the real `UploadWorker` against a live endpoint; it is skipped unless a URL
-is supplied (so it never leaks secrets in the normal suite). The token is passed base64-encoded to
-survive shell/instrumentation arg parsing:
+```
+[ { "success": ["<uid>", ...], "failure": ["<error message containing the uid>", ...] } ]
+```
+
+The app **deletes only uids listed in `success`**; anything else in the batch stays pending and is
+retried, with the user alerted about genuine failures. A `… already exists` failure is treated as
+success (the record is already stored). Non-2xx: 5xx/network → silent retry; 4xx → alert + retry
+(usually an auth/URL problem).
+
+## Build from source
+
+Requires JDK 17 and the Android SDK (compileSdk 35).
+
+```
+./gradlew assembleDebug            # debug APK
+./gradlew assembleRelease          # R8 full-mode + resource shrinking (needs keystore.properties)
+```
+
+Release signing reads a gitignored `keystore.properties` (`storeFile`, `storePassword`, `keyAlias`,
+`keyPassword`); without it, `assembleDebug` still works.
+
+## Testing
+
+```
+./gradlew testDebugUnitTest          # JVM: redaction, payload, uploader, content-hash, dedup logic
+./gradlew connectedDebugAndroidTest  # instrumented: Room DAO, upload pipeline, migration, dedup, …
+```
+
+There is also an opt-in live test against a real webhook (skipped unless a URL is supplied, so it
+never leaks secrets):
+
 ```
 KEYB64=$(printf %s '<token>' | base64 -w0)
 ./gradlew connectedDebugAndroidTest \
@@ -74,27 +140,41 @@ KEYB64=$(printf %s '<token>' | base64 -w0)
   -Pandroid.testInstrumentationRunnerArguments.authHeaderName=key \
   -Pandroid.testInstrumentationRunnerArguments.authKeyB64="$KEYB64"
 ```
-Use the n8n **production** `/webhook/` URL (repeatable), not the one-shot `/webhook-test/` URL.
 
-## Security note
-`android:usesCleartextTraffic="true"` is enabled so self-hosted **http** webhooks (common for a
-LAN n8n) work. Notification content is sensitive — **prefer an https webhook**. The bearer token
-and webhook URL are stored in `EncryptedSharedPreferences`. Use per-app/keyword exclusions and the
-"capture body off" (metadata-only) option to avoid storing OTPs / banking messages.
+## Security
 
-## Build
-```
-./gradlew assembleDebug           # debug APK
-./gradlew assembleRelease         # R8 full-mode + resource shrinking
-```
+- **TLS by default** — `network_security_config.xml` requires https for webhooks; cleartext is
+  permitted only for loopback/emulator (local testing). To use a plain-http LAN webhook, add its
+  host to that file.
+- **No backup exfiltration** — `allowBackup=false` + data-extraction rules keep the notification DB
+  and the auth token off cloud backup / device transfer.
+- **Secrets at rest** — webhook URL and token live in `EncryptedSharedPreferences`.
+- **Minimize sensitive capture** — use metadata-only mode and keyword exclusions to avoid storing
+  OTPs / banking messages; the webhook response body read is size-capped to guard against a hostile
+  endpoint.
 
-## Test
-```
-./gradlew testDebugUnitTest       # JVM unit tests (redaction, payload, uploader, DAO logic)
-./gradlew connectedDebugAndroidTest   # instrumented: Room DAO + full upload pipeline (needs a device/emulator)
-```
+> ⚠️ This app reads and forwards notification content. Only install it on a device whose owner has
+> given informed consent. Capturing another person’s notifications without their knowledge is
+> illegal in most jurisdictions.
 
-## Configure on device
-1. Open the app → **Grant notification access** and (recommended) **Ignore battery optimization**.
-2. Set the **webhook URL** and **bearer token**, pick a trigger mode, Save.
-3. Use **Sync now** to push immediately; **Purge now** to clear old uploaded rows.
+## Tech stack
+
+Kotlin · Material 3 (Views) · Room · WorkManager · Kotlin Coroutines · kotlinx.serialization ·
+`HttpURLConnection` · EncryptedSharedPreferences · AndroidX SplashScreen. No Compose, OkHttp, or
+DI framework — kept intentionally small (~2.5 MB release APK).
+
+### Project layout (`app/src/main/kotlin/com/noti/logger/`)
+
+| Package | Responsibility |
+|---|---|
+| `capture/` | `NotiListenerService` — capture, redact, dedupe, insert |
+| `data/` | Room `NotificationEntity` / `Dao` / `NotiDatabase` (+ migrations) |
+| `redact/` | `RedactionRules` — allowlist, keyword drop, metadata-only |
+| `upload/` | `PayloadModels`, `Uploader` (HttpURLConnection + gzip), response parsing |
+| `work/` | `UploadWorker`, `UploadScheduler` (triggers + constraints) |
+| `config/` | `Settings` (EncryptedSharedPreferences) |
+| `util/` | `AppLabelCache`, `InstalledApps`, `ContentHash` |
+| `alert/` | `Alerter` — in-app upload-failure notifications |
+| `ui/` | `MainActivity`, `AppPickerActivity`, `AboutActivity`, `HelpActivity` |
+| `boot/` | `BootReceiver` — re-arm periodic work after reboot |
+```
