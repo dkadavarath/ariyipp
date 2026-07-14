@@ -50,14 +50,22 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putBoolean(KEY_GZIP_ENABLED, value).apply()
         }
 
-    /** Generated once and persisted; never changes for a given install. */
+    /** Generated once and persisted; never changes for a given install. Memoized so the capture
+     *  path doesn't decrypt it on every notification. */
+    @Volatile
+    private var cachedDeviceId: String? = null
     val deviceId: String
         get() {
-            val stored = prefs.getString(KEY_DEVICE_ID, null)
-            if (stored != null) return stored
-            val newId = UUID.randomUUID().toString()
-            prefs.edit().putString(KEY_DEVICE_ID, newId).apply()
-            return newId
+            cachedDeviceId?.let { return it }
+            synchronized(this) {
+                cachedDeviceId?.let { return it }
+                val id = prefs.getString(KEY_DEVICE_ID, null)
+                    ?: UUID.randomUUID().toString().also {
+                        prefs.edit().putString(KEY_DEVICE_ID, it).apply()
+                    }
+                cachedDeviceId = id
+                return id
+            }
         }
 
     // ---- Trigger config ----
@@ -109,6 +117,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         get() = prefs.getStringSet(KEY_INCLUDED_PACKAGES, emptySet()) ?: emptySet()
         set(value) {
             prefs.edit().putStringSet(KEY_INCLUDED_PACKAGES, value).apply()
+            cachedRedaction = null
         }
 
     /** Newline-delimited so multi-word keywords (e.g. "verification code") survive round-trip. */
@@ -122,12 +131,14 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit()
                 .putString(KEY_EXCLUDED_KEYWORDS, value.joinToString(KEYWORD_DELIMITER))
                 .apply()
+            cachedRedaction = null
         }
 
     var captureBody: Boolean
         get() = prefs.getBoolean(KEY_CAPTURE_BODY, true)
         set(value) {
             prefs.edit().putBoolean(KEY_CAPTURE_BODY, value).apply()
+            cachedRedaction = null
         }
 
     var retentionDays: Int
@@ -160,11 +171,19 @@ class Settings private constructor(private val prefs: SharedPreferences) {
 
     // ---- Derived ----
 
-    fun redactionConfig(): RedactionConfig = RedactionConfig(
-        includedPackages = includedPackages,
-        excludedKeywords = excludedKeywords,
-        captureBody = captureBody
-    )
+    // Cached snapshot; invalidated whenever includedPackages / excludedKeywords / captureBody change.
+    // Avoids 3 decrypts + a keyword split on every captured notification.
+    @Volatile
+    private var cachedRedaction: RedactionConfig? = null
+
+    fun redactionConfig(): RedactionConfig {
+        cachedRedaction?.let { return it }
+        return RedactionConfig(
+            includedPackages = includedPackages,
+            excludedKeywords = excludedKeywords,
+            captureBody = captureBody
+        ).also { cachedRedaction = it }
+    }
 
     // ---- Singleton ----
 
