@@ -1,14 +1,14 @@
 package com.noti.logger
 
 import android.app.Application
-import com.google.android.material.color.DynamicColors
 import com.noti.logger.work.UploadScheduler
 
 class NotiApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        // Material You: apply the device's dynamic color scheme on Android 12+ (no-op below).
-        DynamicColors.applyToActivitiesIfAvailable(this)
+        // Uses the fixed brand-blue theme (matches the icon) for consistent contrast; still
+        // follows the system light/dark setting via the DayNight theme. To adopt Material You
+        // dynamic color on Android 12+ instead, call DynamicColors.applyToActivitiesIfAvailable(this).
         UploadScheduler.applyFromSettings(this)
     }
 }

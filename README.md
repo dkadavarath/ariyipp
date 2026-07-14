@@ -3,7 +3,7 @@
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84)
 ![minSdk](https://img.shields.io/badge/minSdk-26-1565c0)
 ![targetSdk](https://img.shields.io/badge/targetSdk-35-1565c0)
-![Release](https://img.shields.io/badge/release-v1.5-1565c0)
+![Release](https://img.shields.io/badge/release-v1.6-1565c0)
 ![Language](https://img.shields.io/badge/kotlin-100%25-7f52ff)
 
 A deliberately **lightweight**, native-Kotlin Android app that logs your device notifications to
@@ -17,7 +17,7 @@ capturing under Doze / aggressive battery optimization.
 |:---:|:---:|:---:|
 | <img src="docs/screenshots/main.png" width="240"> | <img src="docs/screenshots/about.png" width="240"> | <img src="docs/screenshots/help.png" width="240"> |
 
-*(Material 3 UI with Material You dynamic color on Android 12+; the accent adapts to your wallpaper.)*
+*(Material 3 UI with a blue brand theme matching the app icon; follows the system light/dark setting.)*
 
 ## Features
 
@@ -67,7 +67,7 @@ Grab the latest signed APK from **[Releases](https://github.com/dkadavarath/noti
 (`noti-vX.Y.apk`) and sideload it:
 
 ```
-adb install noti-v1.5.apk
+adb install noti-v1.6.apk
 ```
 
 Google Play Protect may warn on a sideloaded app that reads notifications — choose *Install anyway*
