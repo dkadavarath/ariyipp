@@ -29,7 +29,8 @@
 
         <activity
             android:name=".ui.MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:theme="@style/Theme.Noti.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -40,6 +41,16 @@
             android:name=".ui.AppPickerActivity"
             android:exported="false"
             android:label="@string/picker_title" />
+
+        <activity
+            android:name=".ui.AboutActivity"
+            android:exported="false"
+            android:label="@string/about_title" />
+
+        <activity
+            android:name=".ui.HelpActivity"
+            android:exported="false"
+            android:label="@string/help_title" />
 
         <service
             android:name=".capture.NotiListenerService"

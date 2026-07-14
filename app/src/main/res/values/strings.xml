@@ -4,6 +4,34 @@
 
     <!-- Generic -->
     <string name="loading">…</string>
+
+    <!-- Footer / navigation -->
+    <string name="btn_about">About</string>
+    <string name="btn_help">Help</string>
+
+    <!-- About screen -->
+    <string name="about_title">About</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_description">noti captures your device notifications to a local database and forwards them, in batches, to a webhook you configure. It is built to be lightweight and battery-friendly: notifications are captured event-driven (no background polling), and uploads are deferred and batched.</string>
+    <string name="about_project_url">https://github.com/dkadavarath/noti</string>
+    <string name="about_device_id">Device ID: %1$s</string>
+
+    <!-- Help screen -->
+    <string name="help_title">Help</string>
+    <string name="help_start_title">Getting started</string>
+    <string name="help_start_body">1. Tap “Grant notification access” and enable noti in the system list — this lets the app see notifications.\n2. Tap “Ignore battery optimization” so uploads run reliably.\nWithout notification access, nothing is captured.</string>
+    <string name="help_webhook_title">Setting up the webhook</string>
+    <string name="help_webhook_body">Enter your Webhook URL and the auth token. The token is sent as a header: by default “Authorization: Bearer &lt;token&gt;”. For an n8n Header Auth credential, set the Auth header name to “key” and clear the prefix so the raw token is sent. Tap the eye icon to reveal the token. Use an https URL — content is sensitive.</string>
+    <string name="help_apps_title">Choosing which apps to capture</string>
+    <string name="help_apps_body">Under “Included apps”, tap “Choose apps” to pick which apps to capture. If you select none, all apps are captured. Selecting apps limits capture to just those.</string>
+    <string name="help_dupes_title">Ignoring duplicates</string>
+    <string name="help_dupes_body">Some apps re-post the same notification repeatedly. “Ignore duplicate window” drops identical content from the same app seen within that many seconds (default one day). Set 0 to keep every copy.</string>
+    <string name="help_triggers_title">Triggers &amp; network</string>
+    <string name="help_triggers_body">Choose when uploads run: Periodic (every N minutes, min 15), Threshold (after N pending), or Manual (“Sync now” only). Optionally restrict to Wi-Fi or to charging to save battery/data.</string>
+    <string name="help_privacy_title">Privacy &amp; retention</string>
+    <string name="help_privacy_body">Turn off “Capture notification body” to store metadata only. Add excluded keywords to drop notifications containing sensitive words (e.g. OTP). “Retention days” controls how long uploaded rows are kept before purging.</string>
+    <string name="help_trouble_title">Troubleshooting</string>
+    <string name="help_trouble_body">• 403 on upload: the auth header/token is wrong — for n8n Header Auth use header name “key” and an empty prefix.\n• Nothing captured: grant notification access; check your included-apps selection.\n• Uploads delayed: allow the app to ignore battery optimization, or use “Sync now”.</string>
     <string name="never">Never</string>
 
     <!-- Permission status labels -->

@@ -14,6 +14,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.appcompat.widget.SwitchCompat
 import androidx.lifecycle.lifecycleScope
 import com.noti.logger.R
@@ -85,7 +86,13 @@ class MainActivity : AppCompatActivity() {
     // Section 6 – Status
     private lateinit var tvStatus: TextView
 
+    // Footer
+    private lateinit var btnAbout: Button
+    private lateinit var btnHelp: Button
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Show the splash (n. on blue) then swap to the app theme. Must precede super.onCreate.
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -161,6 +168,9 @@ class MainActivity : AppCompatActivity() {
         btnPurgeNow = findViewById(R.id.btn_purge_now)
 
         tvStatus = findViewById(R.id.tv_status)
+
+        btnAbout = findViewById(R.id.btn_about)
+        btnHelp = findViewById(R.id.btn_help)
     }
 
     // -------------------------------------------------------------------------
@@ -197,6 +207,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnPurgeNow.setOnClickListener { purgeNow() }
+
+        btnAbout.setOnClickListener { startActivity(Intent(this, AboutActivity::class.java)) }
+        btnHelp.setOnClickListener { startActivity(Intent(this, HelpActivity::class.java)) }
 
         btnChooseApps.setOnClickListener {
             val intent = Intent(this, AppPickerActivity::class.java)
