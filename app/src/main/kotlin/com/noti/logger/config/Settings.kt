@@ -10,6 +10,8 @@ import java.util.UUID
 
 enum class TriggerMode { PERIODIC, THRESHOLD, MANUAL }
 
+enum class ThemeMode { SYSTEM, LIGHT, DARK }
+
 class Settings private constructor(private val prefs: SharedPreferences) {
 
     // ---- Webhook / auth ----
@@ -169,6 +171,25 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putString(KEY_LAST_UPLOAD_RESULT, value).apply()
         }
 
+    // ---- Appearance ----
+
+    var themeMode: ThemeMode
+        get() = try {
+            ThemeMode.valueOf(prefs.getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name)
+        } catch (e: IllegalArgumentException) {
+            ThemeMode.SYSTEM
+        }
+        set(value) {
+            prefs.edit().putString(KEY_THEME_MODE, value.name).apply()
+        }
+
+    /** false = Default (blue brand theme); true = Material You dynamic color (Android 12+). */
+    var dynamicColor: Boolean
+        get() = prefs.getBoolean(KEY_DYNAMIC_COLOR, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_DYNAMIC_COLOR, value).apply()
+        }
+
     // ---- Derived ----
 
     // Cached snapshot; invalidated whenever includedPackages / excludedKeywords / captureBody change.
@@ -209,6 +230,8 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_DEDUPE_WINDOW_SECONDS = "dedupe_window_seconds"
         private const val KEY_LAST_UPLOAD_AT_MS = "last_upload_at_ms"
         private const val KEY_LAST_UPLOAD_RESULT = "last_upload_result"
+        private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_DYNAMIC_COLOR = "dynamic_color"
 
         @Volatile
         private var INSTANCE: Settings? = null

@@ -43,14 +43,14 @@
             android:label="@string/picker_title" />
 
         <activity
-            android:name=".ui.AboutActivity"
-            android:exported="false"
-            android:label="@string/about_title" />
-
-        <activity
             android:name=".ui.HelpActivity"
             android:exported="false"
             android:label="@string/help_title" />
+
+        <activity android:name=".ui.ConnectionActivity" android:exported="false" />
+        <activity android:name=".ui.SyncActivity" android:exported="false" />
+        <activity android:name=".ui.PrivacyActivity" android:exported="false" />
+        <activity android:name=".ui.AppearanceActivity" android:exported="false" />
 
         <service
             android:name=".capture.NotiListenerService"

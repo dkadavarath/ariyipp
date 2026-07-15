@@ -3,7 +3,7 @@
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84)
 ![minSdk](https://img.shields.io/badge/minSdk-26-1565c0)
 ![targetSdk](https://img.shields.io/badge/targetSdk-35-1565c0)
-![Release](https://img.shields.io/badge/release-v1.6-1565c0)
+![Release](https://img.shields.io/badge/release-v1.7-1565c0)
 ![Language](https://img.shields.io/badge/kotlin-100%25-7f52ff)
 
 A deliberately **lightweight**, native-Kotlin Android app that logs your device notifications to
@@ -13,11 +13,12 @@ capturing under Doze / aggressive battery optimization.
 
 ## Screens
 
-| Settings | About | Help |
+| Status | Settings | Appearance |
 |:---:|:---:|:---:|
-| <img src="docs/screenshots/main.png" width="240"> | <img src="docs/screenshots/about.png" width="240"> | <img src="docs/screenshots/help.png" width="240"> |
+| <img src="docs/screenshots/status.png" width="240"> | <img src="docs/screenshots/settings.png" width="240"> | <img src="docs/screenshots/appearance.png" width="240"> |
 
-*(Material 3 UI with a blue brand theme matching the app icon; follows the system light/dark setting.)*
+*(Bottom-nav layout — Status / Settings / About. Material 3 with a blue brand theme by default; an
+in-app Appearance section toggles Light/Dark/System and Default/Material You color.)*
 
 ## Features
 
@@ -67,7 +68,7 @@ Grab the latest signed APK from **[Releases](https://github.com/dkadavarath/noti
 (`noti-vX.Y.apk`) and sideload it:
 
 ```
-adb install noti-v1.6.apk
+adb install noti-v1.7.apk
 ```
 
 Google Play Protect may warn on a sideloaded app that reads notifications — choose *Install anyway*
@@ -75,16 +76,18 @@ Google Play Protect may warn on a sideloaded app that reads notifications — ch
 
 ## Configure on device
 
-1. **Grant access** — open the app, tap *Grant notification access* and enable noti in the system
-   list. Tap *Ignore battery optimization* so uploads run reliably.
-2. **Webhook** — enter your **Webhook URL** and **auth token**. By default the token is sent as
-   `Authorization: Bearer <token>`. For an **n8n Header Auth** credential, set *Auth header name* to
-   `key` and clear the *Token prefix* so the raw token is sent as `key: <token>`. Tap the eye icon
-   to reveal the token. Prefer an **https** URL — content is sensitive.
-3. **Choose apps** (optional) — under *Included apps*, tap *Choose apps* to limit capture to
-   specific apps. Leave empty to capture all.
-4. **Tune** (optional) — trigger mode, Wi-Fi/charging constraints, duplicate window, metadata-only
-   mode, excluded keywords, retention. Tap **Save**. Use **Sync now** to push immediately.
+The app has three tabs: **Status**, **Settings**, and **About**.
+
+1. **Grant access** (Status tab) — tap *Grant notification access* and enable noti in the system
+   list. Tap *Ignore battery optimization* so uploads run reliably. *Sync now* and the captured/pending
+   counts also live here.
+2. **Webhook** (Settings → Connection) — enter your **Webhook URL** and **auth token**. By default the
+   token is sent as `Authorization: Bearer <token>`. For an **n8n Header Auth** credential, set
+   *Auth header name* to `key` and clear the *Token prefix* so the raw token is sent as `key: <token>`.
+   Tap the eye icon to reveal the token. Prefer an **https** URL — content is sensitive.
+3. **Choose apps** (Settings → Apps) — pick which apps to capture; leave empty to capture all.
+4. **Tune** — Settings → *Sync* (triggers, Wi-Fi/charging), *Privacy* (metadata-only, keywords,
+   duplicate window, retention), and *Appearance* (theme mode + Default/Material color).
 
 ## Webhook contract
 
@@ -175,6 +178,6 @@ DI framework — kept intentionally small (~2.5 MB release APK).
 | `config/` | `Settings` (EncryptedSharedPreferences) |
 | `util/` | `AppLabelCache`, `InstalledApps`, `ContentHash` |
 | `alert/` | `Alerter` — in-app upload-failure notifications |
-| `ui/` | `MainActivity`, `AppPickerActivity`, `AboutActivity`, `HelpActivity` |
+| `ui/` | `MainActivity` (bottom-nav host) + Status/Settings/About fragments; Connection/Sync/Privacy/Appearance/AppPicker/Help screens |
 | `boot/` | `BootReceiver` — re-arm periodic work after reboot |
 ```

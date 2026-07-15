@@ -9,6 +9,51 @@
     <string name="btn_about">About</string>
     <string name="btn_help">Help</string>
 
+    <!-- Bottom navigation -->
+    <string name="nav_status">Status</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_about">About</string>
+
+    <!-- Settings menu -->
+    <string name="menu_connection_title">Connection</string>
+    <string name="menu_connection_sub">Webhook URL, auth, gzip</string>
+    <string name="menu_sync_title">Sync</string>
+    <string name="menu_sync_sub">Triggers and network</string>
+    <string name="menu_apps_title">Apps</string>
+    <string name="menu_apps_sub">Choose which apps to capture</string>
+    <string name="menu_privacy_title">Privacy</string>
+    <string name="menu_privacy_sub">Body, keywords, duplicates, retention</string>
+    <string name="menu_appearance_title">Appearance</string>
+    <string name="menu_appearance_sub">Theme mode and color</string>
+    <string name="menu_purge_title">Purge old data</string>
+    <string name="menu_purge_sub">Delete uploaded records now</string>
+
+    <!-- Sub-screen titles -->
+    <string name="title_connection">Connection</string>
+    <string name="title_sync">Sync</string>
+    <string name="title_privacy">Privacy</string>
+    <string name="title_appearance">Appearance</string>
+
+    <!-- Appearance -->
+    <string name="appearance_mode">Theme</string>
+    <string name="appearance_mode_system">System default</string>
+    <string name="appearance_mode_light">Light</string>
+    <string name="appearance_mode_dark">Dark</string>
+    <string name="appearance_color">Color</string>
+    <string name="appearance_color_default">Default</string>
+    <string name="appearance_color_material">Material You</string>
+    <string name="appearance_color_material_note">Adapts to your wallpaper (Android 12+)</string>
+
+    <!-- Purge confirm -->
+    <string name="purge_confirm_title">Purge old data?</string>
+    <string name="purge_confirm_msg">Delete uploaded records older than the retention window. This can\'t be undone.</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Status headers -->
+    <string name="status_permissions">Permissions</string>
+    <string name="status_sync">Sync</string>
+    <string name="status_data">Data</string>
+
     <!-- About screen -->
     <string name="about_title">About</string>
     <string name="about_version">Version %1$s</string>
@@ -16,7 +61,7 @@
     <string name="about_project_url">https://github.com/dkadavarath/noti</string>
     <string name="about_device_id">Device ID: %1$s</string>
     <string name="about_whats_new">What\'s new</string>
-    <string name="about_changelog">v1.6 — Blue theme matching the app icon, for better visibility (follows system light/dark).\n\nv1.5 — Faster capture &amp; upload (less CPU/battery); change notes here; standard back navigation.\n\nv1.4 — New app icon, splash screen, About &amp; Help screens.\n\nv1.3 — Ignore duplicate notifications (content + time window).\n\nv1.2 — Material 3 redesign; choose which apps to capture.\n\nv1.1 — UI fixes; clearer auth setup; show-token toggle.\n\nv1.0 — Initial release.</string>
+    <string name="about_changelog">v1.7 — Bottom-nav layout (Status / Settings / About), settings menu with focused screens, and an Appearance section (theme mode + Default/Material color).\n\nv1.6 — Blue theme matching the app icon, for better visibility (follows system light/dark).\n\nv1.5 — Faster capture &amp; upload (less CPU/battery); change notes here; standard back navigation.\n\nv1.4 — New app icon, splash screen, About &amp; Help screens.\n\nv1.3 — Ignore duplicate notifications (content + time window).\n\nv1.2 — Material 3 redesign; choose which apps to capture.\n\nv1.1 — UI fixes; clearer auth setup; show-token toggle.\n\nv1.0 — Initial release.</string>
 
     <!-- Help screen -->
     <string name="help_title">Help</string>
