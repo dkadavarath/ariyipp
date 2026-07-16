@@ -20,8 +20,10 @@ import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.android.material.textfield.TextInputEditText
 import com.noti.logger.R
+import com.noti.logger.util.AppIconLoader
 import com.noti.logger.util.AppInfo
 import com.noti.logger.util.InstalledApps
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
@@ -36,6 +38,7 @@ class AppPickerActivity : AppCompatActivity() {
     private lateinit var countView: TextView
     private lateinit var progress: CircularProgressIndicator
     private lateinit var recycler: RecyclerView
+    private val iconLoader: AppIconLoader by lazy { AppIconLoader(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -129,12 +132,35 @@ class AppPickerActivity : AppCompatActivity() {
             val app = items[position]
             holder.label.text = app.label
             holder.pkg.text = app.packageName
-            holder.icon.setImageDrawable(app.icon)
             holder.check.isChecked = app.packageName in selected
             holder.itemView.setOnClickListener {
                 if (!selected.add(app.packageName)) selected.remove(app.packageName)
                 holder.check.isChecked = app.packageName in selected
                 updateCount()
+            }
+            bindIcon(holder, app)
+        }
+
+        override fun onViewRecycled(holder: AppVH) {
+            holder.iconJob?.cancel()
+            holder.iconJob = null
+        }
+
+        /** Paints a cached icon immediately, else loads it and drops the result if the row moved on. */
+        private fun bindIcon(holder: AppVH, app: AppInfo) {
+            holder.iconJob?.cancel()
+            holder.boundPackage = app.packageName
+
+            val cached = iconLoader.cached(app.packageName)
+            if (cached != null) {
+                holder.icon.setImageDrawable(cached)
+                return
+            }
+            // Clear first: without this the recycled view shows the previous app's icon.
+            holder.icon.setImageDrawable(null)
+            holder.iconJob = lifecycleScope.launch {
+                val icon = iconLoader.load(app)
+                if (holder.boundPackage == app.packageName) holder.icon.setImageDrawable(icon)
             }
         }
     }
@@ -144,6 +170,10 @@ class AppPickerActivity : AppCompatActivity() {
         val label: TextView = v.findViewById(R.id.txt_label)
         val pkg: TextView = v.findViewById(R.id.txt_package)
         val check: MaterialCheckBox = v.findViewById(R.id.check)
+
+        /** What this holder currently shows; guards against a late icon landing on a reused row. */
+        var boundPackage: String? = null
+        var iconJob: Job? = null
     }
 
     companion object {

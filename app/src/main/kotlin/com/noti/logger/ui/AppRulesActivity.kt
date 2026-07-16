@@ -13,6 +13,8 @@ import com.noti.logger.R
 import com.noti.logger.config.AppRules
 import com.noti.logger.config.Settings
 import com.noti.logger.redact.AppRule
+import com.noti.logger.util.AppIconLoader
+import com.noti.logger.util.AppInfo
 import com.noti.logger.util.AppLabelCache
 import com.noti.logger.util.InstalledApps
 import kotlinx.coroutines.launch
@@ -30,6 +32,7 @@ class AppRulesActivity : ScreenActivity() {
     private class Row(val packageName: String, val keywords: EditText, val notes: EditText)
 
     private val rows = ArrayList<Row>()
+    private val iconLoader: AppIconLoader by lazy { AppIconLoader(this) }
 
     override fun onScreenCreated() {
         val settings = Settings.get(this)
@@ -65,12 +68,14 @@ class AppRulesActivity : ScreenActivity() {
                 compareBy(String.CASE_INSENSITIVE_ORDER) { installed[it]?.label ?: labels.label(it) }
             )
 
+            val icons = ArrayList<Pair<ImageView, AppInfo>>()
+
             for (pkg in ordered) {
                 val view = inflater.inflate(R.layout.item_app_rule, container, false)
                 val app = installed[pkg]
                 view.findViewById<TextView>(R.id.txt_label).text = app?.label ?: labels.label(pkg)
                 view.findViewById<TextView>(R.id.txt_package).text = pkg
-                view.findViewById<ImageView>(R.id.img_icon).setImageDrawable(app?.icon)
+                if (app != null) icons += view.findViewById<ImageView>(R.id.img_icon) to app
 
                 val keywords = view.findViewById<EditText>(R.id.et_keywords)
                 val notes = view.findViewById<EditText>(R.id.et_notes)
@@ -86,6 +91,9 @@ class AppRulesActivity : ScreenActivity() {
             // Save only appears once there are rows to save.
             progress.hide()
             saveButton.visibility = View.VISIBLE
+
+            // Icons come last: the rows are usable without them, and loading each one costs a beat.
+            for ((view, app) in icons) view.setImageDrawable(iconLoader.load(app))
         }
     }
 

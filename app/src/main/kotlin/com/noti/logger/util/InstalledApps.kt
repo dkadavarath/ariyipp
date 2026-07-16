@@ -1,10 +1,9 @@
 package com.noti.logger.util
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
-import android.graphics.drawable.Drawable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -12,7 +11,8 @@ import kotlinx.coroutines.withContext
 data class AppInfo(
     val packageName: String,
     val label: String,
-    val icon: Drawable?
+    /** Launcher component; the icon is loaded from it lazily, when a row binds. */
+    val component: ComponentName? = null
 )
 
 object InstalledApps {
@@ -21,6 +21,9 @@ object InstalledApps {
      * Launchable apps (those with a MAIN/LAUNCHER activity), deduped by package, our own package
      * removed, sorted by label. Visibility comes from the manifest <queries> entry — no
      * QUERY_ALL_PACKAGES needed. Runs off the main thread.
+     *
+     * Deliberately does NOT load icons: decoding one per installed app dominates the cost of this
+     * call and stalls the screen. [AppIconLoader] fetches them per row instead, as rows bind.
      */
     suspend fun loadLaunchableApps(context: Context): List<AppInfo> = withContext(Dispatchers.IO) {
         val pm = context.applicationContext.packageManager
@@ -31,11 +34,11 @@ object InstalledApps {
 
         val byPackage = LinkedHashMap<String, AppInfo>()
         for (ri in resolved) {
-            val pkg = ri.activityInfo?.packageName ?: continue
+            val activity = ri.activityInfo ?: continue
+            val pkg = activity.packageName ?: continue
             if (pkg == self || byPackage.containsKey(pkg)) continue
             val label = ri.loadLabel(pm)?.toString().orEmpty().ifBlank { pkg }
-            val icon = try { ri.loadIcon(pm) } catch (_: Exception) { null }
-            byPackage[pkg] = AppInfo(pkg, label, icon)
+            byPackage[pkg] = AppInfo(pkg, label, ComponentName(pkg, activity.name))
         }
         byPackage.values.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.label })
     }
