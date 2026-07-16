@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.checkbox.MaterialCheckBox
+import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.android.material.textfield.TextInputEditText
 import com.noti.logger.R
 import com.noti.logger.util.AppInfo
@@ -33,6 +34,8 @@ class AppPickerActivity : AppCompatActivity() {
     private var allApps: List<AppInfo> = emptyList()
     private lateinit var adapter: AppAdapter
     private lateinit var countView: TextView
+    private lateinit var progress: CircularProgressIndicator
+    private lateinit var recycler: RecyclerView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,7 +62,8 @@ class AppPickerActivity : AppCompatActivity() {
         }
 
         adapter = AppAdapter()
-        findViewById<RecyclerView>(R.id.recycler).apply {
+        progress = findViewById(R.id.progress)
+        recycler = findViewById<RecyclerView>(R.id.recycler).apply {
             layoutManager = LinearLayoutManager(this@AppPickerActivity)
             adapter = this@AppPickerActivity.adapter
         }
@@ -80,11 +84,20 @@ class AppPickerActivity : AppCompatActivity() {
         loadApps()
     }
 
+    /** Loading the launcher list resolves an icon per app, which takes a beat on a full device. */
     private fun loadApps() {
+        showLoading(true)
         lifecycleScope.launch {
             allApps = InstalledApps.loadLaunchableApps(this@AppPickerActivity)
             adapter.submit(allApps)
+            showLoading(false)
         }
+    }
+
+    private fun showLoading(loading: Boolean) {
+        // Hide the list while loading so the spinner doesn't read as "no apps installed".
+        recycler.visibility = if (loading) View.GONE else View.VISIBLE
+        if (loading) progress.show() else progress.hide()
     }
 
     private fun refresh() {

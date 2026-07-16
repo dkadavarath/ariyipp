@@ -8,6 +8,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.noti.logger.R
 import com.noti.logger.config.AppRules
 import com.noti.logger.config.Settings
@@ -44,12 +45,15 @@ class AppRulesActivity : ScreenActivity() {
         }
 
         saveButton.setOnClickListener { save(settings) }
-        buildRows(settings, included)
+        buildRows(settings, included, saveButton)
     }
 
-    private fun buildRows(settings: Settings, included: Set<String>) {
+    /** Resolving each app's label and icon takes a beat, so the rows are built off the main thread. */
+    private fun buildRows(settings: Settings, included: Set<String>, saveButton: View) {
         val container = findViewById<LinearLayout>(R.id.rules_container)
         val inflater = LayoutInflater.from(this)
+        val progress = findViewById<CircularProgressIndicator>(R.id.progress)
+        progress.show()
 
         lifecycleScope.launch {
             val installed = InstalledApps.loadLaunchableApps(this@AppRulesActivity)
@@ -78,6 +82,10 @@ class AppRulesActivity : ScreenActivity() {
                 rows.add(Row(pkg, keywords, notes))
                 container.addView(view)
             }
+
+            // Save only appears once there are rows to save.
+            progress.hide()
+            saveButton.visibility = View.VISIBLE
         }
     }
 

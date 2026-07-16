@@ -4,6 +4,7 @@
 
     <!-- Generic -->
     <string name="loading">…</string>
+    <string name="loading_apps">Loading apps…</string>
 
     <!-- Footer / navigation -->
     <string name="btn_about">About</string>

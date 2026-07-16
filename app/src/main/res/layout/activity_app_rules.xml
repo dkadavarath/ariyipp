@@ -47,6 +47,16 @@
                 android:text="@string/app_rules_empty"
                 android:visibility="gone" />
 
+            <com.google.android.material.progressindicator.CircularProgressIndicator
+                android:id="@+id/progress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="32dp"
+                android:indeterminate="true"
+                android:visibility="gone"
+                android:contentDescription="@string/loading_apps" />
+
             <LinearLayout
                 android:id="@+id/rules_container"
                 android:layout_width="match_parent"
@@ -58,6 +68,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
+                android:visibility="gone"
                 android:text="@string/btn_save" />
         </LinearLayout>
     </ScrollView>
