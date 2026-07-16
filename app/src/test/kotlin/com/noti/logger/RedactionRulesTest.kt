@@ -1,5 +1,6 @@
 package com.noti.logger
 
+import com.noti.logger.redact.AppRule
 import com.noti.logger.redact.RawNotification
 import com.noti.logger.redact.RedactedResult
 import com.noti.logger.redact.RedactionConfig
@@ -128,6 +129,132 @@ class RedactionRulesTest {
         )
         val result = rules.apply(makeRaw(title = "Good morning", text = "How are you?"))
         assertTrue(result is RedactedResult.Kept)
+    }
+
+    // ---- Per-app keyword include filter ----
+
+    private fun rulesFor(pkg: String, rule: AppRule, captureBody: Boolean = true) = RedactionRules(
+        RedactionConfig(
+            includedPackages = emptySet(),
+            excludedKeywords = emptyList(),
+            captureBody = captureBody,
+            appRules = mapOf(pkg to rule)
+        )
+    )
+
+    @Test
+    fun `app keyword match (case-insensitive) is Kept`() {
+        val rules = rulesFor("com.shop", AppRule(keywords = listOf("delivered")))
+        val result = rules.apply(makeRaw(packageName = "com.shop", text = "Your parcel was DELIVERED"))
+        assertTrue(result is RedactedResult.Kept)
+    }
+
+    @Test
+    fun `app keyword absent returns Dropped`() {
+        val rules = rulesFor("com.shop", AppRule(keywords = listOf("delivered")))
+        val result = rules.apply(makeRaw(packageName = "com.shop", title = "Sale", text = "50% off"))
+        assertEquals(RedactedResult.Dropped, result)
+    }
+
+    @Test
+    fun `empty app keywords logs everything from that app`() {
+        val rules = rulesFor("com.shop", AppRule(keywords = emptyList(), notes = "tag"))
+        val result = rules.apply(makeRaw(packageName = "com.shop", title = "Anything"))
+        assertTrue(result is RedactedResult.Kept)
+    }
+
+    @Test
+    fun `any one of several app keywords is enough`() {
+        val rules = rulesFor("com.shop", AppRule(keywords = listOf("shipped", "out for delivery")))
+        val result = rules.apply(makeRaw(packageName = "com.shop", text = "Parcel is out for delivery"))
+        assertTrue(result is RedactedResult.Kept)
+    }
+
+    @Test
+    fun `app keywords match against bigText and subText too`() {
+        val rules = rulesFor("com.shop", AppRule(keywords = listOf("invoice")))
+        assertTrue(rules.apply(makeRaw(packageName = "com.shop", title = null, text = null, bigText = "Your INVOICE is ready")) is RedactedResult.Kept)
+        assertTrue(rules.apply(makeRaw(packageName = "com.shop", title = null, text = null, subText = "invoice #4")) is RedactedResult.Kept)
+    }
+
+    @Test
+    fun `app rules apply only to their own package`() {
+        val rules = rulesFor("com.shop", AppRule(keywords = listOf("delivered")))
+        // A package with no rule is unfiltered.
+        val result = rules.apply(makeRaw(packageName = "com.other", title = "Hi", text = "There"))
+        assertTrue(result is RedactedResult.Kept)
+    }
+
+    @Test
+    fun `app with no matching keyword is Dropped even when body capture is off`() {
+        val rules = rulesFor("com.shop", AppRule(keywords = listOf("delivered")), captureBody = false)
+        val result = rules.apply(makeRaw(packageName = "com.shop", text = "Sale today"))
+        assertEquals(RedactedResult.Dropped, result)
+    }
+
+    @Test
+    fun `excluded keyword wins over a matching app keyword`() {
+        val rules = RedactionRules(
+            RedactionConfig(
+                includedPackages = emptySet(),
+                excludedKeywords = listOf("otp"),
+                captureBody = true,
+                appRules = mapOf("com.bank" to AppRule(keywords = listOf("payment")))
+            )
+        )
+        val result = rules.apply(makeRaw(packageName = "com.bank", text = "payment OTP is 1234"))
+        assertEquals(RedactedResult.Dropped, result)
+    }
+
+    // ---- Notes ----
+
+    @Test
+    fun `notes are appended to text on a new line`() {
+        val rules = rulesFor("com.shop", AppRule(notes = "shopping"))
+        val result = rules.apply(makeRaw(packageName = "com.shop", text = "Parcel delivered")) as RedactedResult.Kept
+        assertEquals("Parcel delivered\nshopping", result.text)
+    }
+
+    @Test
+    fun `notes become the text when the notification has none`() {
+        val rules = rulesFor("com.shop", AppRule(notes = "shopping"))
+        val result = rules.apply(makeRaw(packageName = "com.shop", text = null)) as RedactedResult.Kept
+        assertEquals("shopping", result.text)
+    }
+
+    @Test
+    fun `blank notes leave text untouched`() {
+        val rules = rulesFor("com.shop", AppRule(notes = "   "))
+        val result = rules.apply(makeRaw(packageName = "com.shop", text = "Parcel delivered")) as RedactedResult.Kept
+        assertEquals("Parcel delivered", result.text)
+    }
+
+    @Test
+    fun `notes survive metadata-only mode but the body does not`() {
+        val rules = rulesFor("com.shop", AppRule(notes = "shopping"), captureBody = false)
+        val result = rules.apply(makeRaw(packageName = "com.shop", title = "T", text = "Secret")) as RedactedResult.Kept
+        assertEquals("shopping", result.text)
+        assertNull(result.title)
+        assertNull(result.bigText)
+    }
+
+    @Test
+    fun `notes are only appended when the app keyword matches`() {
+        val rules = rulesFor("com.shop", AppRule(keywords = listOf("delivered"), notes = "shopping"))
+        assertEquals(RedactedResult.Dropped, rules.apply(makeRaw(packageName = "com.shop", text = "Sale")))
+        val kept = rules.apply(makeRaw(packageName = "com.shop", text = "delivered")) as RedactedResult.Kept
+        assertEquals("delivered\nshopping", kept.text)
+    }
+
+    @Test
+    fun `notes do not leak into other fields`() {
+        val rules = rulesFor("com.shop", AppRule(notes = "shopping"))
+        val result = rules.apply(
+            makeRaw(packageName = "com.shop", title = "T", text = "X", bigText = "B", subText = "S")
+        ) as RedactedResult.Kept
+        assertEquals("T", result.title)
+        assertEquals("B", result.bigText)
+        assertEquals("S", result.subText)
     }
 
     // ---- captureBody = false ----

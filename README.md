@@ -3,7 +3,7 @@
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84)
 ![minSdk](https://img.shields.io/badge/minSdk-26-1565c0)
 ![targetSdk](https://img.shields.io/badge/targetSdk-35-1565c0)
-![Release](https://img.shields.io/badge/release-v1.7-1565c0)
+![Release](https://img.shields.io/badge/release-v1.8-1565c0)
 ![Language](https://img.shields.io/badge/kotlin-100%25-7f52ff)
 
 A deliberately **lightweight**, native-Kotlin Android app that logs your device notifications to
@@ -30,6 +30,9 @@ in-app Appearance section toggles Light/Dark/System and Default/Material You col
   success/failure handling and automatic retry.
 - **Included-apps allowlist** — pick exactly which apps to capture from a searchable list of
   installed apps (empty = capture all).
+- **Per-app keywords & notes** — for each selected app, log only the notifications containing one
+  of your keywords (empty = log all of that app's notifications), and optionally append a free-text
+  note to the logged text.
 - **Duplicate suppression** — apps that re-post the same notification are collapsed by content
   hash within a configurable time window (default 1 day).
 - **Privacy controls** — metadata-only mode (drop notification bodies), keyword exclusions
@@ -68,7 +71,7 @@ Grab the latest signed APK from **[Releases](https://github.com/dkadavarath/noti
 (`noti-vX.Y.apk`) and sideload it:
 
 ```
-adb install noti-v1.7.apk
+adb install noti-v1.8.apk
 ```
 
 Google Play Protect may warn on a sideloaded app that reads notifications — choose *Install anyway*
@@ -86,7 +89,10 @@ The app has three tabs: **Status**, **Settings**, and **About**.
    *Auth header name* to `key` and clear the *Token prefix* so the raw token is sent as `key: <token>`.
    Tap the eye icon to reveal the token. Prefer an **https** URL — content is sensitive.
 3. **Choose apps** (Settings → Apps) — pick which apps to capture; leave empty to capture all.
-4. **Tune** — Settings → *Sync* (triggers, Wi-Fi/charging), *Privacy* (metadata-only, keywords,
+4. **Keywords & notes** (Settings → Keywords & notes) — lists the apps you selected in step 3.
+   Per app, set comma-separated **keywords** so only matching notifications are logged (leave empty
+   to log all of that app's notifications), and an optional **note** appended to the logged text.
+5. **Tune** — Settings → *Sync* (triggers, Wi-Fi/charging), *Privacy* (metadata-only, keywords,
    duplicate window, retention), and *Appearance* (theme mode + Default/Material color).
 
 ## Webhook contract
@@ -172,12 +178,12 @@ DI framework — kept intentionally small (~2.5 MB release APK).
 |---|---|
 | `capture/` | `NotiListenerService` — capture, redact, dedupe, insert |
 | `data/` | Room `NotificationEntity` / `Dao` / `NotiDatabase` (+ migrations) |
-| `redact/` | `RedactionRules` — allowlist, keyword drop, metadata-only |
+| `redact/` | `RedactionRules` — allowlist, keyword drop, per-app keyword filter + notes, metadata-only |
 | `upload/` | `PayloadModels`, `Uploader` (HttpURLConnection + gzip), response parsing |
 | `work/` | `UploadWorker`, `UploadScheduler` (triggers + constraints) |
-| `config/` | `Settings` (EncryptedSharedPreferences) |
+| `config/` | `Settings` (EncryptedSharedPreferences), `AppRules` (per-app rule storage/parsing) |
 | `util/` | `AppLabelCache`, `InstalledApps`, `ContentHash` |
 | `alert/` | `Alerter` — in-app upload-failure notifications |
-| `ui/` | `MainActivity` (bottom-nav host) + Status/Settings/About fragments; Connection/Sync/Privacy/Appearance/AppPicker/Help screens |
+| `ui/` | `MainActivity` (bottom-nav host) + Status/Settings/About fragments; Connection/Sync/AppRules/Privacy/Appearance/AppPicker/Help screens |
 | `boot/` | `BootReceiver` — re-arm periodic work after reboot |
 ```

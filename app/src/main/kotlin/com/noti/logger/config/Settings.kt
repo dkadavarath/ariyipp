@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.noti.logger.redact.AppRule
 import com.noti.logger.redact.RedactionConfig
 import java.io.File
 import java.util.UUID
@@ -136,6 +137,18 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             cachedRedaction = null
         }
 
+    /**
+     * Per-app keyword filters and notes, keyed by package name. Only consulted for packages that
+     * pass [includedPackages], so entries for de-selected apps are inert (and are kept, so a
+     * re-selected app gets its rule back).
+     */
+    var appRules: Map<String, AppRule>
+        get() = AppRules.decode(prefs.getString(KEY_APP_RULES, "") ?: "")
+        set(value) {
+            prefs.edit().putString(KEY_APP_RULES, AppRules.encode(value)).apply()
+            cachedRedaction = null
+        }
+
     var captureBody: Boolean
         get() = prefs.getBoolean(KEY_CAPTURE_BODY, true)
         set(value) {
@@ -192,8 +205,8 @@ class Settings private constructor(private val prefs: SharedPreferences) {
 
     // ---- Derived ----
 
-    // Cached snapshot; invalidated whenever includedPackages / excludedKeywords / captureBody change.
-    // Avoids 3 decrypts + a keyword split on every captured notification.
+    // Cached snapshot; invalidated whenever includedPackages / excludedKeywords / captureBody /
+    // appRules change. Avoids 4 decrypts + a keyword split + a JSON parse on every notification.
     @Volatile
     private var cachedRedaction: RedactionConfig? = null
 
@@ -202,7 +215,8 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         return RedactionConfig(
             includedPackages = includedPackages,
             excludedKeywords = excludedKeywords,
-            captureBody = captureBody
+            captureBody = captureBody,
+            appRules = appRules
         ).also { cachedRedaction = it }
     }
 
@@ -225,6 +239,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_REQUIRE_CHARGING = "require_charging"
         private const val KEY_INCLUDED_PACKAGES = "included_packages"
         private const val KEY_EXCLUDED_KEYWORDS = "excluded_keywords"
+        private const val KEY_APP_RULES = "app_rules"
         private const val KEY_CAPTURE_BODY = "capture_body"
         private const val KEY_RETENTION_DAYS = "retention_days"
         private const val KEY_DEDUPE_WINDOW_SECONDS = "dedupe_window_seconds"

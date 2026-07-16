@@ -21,6 +21,8 @@
     <string name="menu_sync_sub">Triggers and network</string>
     <string name="menu_apps_title">Apps</string>
     <string name="menu_apps_sub">Choose which apps to capture</string>
+    <string name="menu_app_rules_title">Keywords &amp; notes</string>
+    <string name="menu_app_rules_sub">Per-app keyword filters and notes</string>
     <string name="menu_privacy_title">Privacy</string>
     <string name="menu_privacy_sub">Body, keywords, duplicates, retention</string>
     <string name="menu_appearance_title">Appearance</string>
@@ -31,6 +33,7 @@
     <!-- Sub-screen titles -->
     <string name="title_connection">Connection</string>
     <string name="title_sync">Sync</string>
+    <string name="title_app_rules">Keywords &amp; notes</string>
     <string name="title_privacy">Privacy</string>
     <string name="title_appearance">Appearance</string>
 
@@ -61,7 +64,7 @@
     <string name="about_project_url">https://github.com/dkadavarath/noti</string>
     <string name="about_device_id">Device ID: %1$s</string>
     <string name="about_whats_new">What\'s new</string>
-    <string name="about_changelog">v1.7 — Bottom-nav layout (Status / Settings / About), settings menu with focused screens, and an Appearance section (theme mode + Default/Material color).\n\nv1.6 — Blue theme matching the app icon, for better visibility (follows system light/dark).\n\nv1.5 — Faster capture &amp; upload (less CPU/battery); change notes here; standard back navigation.\n\nv1.4 — New app icon, splash screen, About &amp; Help screens.\n\nv1.3 — Ignore duplicate notifications (content + time window).\n\nv1.2 — Material 3 redesign; choose which apps to capture.\n\nv1.1 — UI fixes; clearer auth setup; show-token toggle.\n\nv1.0 — Initial release.</string>
+    <string name="about_changelog">v1.8 — Per-app keywords &amp; notes: log only the notifications matching your keywords, and append a note to what gets logged.\n\nv1.7 — Bottom-nav layout (Status / Settings / About), settings menu with focused screens, and an Appearance section (theme mode + Default/Material color).\n\nv1.6 — Blue theme matching the app icon, for better visibility (follows system light/dark).\n\nv1.5 — Faster capture &amp; upload (less CPU/battery); change notes here; standard back navigation.\n\nv1.4 — New app icon, splash screen, About &amp; Help screens.\n\nv1.3 — Ignore duplicate notifications (content + time window).\n\nv1.2 — Material 3 redesign; choose which apps to capture.\n\nv1.1 — UI fixes; clearer auth setup; show-token toggle.\n\nv1.0 — Initial release.</string>
 
     <!-- Help screen -->
     <string name="help_title">Help</string>
@@ -71,6 +74,8 @@
     <string name="help_webhook_body">Enter your Webhook URL and the auth token. The token is sent as a header: by default “Authorization: Bearer &lt;token&gt;”. For an n8n Header Auth credential, set the Auth header name to “key” and clear the prefix so the raw token is sent. Tap the eye icon to reveal the token. Use an https URL — content is sensitive.</string>
     <string name="help_apps_title">Choosing which apps to capture</string>
     <string name="help_apps_body">Under “Included apps”, tap “Choose apps” to pick which apps to capture. If you select none, all apps are captured. Selecting apps limits capture to just those.</string>
+    <string name="help_rules_title">Keywords &amp; notes (per app)</string>
+    <string name="help_rules_body">Settings → “Keywords &amp; notes” lists every app you selected under Apps. Against each app you can set:\n\n• Keywords — a comma-separated list, e.g. “delivered, out for delivery”. Only notifications containing one of them (in the title, text or subtext, case-insensitive) are logged. Leave it empty to log every notification from that app.\n\n• Notes — optional free text appended, on a new line, to the logged notification\'s text field. Useful for tagging a source, e.g. “work phone”. Notes are added even in metadata-only mode, since you wrote them yourself.\n\nExcluded keywords under Privacy still win: a notification matching one is dropped regardless of these rules.</string>
     <string name="help_dupes_title">Ignoring duplicates</string>
     <string name="help_dupes_body">Some apps re-post the same notification repeatedly. “Ignore duplicate window” drops identical content from the same app seen within that many seconds (default one day). Set 0 to keep every copy.</string>
     <string name="help_triggers_title">Triggers &amp; network</string>
@@ -121,6 +126,12 @@
     <!-- Field labels -->
     <string name="label_included_apps">Included apps</string>
     <string name="label_excluded_keywords">Excluded keywords (one per line)</string>
+    <string name="label_app_keywords">Keywords (comma separated)</string>
+    <string name="label_app_notes">Notes (optional)</string>
+
+    <!-- Keywords &amp; notes screen -->
+    <string name="app_rules_intro">For each app, log only the notifications containing one of the keywords. Leave keywords empty to log everything from that app. Notes are appended to the logged notification\'s text.</string>
+    <string name="app_rules_empty">No apps selected yet.\n\nGo to Settings → Apps and choose the apps to capture — they\'ll show up here.</string>
 
     <!-- App picker -->
     <string name="picker_title">Choose apps to capture</string>

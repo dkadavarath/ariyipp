@@ -38,6 +38,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         addRow(R.string.menu_connection_title, R.string.menu_connection_sub) { open(ConnectionActivity::class.java) }
         addRow(R.string.menu_sync_title, R.string.menu_sync_sub) { open(SyncActivity::class.java) }
         addRow(R.string.menu_apps_title, R.string.menu_apps_sub) { openApps() }
+        addRow(R.string.menu_app_rules_title, R.string.menu_app_rules_sub) { open(AppRulesActivity::class.java) }
         addRow(R.string.menu_privacy_title, R.string.menu_privacy_sub) { open(PrivacyActivity::class.java) }
         addRow(R.string.menu_appearance_title, R.string.menu_appearance_sub) { open(AppearanceActivity::class.java) }
         addRow(R.string.menu_purge_title, R.string.menu_purge_sub) { confirmPurge() }

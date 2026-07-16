@@ -17,6 +17,7 @@ class HelpActivity : AppCompatActivity() {
         R.string.help_start_title to R.string.help_start_body,
         R.string.help_webhook_title to R.string.help_webhook_body,
         R.string.help_apps_title to R.string.help_apps_body,
+        R.string.help_rules_title to R.string.help_rules_body,
         R.string.help_dupes_title to R.string.help_dupes_body,
         R.string.help_triggers_title to R.string.help_triggers_body,
         R.string.help_privacy_title to R.string.help_privacy_body,
