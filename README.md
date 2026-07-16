@@ -3,7 +3,7 @@
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84)
 ![minSdk](https://img.shields.io/badge/minSdk-26-1565c0)
 ![targetSdk](https://img.shields.io/badge/targetSdk-35-1565c0)
-![Release](https://img.shields.io/badge/release-v1.8-1565c0)
+![Release](https://img.shields.io/badge/release-v1.9-1565c0)
 ![Language](https://img.shields.io/badge/kotlin-100%25-7f52ff)
 
 A deliberately **lightweight**, native-Kotlin Android app that logs your device notifications to
@@ -71,7 +71,7 @@ Grab the latest signed APK from **[Releases](https://github.com/dkadavarath/noti
 (`noti-vX.Y.apk`) and sideload it:
 
 ```
-adb install noti-v1.8.apk
+adb install noti-v1.9.apk
 ```
 
 Google Play Protect may warn on a sideloaded app that reads notifications — choose *Install anyway*
