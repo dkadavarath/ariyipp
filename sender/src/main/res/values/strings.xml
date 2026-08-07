@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">sendi</string>
+
+    <!-- Status -->
+    <string name="section_status">Status</string>
+    <string name="sms_status_granted">SMS access: GRANTED — incoming SMS will be relayed.</string>
+    <string name="sms_status_denied">SMS access: NOT GRANTED — nothing will be relayed.</string>
+    <string name="btn_grant_sms">Grant SMS access</string>
+
+    <!-- Settings menu -->
+    <string name="menu_pairing_title">Pairing</string>
+    <string name="menu_pairing_sub">Service-account key, noti token, shared key</string>
+    <string name="menu_webhook_title">Webhook (n8n)</string>
+    <string name="menu_webhook_sub">Forward SMS to your n8n endpoint</string>
+
+    <!-- Sub-screen titles -->
+    <string name="title_pairing">Pairing</string>
+    <string name="title_webhook">Webhook</string>
+
+    <!-- Pairing -->
+    <string name="pairing_intro">Import the FCM service-account key, then paste noti\'s device token and the shared key so messages can be encrypted end-to-end.</string>
+    <string name="key_status_none">No service-account key imported.</string>
+    <string name="key_status_imported">Service-account key imported ✓ (project %1$s)</string>
+    <string name="key_status_invalid">That file isn\'t a service-account key.</string>
+    <string name="btn_import_key">Import service-account key</string>
+    <string name="hint_noti_token">noti device token</string>
+    <string name="hint_relay_key">Shared key (base64)</string>
+    <string name="btn_generate_key">Generate a new shared key</string>
+    <string name="sw_fcm_enabled">Relay to noti via FCM</string>
+
+    <!-- Webhook -->
+    <string name="webhook_intro">Optionally also POST each SMS to your n8n webhook (plaintext, using noti\'s payload schema).</string>
+    <string name="hint_n8n_url">Webhook URL</string>
+    <string name="hint_auth_header_name">Auth header name — e.g. Authorization, or \"key\" for n8n</string>
+    <string name="hint_auth_header_prefix">Token prefix — \"Bearer \" or leave EMPTY for a raw token</string>
+    <string name="hint_auth_token">Auth token</string>
+    <string name="sw_n8n_enabled">Also forward to n8n</string>
+
+    <!-- Shared -->
+    <string name="btn_save">Save</string>
+    <string name="saved">Saved</string>
+    <string name="key_generated">New shared key generated — copy it into noti too.</string>
+</resources>

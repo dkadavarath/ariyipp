@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand blue scheme, shared visual identity with noti. Light values; dark in values-night/. -->
+    <color name="brand_primary">#1565C0</color>
+    <color name="brand_on_primary">#FFFFFF</color>
+    <color name="brand_primary_container">#D6E3FF</color>
+    <color name="brand_on_primary_container">#001B3D</color>
+    <color name="brand_secondary">#545F70</color>
+    <color name="brand_on_secondary">#FFFFFF</color>
+    <color name="brand_secondary_container">#D8E3F8</color>
+    <color name="brand_on_secondary_container">#111C2B</color>
+</resources>

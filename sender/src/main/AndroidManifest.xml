@@ -6,8 +6,9 @@
 
     <application
         android:allowBackup="false"
-        android:label="noti sender"
-        android:supportsRtl="true">
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Sendi">
 
         <activity
             android:name=".ui.MainActivity"
@@ -17,6 +18,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity android:name=".ui.PairingActivity" android:exported="false" />
+        <activity android:name=".ui.WebhookActivity" android:exported="false" />
 
         <!-- Observe incoming SMS. android:permission = only the system (holder of BROADCAST_SMS)
              may trigger this receiver. -->

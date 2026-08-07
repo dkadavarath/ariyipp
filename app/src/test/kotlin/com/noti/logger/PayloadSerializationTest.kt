@@ -1,8 +1,8 @@
 package com.noti.logger
 
-import com.noti.logger.upload.UploadBatch
-import com.noti.logger.upload.UploadItem
-import com.noti.logger.upload.epochMillisToIso
+import com.noti.shared.UploadBatch
+import com.noti.shared.UploadItem
+import com.noti.shared.epochMillisToIso
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals

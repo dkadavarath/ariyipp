@@ -25,6 +25,16 @@ class SmsReceiver : BroadcastReceiver() {
         }
 
         val relay = SmsAssembler.assemble(parts) ?: return
-        SenderPipeline.handle(context.applicationContext, relay)
+
+        // onReceive is on the main thread; the relay does network I/O. goAsync() keeps the receiver
+        // alive while a background thread finishes. (WorkManager would add delivery durability later.)
+        val pending = goAsync()
+        Thread {
+            try {
+                SenderPipeline.handle(context.applicationContext, relay)
+            } finally {
+                pending.finish()
+            }
+        }.start()
     }
 }

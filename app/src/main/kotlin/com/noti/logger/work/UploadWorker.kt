@@ -7,7 +7,7 @@ import com.noti.logger.alert.Alerter
 import com.noti.logger.config.Settings
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.NotificationDao
-import com.noti.logger.upload.UploadBatch
+import com.noti.shared.UploadBatch
 import com.noti.logger.upload.UploadOutcome
 import com.noti.logger.upload.Uploader
 import com.noti.logger.upload.alreadyExistsUids

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand blue scheme (dark), matching noti. -->
+    <color name="brand_primary">#A7C8FF</color>
+    <color name="brand_on_primary">#00325B</color>
+    <color name="brand_primary_container">#00497F</color>
+    <color name="brand_on_primary_container">#D6E3FF</color>
+    <color name="brand_secondary">#BCC7DC</color>
+    <color name="brand_on_secondary">#263141</color>
+    <color name="brand_secondary_container">#3D4758</color>
+    <color name="brand_on_secondary_container">#D8E3F8</color>
+</resources>

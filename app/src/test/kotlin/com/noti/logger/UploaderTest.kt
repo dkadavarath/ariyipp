@@ -1,7 +1,7 @@
 package com.noti.logger
 
-import com.noti.logger.upload.UploadBatch
-import com.noti.logger.upload.UploadItem
+import com.noti.shared.UploadBatch
+import com.noti.shared.UploadItem
 import com.noti.logger.upload.UploadOutcome
 import com.noti.logger.upload.Uploader
 import kotlinx.serialization.json.Json
