@@ -4,7 +4,12 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
-import com.noti.sender.SenderPipeline
+import androidx.work.Constraints
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
+import com.noti.sender.RelayWorker
 
 /**
  * Observes incoming SMS (via RECEIVE_SMS; not the default SMS app). Parses the broadcast into parts,
@@ -26,15 +31,12 @@ class SmsReceiver : BroadcastReceiver() {
 
         val relay = SmsAssembler.assemble(parts) ?: return
 
-        // onReceive is on the main thread; the relay does network I/O. goAsync() keeps the receiver
-        // alive while a background thread finishes. (WorkManager would add delivery durability later.)
-        val pending = goAsync()
-        Thread {
-            try {
-                SenderPipeline.handle(context.applicationContext, relay)
-            } finally {
-                pending.finish()
-            }
-        }.start()
+        // Hand off to WorkManager so delivery survives process death and retries on network loss,
+        // rather than doing the network inline in the short-lived receiver.
+        val request = OneTimeWorkRequestBuilder<RelayWorker>()
+            .setInputData(workDataOf(RelayWorker.KEY_TITLE to relay.title, RelayWorker.KEY_BODY to relay.body))
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .build()
+        WorkManager.getInstance(context.applicationContext).enqueue(request)
     }
 }

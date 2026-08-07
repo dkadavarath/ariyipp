@@ -19,6 +19,8 @@ workTesting = "2.10.0"
 roomTesting = "2.6.1"
 googleServices = "4.4.2"
 firebaseBom = "33.5.1"
+zxingCore = "3.5.3"
+zxingEmbedded = "4.3.0"
 
 [libraries]
 # AndroidX core
@@ -45,6 +47,10 @@ androidx-security-crypto = { group = "androidx.security", name = "security-crypt
 # Firebase (Cloud Messaging) — version comes from the BoM
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
+
+# QR: core (encode, noti) + embedded scanner (sendi)
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxingCore" }
+zxing-embedded = { group = "com.journeyapps", name = "zxing-android-embedded", version.ref = "zxingEmbedded" }
 
 # Coroutines
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }

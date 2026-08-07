@@ -107,6 +107,9 @@ dependencies {
     // Shared crypto + wire format (used by this app and the sender app)
     implementation(project(":shared"))
 
+    // QR generation for pairing
+    implementation(libs.zxing.core)
+
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
 

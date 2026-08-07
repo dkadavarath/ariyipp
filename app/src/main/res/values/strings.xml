@@ -24,6 +24,17 @@
     <string name="menu_apps_sub">Choose which apps to capture</string>
     <string name="menu_app_rules_title">Keywords &amp; notes</string>
     <string name="menu_app_rules_sub">Per-app keyword filters and notes</string>
+    <string name="menu_relay_title">Relay (receive)</string>
+    <string name="menu_relay_sub">Receive messages pushed from sendi</string>
+
+    <!-- Relay receive / pairing -->
+    <string name="title_relay">Relay (receive)</string>
+    <string name="relay_intro">Receive messages (e.g. SMS forwarded by the sendi app) as notifications on this device, decrypted with a shared key. Pair by scanning the QR below in sendi, or copy the token and key across.</string>
+    <string name="sw_inbound_enabled">Receive relayed messages</string>
+    <string name="label_relay_key">Shared key (base64)</string>
+    <string name="btn_generate_key">Generate a new shared key</string>
+    <string name="label_token">This device\'s token</string>
+    <string name="relay_qr_hint">Scan this in sendi to pair</string>
     <string name="menu_privacy_title">Privacy</string>
     <string name="menu_privacy_sub">Body, keywords, duplicates, retention</string>
     <string name="menu_appearance_title">Appearance</string>

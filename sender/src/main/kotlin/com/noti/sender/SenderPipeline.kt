@@ -44,10 +44,15 @@ object SenderPipeline {
             category = "sms",
         )
 
-    /** Blocking (network on both legs) — call off the main thread. */
-    fun handle(context: Context, message: RelayMessage) {
+    /**
+     * Runs both legs (blocking network — call off the main thread). Returns false only when the FCM
+     * leg failed in a transient way worth retrying (network, 5xx, 429); a bad token/auth (other 4xx)
+     * is logged but not retried, since retrying won't fix it. The n8n leg is best-effort.
+     */
+    fun relay(context: Context, message: RelayMessage): Boolean {
         val s = SenderSettings.get(context)
         Log.i(TAG, "relaying SMS from '${message.title}' (${message.body.length} chars)")
+        var retryable = false
 
         if (s.fcmEnabled && s.serviceAccountJson.isNotBlank() &&
             s.notiFcmToken.isNotBlank() && s.relayKey.isNotBlank()
@@ -56,8 +61,10 @@ object SenderPipeline {
                 val payload = encryptForFcm(message, s.relayKey)
                 val res = FcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload))
                 Log.i(TAG, "FCM leg: HTTP ${res.httpCode} ok=${res.ok}")
+                if (!res.ok) retryable = res.httpCode == -1 || res.httpCode == 429 || res.httpCode in 500..599
             } catch (e: Exception) {
                 Log.w(TAG, "FCM leg failed: ${e.message}")
+                retryable = true
             }
         }
 
@@ -70,5 +77,7 @@ object SenderPipeline {
                 Log.w(TAG, "n8n leg failed: ${e.message}")
             }
         }
+
+        return !retryable
     }
 }

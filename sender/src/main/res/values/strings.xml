@@ -24,6 +24,10 @@
     <string name="key_status_imported">Service-account key imported ✓ (project %1$s)</string>
     <string name="key_status_invalid">That file isn\'t a service-account key.</string>
     <string name="btn_import_key">Import service-account key</string>
+    <string name="btn_scan_qr">Scan pairing QR from noti</string>
+    <string name="scan_prompt">Point at the QR on noti\'s Relay screen</string>
+    <string name="scan_bad">That QR isn\'t a noti pairing code.</string>
+    <string name="scan_ok">Paired — token and key filled in.</string>
     <string name="hint_noti_token">noti device token</string>
     <string name="hint_relay_key">Shared key (base64)</string>
     <string name="btn_generate_key">Generate a new shared key</string>

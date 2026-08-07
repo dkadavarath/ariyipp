@@ -45,9 +45,13 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.security.crypto)
+    implementation(libs.androidx.work.runtime.ktx)
 
     // Shared crypto + wire format
     implementation(project(":shared"))
+
+    // QR scanner for pairing
+    implementation(libs.zxing.embedded)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

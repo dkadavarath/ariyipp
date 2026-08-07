@@ -8,9 +8,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.textfield.TextInputEditText
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import com.noti.sender.R
 import com.noti.sender.config.SenderSettings
 import com.noti.shared.MessageCrypto
+import com.noti.shared.PairingPayload
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -23,6 +26,10 @@ class PairingActivity : ScreenActivity() {
 
     private val importKey = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { onKeyPicked(it) }
+    }
+
+    private val scan = registerForActivityResult(ScanContract()) { result ->
+        result.contents?.let { onScanned(it) }
     }
 
     override fun onScreenCreated() {
@@ -40,6 +47,15 @@ class PairingActivity : ScreenActivity() {
             // Some providers mislabel .json; accept anything and validate the contents ourselves.
             importKey.launch(arrayOf("application/json", "text/*", "*/*"))
         }
+        findViewById<MaterialButton>(R.id.btn_scan_qr).setOnClickListener {
+            scan.launch(
+                ScanOptions()
+                    .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                    .setPrompt(getString(R.string.scan_prompt))
+                    .setBeepEnabled(false)
+                    .setOrientationLocked(false)
+            )
+        }
         findViewById<MaterialButton>(R.id.btn_generate_key).setOnClickListener {
             relayKey.setText(MessageCrypto.generateKeyBase64())
             Toast.makeText(this, R.string.key_generated, Toast.LENGTH_LONG).show()
@@ -51,6 +67,17 @@ class PairingActivity : ScreenActivity() {
             Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
             finish()
         }
+    }
+
+    private fun onScanned(text: String) {
+        val parsed = PairingPayload.parse(text)
+        if (parsed == null) {
+            Toast.makeText(this, R.string.scan_bad, Toast.LENGTH_SHORT).show()
+            return
+        }
+        findViewById<TextInputEditText>(R.id.et_noti_token).setText(parsed.first)
+        findViewById<TextInputEditText>(R.id.et_relay_key).setText(parsed.second)
+        Toast.makeText(this, R.string.scan_ok, Toast.LENGTH_SHORT).show()
     }
 
     private fun onKeyPicked(uri: Uri) {
