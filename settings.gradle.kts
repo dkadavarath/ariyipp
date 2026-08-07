@@ -23,3 +23,4 @@ dependencyResolutionManagement {
 rootProject.name = "noti"
 include(":app")
 include(":shared")
+include(":sender")
