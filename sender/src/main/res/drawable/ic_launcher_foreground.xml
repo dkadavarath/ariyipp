@@ -4,10 +4,16 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Paper-plane "send" glyph, centered in the adaptive-icon safe zone. -->
-    <group android:scaleX="2.8" android:scaleY="2.8" android:translateX="20.4" android:translateY="20.4">
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M2,21l21,-9L2,3v7l15,2l-15,2v7z" />
-    </group>
+    <!-- lowercase "s" (stroked), matching noti's "n." wordmark -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M67,52 C67,45 54,44 48,48 C41,53 44,60 54,61 C64,62 69,67 64,73 C58,78 46,77 41,70" />
+
+    <!-- period (same as noti) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M74,65 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 z" />
 </vector>
