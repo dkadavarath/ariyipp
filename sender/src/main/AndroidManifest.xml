@@ -8,7 +8,27 @@
         android:allowBackup="false"
         android:label="noti sender"
         android:supportsRtl="true">
-        <!-- Launcher activity and SMS receiver are added in a later step. -->
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Observe incoming SMS. android:permission = only the system (holder of BROADCAST_SMS)
+             may trigger this receiver. -->
+        <receiver
+            android:name=".sms.SmsReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter android:priority="999">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>
