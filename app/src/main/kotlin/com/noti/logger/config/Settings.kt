@@ -170,6 +170,29 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putInt(KEY_DEDUPE_WINDOW_SECONDS, value.coerceAtLeast(0)).apply()
         }
 
+    // ---- Inbound push (FCM relay receiver) ----
+
+    /** Opt-in: show notifications pushed from the sender app. Default off. */
+    var pushInboundEnabled: Boolean
+        get() = prefs.getBoolean(KEY_PUSH_INBOUND_ENABLED, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_PUSH_INBOUND_ENABLED, value).apply()
+        }
+
+    /** Pre-shared AES-256-GCM key (base64) for decrypting inbound relayed messages. */
+    var relayKey: String
+        get() = prefs.getString(KEY_RELAY_KEY, "") ?: ""
+        set(value) {
+            prefs.edit().putString(KEY_RELAY_KEY, value.trim()).apply()
+        }
+
+    /** This device's FCM registration token; copied to the sender app at pairing. Updated on refresh. */
+    var fcmToken: String
+        get() = prefs.getString(KEY_FCM_TOKEN, "") ?: ""
+        set(value) {
+            prefs.edit().putString(KEY_FCM_TOKEN, value).apply()
+        }
+
     // ---- Status ----
 
     var lastUploadAtMs: Long
@@ -243,6 +266,9 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_CAPTURE_BODY = "capture_body"
         private const val KEY_RETENTION_DAYS = "retention_days"
         private const val KEY_DEDUPE_WINDOW_SECONDS = "dedupe_window_seconds"
+        private const val KEY_PUSH_INBOUND_ENABLED = "push_inbound_enabled"
+        private const val KEY_RELAY_KEY = "relay_key"
+        private const val KEY_FCM_TOKEN = "fcm_token"
         private const val KEY_LAST_UPLOAD_AT_MS = "last_upload_at_ms"
         private const val KEY_LAST_UPLOAD_RESULT = "last_upload_result"
         private const val KEY_THEME_MODE = "theme_mode"

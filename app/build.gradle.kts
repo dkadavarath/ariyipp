@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
 }
 
 // Release signing is configured only when keystore.properties exists (kept out of VCS).
@@ -98,6 +99,13 @@ dependencies {
 
     // Security
     implementation(libs.androidx.security.crypto)
+
+    // Firebase Cloud Messaging (inbound push → local notification)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
+
+    // Shared crypto + wire format (used by this app and the sender app)
+    implementation(project(":shared"))
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)

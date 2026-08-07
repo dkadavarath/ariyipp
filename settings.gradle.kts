@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "noti"
 include(":app")
+include(":shared")

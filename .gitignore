@@ -21,3 +21,14 @@ release-keystore.jks
 
 # Local GitHub token — never commit
 githubpat
+
+# Firebase / FCM — never commit (google-services.json is config; the
+# service-account key is a live secret). Supply these locally, like keystore.properties.
+# The whole FCM/ dir is ignored because service-account keys have unpredictable names
+# (e.g. <project>-<hash>.json).
+FCM/
+google-services.json
+app/google-services.json
+**/google-services.json
+*service-account*.json
+fcm-*.json
