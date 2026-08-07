@@ -3,7 +3,7 @@
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84)
 ![minSdk](https://img.shields.io/badge/minSdk-26-1565c0)
 ![targetSdk](https://img.shields.io/badge/targetSdk-35-1565c0)
-![Release](https://img.shields.io/badge/release-v1.10-1565c0)
+![Release](https://img.shields.io/badge/release-v1.11-1565c0)
 ![Language](https://img.shields.io/badge/kotlin-100%25-7f52ff)
 
 A deliberately **lightweight**, native-Kotlin Android app that logs your device notifications to
@@ -33,6 +33,9 @@ in-app Appearance section toggles Light/Dark/System and Default/Material You col
 - **Per-app keywords & notes** — for each selected app, log only the notifications containing one
   of your keywords (empty = log all of that app's notifications), and optionally append a free-text
   note to the logged text.
+- **Receive relayed messages** (Settings → *Relay*) — a companion app, **sendi**, can push you
+  notifications (e.g. forwarded SMS) over **end-to-end encrypted** FCM; pair by scanning a QR. noti
+  decrypts and shows them locally. Optional and off by default.
 - **Duplicate suppression** — apps that re-post the same notification are collapsed by content
   hash within a configurable time window (default 1 day).
 - **Privacy controls** — metadata-only mode (drop notification bodies), keyword exclusions
@@ -71,7 +74,7 @@ Grab the latest signed APK from **[Releases](https://github.com/dkadavarath/noti
 (`noti-vX.Y.apk`) and sideload it:
 
 ```
-adb install noti-v1.10.apk
+adb install noti-v1.11.apk
 ```
 
 Google Play Protect may warn on a sideloaded app that reads notifications — choose *Install anyway*
