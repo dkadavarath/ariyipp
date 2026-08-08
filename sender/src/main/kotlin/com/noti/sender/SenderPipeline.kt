@@ -28,6 +28,21 @@ object SenderPipeline {
     private const val TAG = "noti-sender"
     private val json = Json { encodeDefaults = true }
 
+    // Reuse one FcmSender across relays so its cached OAuth token (valid ~1h) is kept, instead of
+    // re-parsing the key, re-signing a JWT, and re-doing the token exchange on every SMS. Rebuilt only
+    // when the service-account key changes. Guarded because relays can overlap across worker threads.
+    @Volatile private var cachedSender: FcmSender? = null
+    @Volatile private var cachedSenderKey: String = ""
+
+    @Synchronized
+    private fun fcmSender(serviceAccountJson: String): FcmSender {
+        cachedSender?.let { if (cachedSenderKey == serviceAccountJson) return it }
+        return FcmSender(serviceAccountJson).also {
+            cachedSender = it
+            cachedSenderKey = serviceAccountJson
+        }
+    }
+
     /** The encrypted FCM data payload for noti: AES-GCM over the serialized RelayMessage. */
     fun encryptForFcm(message: RelayMessage, keyBase64: String): String =
         MessageCrypto.encrypt(json.encodeToString(message), keyBase64)
@@ -77,7 +92,7 @@ object SenderPipeline {
         ) {
             try {
                 val payload = encryptForFcm(fcmMessage(sms), s.relayKey)
-                val res = FcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload))
+                val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload))
                 Log.i(TAG, "FCM leg: HTTP ${res.httpCode} ok=${res.ok}")
                 if (!res.ok) retryable = res.httpCode == -1 || res.httpCode == 429 || res.httpCode in 500..599
             } catch (e: Exception) {
