@@ -1,9 +1,11 @@
 package com.noti.logger.ui
 
+import android.net.Uri
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.textfield.TextInputEditText
@@ -13,10 +15,15 @@ import com.noti.logger.config.Settings
 import com.noti.logger.push.QrCodes
 import com.noti.shared.MessageCrypto
 import com.noti.shared.PairingPayload
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Configure receiving relayed messages (from sndi): enable inbound, hold the shared AES key, and
- * show this device's FCM token plus a pairing QR that sndi scans.
+ * Configure the relay with sndi, both directions:
+ *  - Receive: enable inbound, hold the shared AES key, show this device's token + a pairing QR.
+ *  - Send (reverse): import the same service-account key and hold sndi's token, so noti can push
+ *    send-SMS commands.
  */
 class RelayReceiveActivity : ScreenActivity() {
 
@@ -25,16 +32,23 @@ class RelayReceiveActivity : ScreenActivity() {
 
     private var currentToken: String = ""
 
+    private val importSa = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { onSaPicked(it) }
+    }
+
     override fun onScreenCreated() {
         val s = Settings.get(this)
         val enabled = findViewById<MaterialSwitch>(R.id.sw_inbound_enabled)
         val keyField = findViewById<TextInputEditText>(R.id.et_relay_key)
         val tokenView = findViewById<TextView>(R.id.txt_token)
         val qr = findViewById<ImageView>(R.id.img_qr)
+        val sndiToken = findViewById<TextInputEditText>(R.id.et_sndi_token)
 
         enabled.isChecked = s.pushInboundEnabled
         if (s.relayKey.isBlank()) s.relayKey = MessageCrypto.generateKeyBase64()
         keyField.setText(s.relayKey)
+        sndiToken.setText(s.sndiFcmToken)
+        updateSaStatus()
 
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
             currentToken = token
@@ -48,9 +62,14 @@ class RelayReceiveActivity : ScreenActivity() {
             refreshQr(qr, keyField.text.toString())
         }
 
+        findViewById<MaterialButton>(R.id.btn_import_sa).setOnClickListener {
+            importSa.launch(arrayOf("application/json", "text/*", "*/*"))
+        }
+
         findViewById<View>(R.id.btn_save).setOnClickListener {
             s.pushInboundEnabled = enabled.isChecked
             s.relayKey = keyField.text.toString()
+            s.sndiFcmToken = sndiToken.text.toString()
             Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show()
             finish()
         }
@@ -59,5 +78,37 @@ class RelayReceiveActivity : ScreenActivity() {
     private fun refreshQr(qr: ImageView, key: String) {
         if (currentToken.isBlank() || key.isBlank()) return
         qr.setImageBitmap(QrCodes.encode(PairingPayload.format(currentToken, key), 600))
+    }
+
+    private fun onSaPicked(uri: Uri) {
+        val content = try {
+            contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty()
+        } catch (e: Exception) {
+            ""
+        }
+        val valid = try {
+            val o = Json.parseToJsonElement(content).jsonObject
+            o["private_key"] != null && o["client_email"] != null
+        } catch (e: Exception) {
+            false
+        }
+        if (valid) Settings.get(this).serviceAccountJson = content
+        updateSaStatus(invalid = !valid)
+    }
+
+    private fun updateSaStatus(invalid: Boolean = false) {
+        val json = Settings.get(this).serviceAccountJson
+        findViewById<TextView>(R.id.txt_sa_status).text = when {
+            invalid -> getString(R.string.relay_sa_invalid)
+            json.isBlank() -> getString(R.string.relay_sa_none)
+            else -> {
+                val project = try {
+                    Json.parseToJsonElement(json).jsonObject["project_id"]?.jsonPrimitive?.content
+                } catch (e: Exception) {
+                    null
+                }
+                getString(R.string.relay_sa_imported, project ?: "?")
+            }
+        }
     }
 }

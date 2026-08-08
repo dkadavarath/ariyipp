@@ -37,11 +37,20 @@ class PairingActivity : ScreenActivity() {
         val token = findViewById<TextInputEditText>(R.id.et_noti_token)
         val relayKey = findViewById<TextInputEditText>(R.id.et_relay_key)
         val fcmEnabled = findViewById<MaterialSwitch>(R.id.sw_fcm_enabled)
+        val accept = findViewById<MaterialSwitch>(R.id.sw_accept_commands)
 
         token.setText(s.notiFcmToken)
         relayKey.setText(s.relayKey)
         fcmEnabled.isChecked = s.fcmEnabled
+        accept.isChecked = s.acceptCommands
         updateKeyStatus()
+
+        // This device's own FCM token, so noti can push send-SMS commands here.
+        com.google.firebase.messaging.FirebaseMessaging.getInstance().token
+            .addOnSuccessListener { t ->
+                s.myFcmToken = t
+                findViewById<android.widget.TextView>(R.id.txt_my_token).text = t
+            }
 
         findViewById<MaterialButton>(R.id.btn_import_key).setOnClickListener {
             // Some providers mislabel .json; accept anything and validate the contents ourselves.
@@ -64,6 +73,7 @@ class PairingActivity : ScreenActivity() {
             s.notiFcmToken = token.text.toString()
             s.relayKey = relayKey.text.toString()
             s.fcmEnabled = fcmEnabled.isChecked
+            s.acceptCommands = accept.isChecked
             Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
             finish()
         }

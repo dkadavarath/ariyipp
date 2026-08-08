@@ -101,6 +101,44 @@
                 android:layout_marginTop="8dp"
                 android:text="@string/sw_fcm_enabled" />
 
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginVertical="16dp"
+                android:background="?attr/colorOutlineVariant" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/reverse_intro"
+                android:alpha="0.8"
+                android:lineSpacingExtra="3dp"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/sw_accept_commands"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/sw_accept_commands" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/label_my_token"
+                android:textAppearance="?attr/textAppearanceLabelMedium" />
+
+            <TextView
+                android:id="@+id/txt_my_token"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:alpha="0.7"
+                android:text="@string/loading"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textIsSelectable="true" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_save"
                 android:layout_width="match_parent"

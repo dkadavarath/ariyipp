@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">sndi</string>
+    <string name="loading">…</string>
 
     <!-- Status -->
     <string name="section_status">Status</string>
@@ -40,6 +41,9 @@
     <string name="hint_relay_key">Shared key (base64)</string>
     <string name="btn_generate_key">Generate a new shared key</string>
     <string name="sw_fcm_enabled">Relay to noti via FCM</string>
+    <string name="reverse_intro">Reverse direction — let noti compose messages that this phone sends via its SIM:</string>
+    <string name="sw_accept_commands">Send SMS on command from noti</string>
+    <string name="label_my_token">This device\'s token — paste into noti\'s Relay screen</string>
 
     <!-- Webhook -->
     <string name="webhook_intro">Optionally also POST each SMS to your webhook (plaintext, using noti\'s payload schema).</string>

@@ -47,6 +47,12 @@
     <string name="btn_generate_key">Generate a new shared key</string>
     <string name="label_token">This device\'s token</string>
     <string name="relay_qr_hint">Scan this in sndi to pair</string>
+    <string name="relay_reverse_intro">Reverse direction — compose messages here that sndi sends via its SIM. Import the same FCM service-account key and paste sndi\'s token (shown on sndi\'s Pairing screen).</string>
+    <string name="relay_sa_none">No service-account key imported.</string>
+    <string name="relay_sa_imported">Service-account key imported ✓ (project %1$s)</string>
+    <string name="relay_sa_invalid">That file isn\'t a service-account key.</string>
+    <string name="btn_import_sa">Import service-account key</string>
+    <string name="hint_sndi_token">sndi device token</string>
     <string name="menu_privacy_title">Privacy</string>
     <string name="menu_privacy_sub">Body, keywords, duplicates, retention</string>
     <string name="menu_appearance_title">Appearance</string>
