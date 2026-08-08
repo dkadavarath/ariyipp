@@ -21,6 +21,7 @@ abstract class ScreenActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Theming.applyDynamicColorIfEnabled(this)
+        Theming.applyAmoledIfEnabled(this)
         super.onCreate(savedInstanceState)
         setContentView(layoutRes)
 

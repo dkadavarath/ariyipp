@@ -51,6 +51,7 @@ class ChatActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Theming.applyDynamicColorIfEnabled(this)
+        Theming.applyAmoledIfEnabled(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
 

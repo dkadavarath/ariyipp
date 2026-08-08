@@ -56,7 +56,11 @@ object PushMessageHandler {
             -1L // ignore; still notify below (without a deep-link target)
         }
 
-        MessageNotifier.show(context, title, msg.body, sender, messageId)
+        // A muted conversation still stores the message (it shows up as unread to catch up on later),
+        // it just doesn't raise a notification.
+        if (!settings.isMuted(sender)) {
+            MessageNotifier.show(context, title, msg.body, sender, messageId)
+        }
         return true
     }
 }

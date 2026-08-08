@@ -18,11 +18,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Bottom-nav host: Status / Settings / About tabs. */
+/** Bottom-nav host: Status / Messages / Settings / About tabs. */
 class MainActivity : AppCompatActivity() {
+
+    companion object {
+        const val EXTRA_START_TAB = "start_tab"
+        const val TAB_MESSAGES = "messages"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Theming.applyDynamicColorIfEnabled(this)
+        Theming.applyAmoledIfEnabled(this)
+        themedAmoled = Theming.amoledActive(this)
         installSplashScreen()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -42,19 +49,29 @@ class MainActivity : AppCompatActivity() {
             true
         }
         if (savedInstanceState == null) {
-            bottomNav.selectedItemId = R.id.nav_status
+            bottomNav.selectedItemId =
+                if (intent.getStringExtra(EXTRA_START_TAB) == TAB_MESSAGES) R.id.nav_messages
+                else R.id.nav_status
         }
 
         requestNotificationPermissionIfNeeded()
     }
 
+    /** The AMOLED state this activity was themed with, so we can re-theme if it changed in Settings. */
+    private var themedAmoled = false
+
     override fun onResume() {
         super.onResume()
+        // The Appearance toggle lives in a sub-screen; if it changed while we were away, re-theme.
+        if (Theming.amoledActive(this) != themedAmoled) {
+            recreate()
+            return
+        }
         updateMessagesBadge()
     }
 
     /** Shows the total unread count as a badge on the Messages tab (Signal-style). */
-    private fun updateMessagesBadge() {
+    fun updateMessagesBadge() {
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
         lifecycleScope.launch {
             val unread = withContext(Dispatchers.IO) {

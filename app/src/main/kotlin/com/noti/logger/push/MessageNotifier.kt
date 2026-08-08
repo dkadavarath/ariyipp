@@ -79,14 +79,17 @@ object MessageNotifier {
         requestCode: Int,
     ): PendingIntent {
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        // Deep-link into the exact chat, with MainActivity synthesized beneath it so Up/Back land on
-        // the app rather than dumping the user out. Falls back to just opening the app.
+        // Deep-link into the exact chat, with the Messages list beneath it, so Back from the chat lands
+        // on the conversation list (not the Status home tab). Falls back to just opening the app.
         if (sender.isNotBlank()) {
+            val list = Intent(context, MainActivity::class.java)
+                .putExtra(MainActivity.EXTRA_START_TAB, MainActivity.TAB_MESSAGES)
             val chat = Intent(context, ChatActivity::class.java)
                 .putExtra(ChatActivity.EXTRA_SENDER, sender)
                 .putExtra(ChatActivity.EXTRA_HIGHLIGHT_ID, messageId)
             return TaskStackBuilder.create(context)
-                .addNextIntentWithParentStack(chat)
+                .addNextIntent(list)
+                .addNextIntent(chat)
                 .getPendingIntent(requestCode, flags)!!
         }
         val intent = Intent(context, MainActivity::class.java)

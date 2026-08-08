@@ -13,6 +13,20 @@
         <item name="colorOnSecondaryContainer">@color/brand_on_secondary_container</item>
     </style>
 
+    <!-- AMOLED overlay: applied at runtime over the dark theme to push chrome/background surfaces to
+         true black. colorSurfaceVariant is left alone so chat bubbles/inputs stay visible. -->
+    <style name="ThemeOverlay.Noti.Amoled" parent="">
+        <item name="android:colorBackground">#FF000000</item>
+        <item name="colorSurface">#FF000000</item>
+        <item name="colorSurfaceContainerLowest">#FF000000</item>
+        <item name="colorSurfaceContainerLow">#FF000000</item>
+        <item name="colorSurfaceContainer">#FF000000</item>
+        <item name="colorSurfaceContainerHigh">#FF0C0E11</item>
+        <item name="colorSurfaceContainerHighest">#FF14171C</item>
+        <item name="colorSurfaceBright">#FF14171C</item>
+        <item name="colorSurfaceDim">#FF000000</item>
+    </style>
+
     <!-- Launch splash: the "n." icon on the blue brand background (AndroidX SplashScreen). -->
     <style name="Theme.Noti.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_bg</item>

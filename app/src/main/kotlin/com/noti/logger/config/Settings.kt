@@ -240,6 +240,30 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putBoolean(KEY_DYNAMIC_COLOR, value).apply()
         }
 
+    /** Pure-black (AMOLED) surfaces when dark mode is active. No effect in light mode. */
+    var amoled: Boolean
+        get() = prefs.getBoolean(KEY_AMOLED, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_AMOLED, value).apply()
+        }
+
+    // ---- Muted conversations ----
+
+    /** Senders whose new messages are stored (and shown as unread) but don't raise a notification. */
+    var mutedSenders: Set<String>
+        get() = prefs.getStringSet(KEY_MUTED_SENDERS, emptySet()) ?: emptySet()
+        set(value) {
+            prefs.edit().putStringSet(KEY_MUTED_SENDERS, value).apply()
+        }
+
+    fun isMuted(sender: String): Boolean = mutedSenders.contains(sender)
+
+    fun setMuted(sender: String, muted: Boolean) {
+        val next = mutedSenders.toMutableSet()
+        if (muted) next.add(sender) else next.remove(sender)
+        mutedSenders = next
+    }
+
     // ---- Derived ----
 
     // Cached snapshot; invalidated whenever includedPackages / excludedKeywords / captureBody /
@@ -289,6 +313,8 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_LAST_UPLOAD_RESULT = "last_upload_result"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_DYNAMIC_COLOR = "dynamic_color"
+        private const val KEY_AMOLED = "amoled"
+        private const val KEY_MUTED_SENDERS = "muted_senders"
 
         @Volatile
         private var INSTANCE: Settings? = null

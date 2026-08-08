@@ -1,6 +1,7 @@
 package com.noti.logger.ui
 
 import android.widget.RadioGroup
+import com.google.android.material.materialswitch.MaterialSwitch
 import com.noti.logger.R
 import com.noti.logger.config.Settings
 import com.noti.logger.config.ThemeMode
@@ -43,6 +44,15 @@ class AppearanceActivity : ScreenActivity() {
             if (dynamic != s.dynamicColor) {
                 s.dynamicColor = dynamic
                 recreate() // re-run onCreate → applies/removes the dynamic-color overlay
+            }
+        }
+
+        val amoled = findViewById<MaterialSwitch>(R.id.sw_amoled)
+        amoled.isChecked = s.amoled
+        amoled.setOnCheckedChangeListener { _, checked ->
+            if (checked != s.amoled) {
+                s.amoled = checked
+                recreate() // re-run onCreate → applies/removes the AMOLED overlay (dark mode only)
             }
         }
     }

@@ -14,8 +14,10 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.noti.logger.R
+import com.noti.logger.config.Settings
 import com.noti.logger.data.ConversationSummary
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.util.Avatars
@@ -31,9 +33,12 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
     private lateinit var search: TextInputEditText
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        adapter = ConversationAdapter { sender ->
-            startActivity(Intent(requireContext(), ChatActivity::class.java).putExtra(ChatActivity.EXTRA_SENDER, sender))
-        }
+        adapter = ConversationAdapter(
+            onClick = { sender ->
+                startActivity(Intent(requireContext(), ChatActivity::class.java).putExtra(ChatActivity.EXTRA_SENDER, sender))
+            },
+            onLongClick = { sender -> showConversationMenu(sender) },
+        )
         view.findViewById<RecyclerView>(R.id.recycler).apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = this@MessagesFragment.adapter
@@ -64,8 +69,55 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
         }
     }
 
+    private fun showConversationMenu(sender: String) {
+        val s = Settings.get(requireContext())
+        val muted = s.isMuted(sender)
+        val items = arrayOf(
+            getString(if (muted) R.string.conv_unmute else R.string.conv_mute),
+            getString(R.string.conv_mark_read),
+            getString(R.string.chat_delete),
+        )
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(sender)
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> { s.setMuted(sender, !muted); refresh() }
+                    1 -> markConversationRead(sender)
+                    2 -> deleteConversation(sender)
+                }
+            }
+            .show()
+    }
+
+    private fun markConversationRead(sender: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                NotiDatabase.get(requireContext()).relayedMessageDao().markRead(sender)
+            }
+            refresh()
+            (activity as? MainActivity)?.updateMessagesBadge()
+        }
+    }
+
+    private fun deleteConversation(sender: String) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setMessage(R.string.chat_delete_confirm)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.chat_delete) { _, _ ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    withContext(Dispatchers.IO) {
+                        NotiDatabase.get(requireContext()).relayedMessageDao().deleteConversation(sender)
+                    }
+                    refresh()
+                    (activity as? MainActivity)?.updateMessagesBadge()
+                }
+            }
+            .show()
+    }
+
     private inner class ConversationAdapter(
         val onClick: (String) -> Unit,
+        val onLongClick: (String) -> Unit,
     ) : RecyclerView.Adapter<ConversationVH>() {
 
         private val items = ArrayList<ConversationSummary>()
@@ -106,7 +158,11 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
                 holder.unread.visibility = View.GONE
             }
 
+            holder.muted.visibility =
+                if (Settings.get(ctx).isMuted(c.sender)) View.VISIBLE else View.GONE
+
             holder.itemView.setOnClickListener { onClick(c.sender) }
+            holder.itemView.setOnLongClickListener { onLongClick(c.sender); true }
         }
     }
 
@@ -115,6 +171,7 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
         val last: TextView = v.findViewById(R.id.txt_last)
         val time: TextView = v.findViewById(R.id.txt_time)
         val unread: TextView = v.findViewById(R.id.txt_unread)
+        val muted: ImageView = v.findViewById(R.id.ic_muted)
         val avatar: View = v.findViewById(R.id.avatar)
         val avatarInitials: TextView = v.findViewById(R.id.avatar_initials)
         val avatarIcon: ImageView = v.findViewById(R.id.avatar_icon)
