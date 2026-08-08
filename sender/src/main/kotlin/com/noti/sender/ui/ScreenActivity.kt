@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.noti.sender.R
+import com.noti.sender.util.Theming
 
 /**
  * Base for sndi's config sub-screens — standard up-navigation and edge-to-edge insets, matching
@@ -19,7 +20,9 @@ abstract class ScreenActivity : AppCompatActivity() {
     @get:StringRes protected abstract val titleRes: Int
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Theming.applyDynamicColorIfEnabled(this)
         super.onCreate(savedInstanceState)
+        Theming.applyAmoledIfEnabled(this) // after super so AppCompat doesn't reset the overlay
         setContentView(layoutRes)
 
         val root = findViewById<View>(R.id.screen_root)

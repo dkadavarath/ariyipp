@@ -7,6 +7,8 @@ import androidx.security.crypto.MasterKey
 import java.io.File
 import java.util.UUID
 
+enum class ThemeMode { SYSTEM, LIGHT, DARK }
+
 /**
  * Encrypted-at-rest settings for the sender: the service-account key and AES key are secrets, so
  * everything lives in EncryptedSharedPreferences (same approach as noti's Settings).
@@ -80,6 +82,26 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         else -> sim1Name.ifBlank { "SIM 1" }
     }
 
+    // ---- Appearance ----
+
+    var themeMode: ThemeMode
+        get() = try {
+            ThemeMode.valueOf(prefs.getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name)
+        } catch (e: IllegalArgumentException) {
+            ThemeMode.SYSTEM
+        }
+        set(value) { prefs.edit().putString(KEY_THEME_MODE, value.name).apply() }
+
+    /** false = Default (blue brand theme); true = Material You dynamic color (Android 12+). */
+    var dynamicColor: Boolean
+        get() = prefs.getBoolean(KEY_DYNAMIC_COLOR, false)
+        set(value) { prefs.edit().putBoolean(KEY_DYNAMIC_COLOR, value).apply() }
+
+    /** Pure-black (AMOLED) surfaces when dark mode is active. No effect in light mode. */
+    var amoled: Boolean
+        get() = prefs.getBoolean(KEY_AMOLED, false)
+        set(value) { prefs.edit().putBoolean(KEY_AMOLED, value).apply() }
+
     /** Generated once, stable for the install; identifies this device in the n8n payload. */
     @Volatile private var cachedDeviceId: String? = null
     val deviceId: String
@@ -111,6 +133,9 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_SIM1_NAME = "sim1_name"
         private const val KEY_SIM2_NAME = "sim2_name"
         private const val KEY_DEVICE_ID = "device_id"
+        private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_DYNAMIC_COLOR = "dynamic_color"
+        private const val KEY_AMOLED = "amoled"
 
         @Volatile private var INSTANCE: SenderSettings? = null
 

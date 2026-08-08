@@ -11,4 +11,19 @@
         <item name="colorSecondaryContainer">@color/brand_secondary_container</item>
         <item name="colorOnSecondaryContainer">@color/brand_on_secondary_container</item>
     </style>
+
+    <!-- AMOLED overlay: applied at runtime over the dark theme to push chrome/background/card
+         surfaces to true black. Elevation tint disabled so nothing reads grey. -->
+    <style name="ThemeOverlay.Sendi.Amoled" parent="">
+        <item name="android:colorBackground">#FF000000</item>
+        <item name="colorSurface">#FF000000</item>
+        <item name="colorSurfaceContainerLowest">#FF000000</item>
+        <item name="colorSurfaceContainerLow">#FF000000</item>
+        <item name="colorSurfaceContainer">#FF000000</item>
+        <item name="colorSurfaceContainerHigh">#FF000000</item>
+        <item name="colorSurfaceContainerHighest">#FF000000</item>
+        <item name="colorSurfaceBright">#FF000000</item>
+        <item name="colorSurfaceDim">#FF000000</item>
+        <item name="elevationOverlayEnabled">false</item>
+    </style>
 </resources>
