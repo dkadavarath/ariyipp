@@ -22,8 +22,8 @@ android {
         applicationId = "com.noti.logger"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "1.15"
+        versionCode = 17
+        versionName = "1.16"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -107,8 +107,9 @@ dependencies {
     // Shared crypto + wire format (used by this app and the sender app)
     implementation(project(":shared"))
 
-    // QR generation for pairing
+    // QR generation + scanning for pairing (embedded bundles zxing core)
     implementation(libs.zxing.core)
+    implementation(libs.zxing.embedded)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)

@@ -44,6 +44,7 @@
     <string name="reverse_intro">Reverse direction — let ippu compose messages that this phone sends via its SIM:</string>
     <string name="sw_accept_commands">Send SMS on command from ippu</string>
     <string name="label_my_token">This device\'s token — paste into ippu\'s Relay screen</string>
+    <string name="my_token_qr_hint">…or scan this in ippu\'s Relay screen</string>
 
     <!-- Webhook -->
     <string name="webhook_intro">Optionally also POST each SMS to your webhook (plaintext, using ippu\'s payload schema).</string>

@@ -10,6 +10,8 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.messaging.FirebaseMessaging
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import com.noti.logger.R
 import com.noti.logger.config.Settings
 import com.noti.logger.push.QrCodes
@@ -34,6 +36,10 @@ class RelayReceiveActivity : ScreenActivity() {
 
     private val importSa = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { onSaPicked(it) }
+    }
+
+    private val scanAriy = registerForActivityResult(ScanContract()) { result ->
+        result.contents?.let { onAriyScanned(it) }
     }
 
     override fun onScreenCreated() {
@@ -66,6 +72,16 @@ class RelayReceiveActivity : ScreenActivity() {
             importSa.launch(arrayOf("application/json", "text/*", "*/*"))
         }
 
+        findViewById<MaterialButton>(R.id.btn_scan_ariy).setOnClickListener {
+            scanAriy.launch(
+                ScanOptions()
+                    .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                    .setPrompt(getString(R.string.relay_scan_ariy_prompt))
+                    .setBeepEnabled(false)
+                    .setOrientationLocked(false)
+            )
+        }
+
         findViewById<View>(R.id.btn_save).setOnClickListener {
             s.pushInboundEnabled = enabled.isChecked
             s.relayKey = keyField.text.toString()
@@ -73,6 +89,21 @@ class RelayReceiveActivity : ScreenActivity() {
             Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show()
             finish()
         }
+    }
+
+    private fun onAriyScanned(text: String) {
+        val parsed = PairingPayload.parseReverse(text)
+        if (parsed == null) {
+            Toast.makeText(this, R.string.relay_scan_ariy_bad, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val (token, key) = parsed
+        findViewById<TextInputEditText>(R.id.et_sndi_token).setText(token)
+        // If ariy also carried the shared key and we don't have one yet, adopt it so a single scan
+        // fully sets up the reverse direction.
+        val keyField = findViewById<TextInputEditText>(R.id.et_relay_key)
+        if (key.isNotBlank() && keyField.text.isNullOrBlank()) keyField.setText(key)
+        Toast.makeText(this, R.string.relay_scan_ariy_ok, Toast.LENGTH_SHORT).show()
     }
 
     private fun refreshQr(qr: ImageView, key: String) {

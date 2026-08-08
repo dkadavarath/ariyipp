@@ -3,7 +3,7 @@
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84)
 ![minSdk](https://img.shields.io/badge/minSdk-26-1565c0)
 ![targetSdk](https://img.shields.io/badge/targetSdk-35-1565c0)
-![Release](https://img.shields.io/badge/release-v1.15-1565c0)
+![Release](https://img.shields.io/badge/release-v1.16-1565c0)
 ![Language](https://img.shields.io/badge/kotlin-100%25-7f52ff)
 
 A deliberately **lightweight**, native-Kotlin Android app that logs your device notifications to
@@ -55,8 +55,9 @@ SIM. It observes incoming **SMS** (via `RECEIVE_SMS`, not as the default SMS app
 to ippu as an **AES-256-GCM encrypted** FCM push, so Google never sees the plaintext. It can also
 POST each SMS to your webhook. ippu decrypts and shows it, labelled with the sender and SIM
 (e.g. *"+9715… on e&"*). The relay is bidirectional: compose in ippu and ariy sends it from the SIM
-you choose. Pair the two by scanning a QR in ippu (or copy the token + key across), and label each
-SIM under **SIM names**. Both apps ship as adaptive icons that adapt to light/dark and Material You.
+you choose. Pair the two by **QR in either direction** — ippu shows a QR for ariy to scan, and ariy
+shows one for ippu to scan (or copy the tokens + key across) — and label each SIM under **SIM names**.
+Both apps ship as adaptive icons that adapt to light/dark and Material You.
 
 <br clear="left"/>
 

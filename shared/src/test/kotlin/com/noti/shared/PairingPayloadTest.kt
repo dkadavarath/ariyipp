@@ -33,4 +33,21 @@ class PairingPayloadTest {
         assertNull(PairingPayload.parse("noti-pair:v1:|key"))
         assertNull(PairingPayload.parse("noti-pair:v1:tok|"))
     }
+
+    @Test
+    fun `reverse round-trips token and key`() {
+        val token = "arYtok:FCMreverse_987"
+        val key = "Mpm+/TP95CdtK1CfBPdDrLNnlZzh27zESZseSfchEV4="
+        val (t, k) = PairingPayload.parseReverse(PairingPayload.formatReverse(token, key))!!
+        assertEquals(token, t)
+        assertEquals(key, k)
+    }
+
+    @Test
+    fun `forward and reverse payloads are not interchangeable`() {
+        val fwd = PairingPayload.format("tok", "key")
+        val rev = PairingPayload.formatReverse("tok", "key")
+        assertNull(PairingPayload.parseReverse(fwd)) // forward can't be read as reverse
+        assertNull(PairingPayload.parse(rev))        // and vice versa
+    }
 }
