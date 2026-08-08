@@ -3,7 +3,7 @@
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84)
 ![minSdk](https://img.shields.io/badge/minSdk-26-1565c0)
 ![targetSdk](https://img.shields.io/badge/targetSdk-35-1565c0)
-![Release](https://img.shields.io/badge/release-v1.11-1565c0)
+![Release](https://img.shields.io/badge/release-v1.12-1565c0)
 ![Language](https://img.shields.io/badge/kotlin-100%25-7f52ff)
 
 A deliberately **lightweight**, native-Kotlin Android app that logs your device notifications to
@@ -45,6 +45,22 @@ in-app Appearance section toggles Light/Dark/System and Default/Material You col
 - **Configurable auth** — send the token in any header (`Authorization: Bearer …`, or a custom
   header like `key` for n8n Header Auth).
 
+## Companion app — sndi
+
+<img src="docs/icons/noti.png" width="72" align="left" hspace="8"> <img src="docs/icons/sndi.png" width="72" align="left" hspace="8">
+
+**sndi** is a companion app (in this repo, `:sender` module) for a *second* phone — the one with the
+SIM. It observes incoming **SMS** (via `RECEIVE_SMS`, not as the default SMS app) and relays each one
+to noti as an **AES-256-GCM encrypted** FCM push, so Google never sees the plaintext. It can also
+POST each SMS to your webhook. noti decrypts and shows it, labelled with the sender and SIM
+(e.g. *"+9715… on e&"*). Pair the two by scanning a QR in noti (or copy the token + key across), and
+label each SIM under **SIM names**. Both apps ship as adaptive icons that adapt to light/dark and
+Material You.
+
+<br clear="left"/>
+
+*(App screenshots for sndi to follow.)*
+
 ## How it works
 
 ```
@@ -74,7 +90,7 @@ Grab the latest signed APK from **[Releases](https://github.com/dkadavarath/noti
 (`noti-vX.Y.apk`) and sideload it:
 
 ```
-adb install noti-v1.11.apk
+adb install noti-v1.12.apk
 ```
 
 Google Play Protect may warn on a sideloaded app that reads notifications — choose *Install anyway*
