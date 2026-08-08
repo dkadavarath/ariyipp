@@ -43,7 +43,7 @@ object PushMessageHandler {
 
         // Persist to the chat history (best-effort — a storage error must not block the notification).
         val (sender, sim) = RelayTitle.parse(title)
-        try {
+        val messageId = try {
             NotiDatabase.get(context).relayedMessageDao().insert(
                 RelayedMessageEntity(
                     sender = sender,
@@ -53,10 +53,10 @@ object PushMessageHandler {
                 )
             )
         } catch (e: Exception) {
-            // ignore; still notify below
+            -1L // ignore; still notify below (without a deep-link target)
         }
 
-        MessageNotifier.show(context, title, msg.body)
+        MessageNotifier.show(context, title, msg.body, sender, messageId)
         return true
     }
 }

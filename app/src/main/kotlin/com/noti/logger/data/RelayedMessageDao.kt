@@ -46,4 +46,7 @@ interface RelayedMessageDao {
 
     @Query("DELETE FROM relayed_messages WHERE sender = :sender")
     fun deleteConversation(sender: String)
+
+    @Query("DELETE FROM relayed_messages WHERE id = :id")
+    fun deleteMessage(id: Long)
 }

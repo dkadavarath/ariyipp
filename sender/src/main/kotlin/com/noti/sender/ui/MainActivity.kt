@@ -20,7 +20,7 @@ import com.noti.sender.R
 class MainActivity : AppCompatActivity() {
 
     private val requestSms = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
+        ActivityResultContracts.RequestMultiplePermissions()
     ) { updateSmsStatus() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,7 +36,14 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(findViewById(R.id.toolbar))
 
         findViewById<MaterialButton>(R.id.btn_grant_sms).setOnClickListener {
-            requestSms.launch(Manifest.permission.RECEIVE_SMS)
+            // RECEIVE_SMS to relay; SEND_SMS + READ_PHONE_STATE for noti-driven sends and SIM choice.
+            requestSms.launch(
+                arrayOf(
+                    Manifest.permission.RECEIVE_SMS,
+                    Manifest.permission.SEND_SMS,
+                    Manifest.permission.READ_PHONE_STATE,
+                )
+            )
         }
 
         val container = findViewById<LinearLayout>(R.id.settings_container)

@@ -21,11 +21,14 @@ object NotiCommandSender {
     fun isConfigured(s: Settings): Boolean =
         s.serviceAccountJson.isNotBlank() && s.sndiFcmToken.isNotBlank() && s.relayKey.isNotBlank()
 
-    /** Returns true if FCM accepted the command. */
-    fun send(context: Context, to: String, body: String): Boolean {
+    /**
+     * Returns true if FCM accepted the command. [sim] is the SIM slot sndi should send from
+     * (0/1), or -1 for its default SIM.
+     */
+    fun send(context: Context, to: String, body: String, sim: Int = -1): Boolean {
         val s = Settings.get(context)
         if (!isConfigured(s)) return false
-        val payload = MessageCrypto.encrypt(json.encodeToString(SendCommand(to, body)), s.relayKey)
+        val payload = MessageCrypto.encrypt(json.encodeToString(SendCommand(to, body, sim)), s.relayKey)
         return try {
             FcmSender(s.serviceAccountJson).send(s.sndiFcmToken, mapOf("payload" to payload)).ok
         } catch (e: Exception) {

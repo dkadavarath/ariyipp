@@ -17,8 +17,8 @@ class SmsCommandService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val cmd = SmsCommandHandler.parse(applicationContext, message.data) ?: return
         try {
-            SmsSender.send(applicationContext, cmd.to, cmd.body)
-            Log.i(TAG, "sent SMS to '${cmd.to}' (${cmd.body.length} chars)")
+            SmsSender.send(applicationContext, cmd.to, cmd.body, cmd.sim)
+            Log.i(TAG, "sent SMS to '${cmd.to}' on slot ${cmd.sim} (${cmd.body.length} chars)")
         } catch (e: Exception) {
             Log.w(TAG, "SMS send failed: ${e.message}")
         }

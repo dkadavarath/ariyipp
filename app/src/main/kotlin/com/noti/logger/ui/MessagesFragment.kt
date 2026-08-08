@@ -36,6 +36,10 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
         }
         search = view.findViewById(R.id.et_search)
         search.doAfterTextChanged { refresh() }
+
+        view.findViewById<View>(R.id.fab_compose).setOnClickListener {
+            startActivity(Intent(requireContext(), ComposeActivity::class.java))
+        }
     }
 
     override fun onResume() {

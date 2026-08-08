@@ -70,4 +70,13 @@ class RelayedMessageDaoTest {
         dao.deleteConversation("+111")
         assertEquals(listOf("+222"), dao.conversations().map { it.sender })
     }
+
+    @Test
+    fun delete_message_removes_only_that_row() {
+        val keep = dao.insert(msg("+111", "keep", 100))
+        val drop = dao.insert(msg("+111", "drop", 200))
+        dao.deleteMessage(drop)
+        assertEquals(listOf("keep"), dao.messagesFor("+111").map { it.body })
+        assertEquals(keep, dao.messagesFor("+111").single().id)
+    }
 }

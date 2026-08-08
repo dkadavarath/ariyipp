@@ -26,6 +26,28 @@
     <string name="chat_send">Send</string>
     <string name="chat_send_not_configured">Set up sending in Settings → Relay first.</string>
     <string name="chat_send_failed">Couldn\'t reach sndi — will not retry.</string>
+    <string name="chat_close">Close</string>
+
+    <!-- Per-message actions -->
+    <string name="msg_copy">Copy</string>
+    <string name="msg_copied">Copied</string>
+    <string name="msg_select_text">Select text</string>
+    <string name="msg_forward">Forward</string>
+    <string name="msg_delete">Delete</string>
+
+    <!-- Compose -->
+    <string name="compose_title">New message</string>
+    <string name="compose_new">Compose</string>
+    <string name="compose_to_hint">Phone number</string>
+    <string name="compose_pick_contact">Contact</string>
+    <string name="compose_contact_failed">Couldn\'t read that contact\'s number.</string>
+    <string name="compose_sim">Send from</string>
+    <string name="compose_sim_default">Default</string>
+    <string name="compose_sim_1">SIM 1</string>
+    <string name="compose_sim_2">SIM 2</string>
+    <string name="compose_message_hint">Message</string>
+    <string name="compose_send">Send</string>
+    <string name="compose_need_to_and_body">Enter a number and a message.</string>
 
     <!-- Settings menu -->
     <string name="menu_connection_title">Connection</string>
