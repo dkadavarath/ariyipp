@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="splash_bg">#FF15181C</color>
+
     <!-- Brand blue scheme (dark). Lighter primary so it stays legible on dark surfaces. -->
     <color name="brand_primary">#A7C8FF</color>
     <color name="brand_on_primary">#00325B</color>

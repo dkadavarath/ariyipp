@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">sendi</string>
+    <string name="app_name">sndi</string>
 
     <!-- Status -->
     <string name="section_status">Status</string>
@@ -11,12 +11,20 @@
     <!-- Settings menu -->
     <string name="menu_pairing_title">Pairing</string>
     <string name="menu_pairing_sub">Service-account key, noti token, shared key</string>
-    <string name="menu_webhook_title">Webhook (n8n)</string>
-    <string name="menu_webhook_sub">Forward SMS to your n8n endpoint</string>
+    <string name="menu_sim_names_title">SIM names</string>
+    <string name="menu_sim_names_sub">Label each SIM (e.g. e&amp;, du)</string>
+    <string name="menu_webhook_title">Webhook</string>
+    <string name="menu_webhook_sub">Forward SMS to your webhook</string>
 
     <!-- Sub-screen titles -->
     <string name="title_pairing">Pairing</string>
+    <string name="title_sim_names">SIM names</string>
     <string name="title_webhook">Webhook</string>
+
+    <!-- SIM names -->
+    <string name="sim_names_intro">Name each SIM so relayed messages show the carrier (e.g. \"+9715… on e&amp;\") without needing phone-state access. Leave blank to use \"SIM 1\" / \"SIM 2\".</string>
+    <string name="hint_sim1_name">SIM 1 name (slot 1)</string>
+    <string name="hint_sim2_name">SIM 2 name (slot 2)</string>
 
     <!-- Pairing -->
     <string name="pairing_intro">Import the FCM service-account key, then paste noti\'s device token and the shared key so messages can be encrypted end-to-end.</string>
@@ -34,12 +42,12 @@
     <string name="sw_fcm_enabled">Relay to noti via FCM</string>
 
     <!-- Webhook -->
-    <string name="webhook_intro">Optionally also POST each SMS to your n8n webhook (plaintext, using noti\'s payload schema).</string>
+    <string name="webhook_intro">Optionally also POST each SMS to your webhook (plaintext, using noti\'s payload schema).</string>
     <string name="hint_n8n_url">Webhook URL</string>
-    <string name="hint_auth_header_name">Auth header name — e.g. Authorization, or \"key\" for n8n</string>
+    <string name="hint_auth_header_name">Auth header name — e.g. Authorization, or a custom header like \"key\"</string>
     <string name="hint_auth_header_prefix">Token prefix — \"Bearer \" or leave EMPTY for a raw token</string>
     <string name="hint_auth_token">Auth token</string>
-    <string name="sw_n8n_enabled">Also forward to n8n</string>
+    <string name="sw_n8n_enabled">Also forward to a webhook</string>
 
     <!-- Shared -->
     <string name="btn_save">Save</string>

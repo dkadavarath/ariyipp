@@ -3,7 +3,7 @@ package com.noti.sender
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.noti.shared.RelayMessage
+import com.noti.sender.sms.CapturedSms
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -14,16 +14,23 @@ import kotlinx.coroutines.withContext
 class RelayWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val title = inputData.getString(KEY_TITLE) ?: return Result.success()
-        val body = inputData.getString(KEY_BODY).orEmpty()
-        val ok = withContext(Dispatchers.IO) {
-            SenderPipeline.relay(applicationContext, RelayMessage(title, body))
-        }
+        val from = inputData.getString(KEY_FROM) ?: return Result.success()
+        val sms = CapturedSms(
+            from = from,
+            body = inputData.getString(KEY_BODY).orEmpty(),
+            sentMillis = inputData.getLong(KEY_SENT, 0L),
+            receivedMillis = inputData.getLong(KEY_RECEIVED, 0L),
+            sim = inputData.getString(KEY_SIM).orEmpty(),
+        )
+        val ok = withContext(Dispatchers.IO) { SenderPipeline.relay(applicationContext, sms) }
         return if (ok) Result.success() else Result.retry()
     }
 
     companion object {
-        const val KEY_TITLE = "title"
+        const val KEY_FROM = "from"
         const val KEY_BODY = "body"
+        const val KEY_SENT = "sent"
+        const val KEY_RECEIVED = "received"
+        const val KEY_SIM = "sim"
     }
 }

@@ -65,6 +65,10 @@ class FcmSender(serviceAccountJson: String) {
             put("validate_only", validateOnly)
             putJsonObject("message") {
                 put("token", targetToken)
+                // High priority so the data message wakes the receiver immediately, even under Doze /
+                // App Standby / a locked screen — otherwise normal-priority data is deferred until the
+                // device next becomes interactive (i.e. only shows on unlock).
+                putJsonObject("android") { put("priority", "high") }
                 putJsonObject("data") { data.forEach { (k, v) -> put(k, v) } }
             }
         }.toString()

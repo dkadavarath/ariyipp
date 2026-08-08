@@ -22,6 +22,7 @@
         </activity>
 
         <activity android:name=".ui.PairingActivity" android:exported="false" />
+        <activity android:name=".ui.SimNamesActivity" android:exported="false" />
         <activity android:name=".ui.WebhookActivity" android:exported="false" />
 
         <!-- Observe incoming SMS. android:permission = only the system (holder of BROADCAST_SMS)

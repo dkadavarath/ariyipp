@@ -16,7 +16,7 @@ import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.button.MaterialButton
 import com.noti.sender.R
 
-/** sendi home: SMS-access status + a settings menu opening focused sub-screens (noti's pattern). */
+/** sndi home: SMS-access status + a settings menu opening focused sub-screens (noti's pattern). */
 class MainActivity : AppCompatActivity() {
 
     private val requestSms = registerForActivityResult(
@@ -49,6 +49,7 @@ class MainActivity : AppCompatActivity() {
             container.addView(row)
         }
         addRow(R.string.menu_pairing_title, R.string.menu_pairing_sub, PairingActivity::class.java)
+        addRow(R.string.menu_sim_names_title, R.string.menu_sim_names_sub, SimNamesActivity::class.java)
         addRow(R.string.menu_webhook_title, R.string.menu_webhook_sub, WebhookActivity::class.java)
     }
 

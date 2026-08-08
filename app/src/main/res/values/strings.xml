@@ -25,16 +25,16 @@
     <string name="menu_app_rules_title">Keywords &amp; notes</string>
     <string name="menu_app_rules_sub">Per-app keyword filters and notes</string>
     <string name="menu_relay_title">Relay (receive)</string>
-    <string name="menu_relay_sub">Receive messages pushed from sendi</string>
+    <string name="menu_relay_sub">Receive messages pushed from sndi</string>
 
     <!-- Relay receive / pairing -->
     <string name="title_relay">Relay (receive)</string>
-    <string name="relay_intro">Receive messages (e.g. SMS forwarded by the sendi app) as notifications on this device, decrypted with a shared key. Pair by scanning the QR below in sendi, or copy the token and key across.</string>
+    <string name="relay_intro">Receive messages (e.g. SMS forwarded by the sndi app) as notifications on this device, decrypted with a shared key. Pair by scanning the QR below in sndi, or copy the token and key across.</string>
     <string name="sw_inbound_enabled">Receive relayed messages</string>
     <string name="label_relay_key">Shared key (base64)</string>
     <string name="btn_generate_key">Generate a new shared key</string>
     <string name="label_token">This device\'s token</string>
-    <string name="relay_qr_hint">Scan this in sendi to pair</string>
+    <string name="relay_qr_hint">Scan this in sndi to pair</string>
     <string name="menu_privacy_title">Privacy</string>
     <string name="menu_privacy_sub">Body, keywords, duplicates, retention</string>
     <string name="menu_appearance_title">Appearance</string>
@@ -76,14 +76,14 @@
     <string name="about_project_url">https://github.com/dkadavarath/noti</string>
     <string name="about_device_id">Device ID: %1$s</string>
     <string name="about_whats_new">What\'s new</string>
-    <string name="about_changelog">v1.11 — Receive relayed messages: a new “Relay (receive)” screen lets a companion app (sendi) push you notifications — e.g. forwarded SMS — over end-to-end encrypted FCM. Pair by scanning a QR.\n\nv1.10 — The Apps and “Keywords &amp; notes” screens open much faster: app icons now load row by row as you scroll, instead of every icon being read before anything appears.\n\nv1.9 — The Apps and “Keywords &amp; notes” screens now show a loading spinner while your app list is read, instead of looking empty.\n\nv1.8 — Per-app keywords &amp; notes: log only the notifications matching your keywords, and append a note to what gets logged.\n\nv1.7 — Bottom-nav layout (Status / Settings / About), settings menu with focused screens, and an Appearance section (theme mode + Default/Material color).\n\nv1.6 — Blue theme matching the app icon, for better visibility (follows system light/dark).\n\nv1.5 — Faster capture &amp; upload (less CPU/battery); change notes here; standard back navigation.\n\nv1.4 — New app icon, splash screen, About &amp; Help screens.\n\nv1.3 — Ignore duplicate notifications (content + time window).\n\nv1.2 — Material 3 redesign; choose which apps to capture.\n\nv1.1 — UI fixes; clearer auth setup; show-token toggle.\n\nv1.0 — Initial release.</string>
+    <string name="about_changelog">v1.12 — New wordmark app icon (adapts to light/dark and Material You). Relayed messages now show which SIM they arrived on (e.g. “+9715… on e&amp;”).\n\nv1.11 — Receive relayed messages: a new “Relay (receive)” screen lets a companion app (sndi) push you notifications — e.g. forwarded SMS — over end-to-end encrypted FCM. Pair by scanning a QR.\n\nv1.10 — The Apps and “Keywords &amp; notes” screens open much faster: app icons now load row by row as you scroll, instead of every icon being read before anything appears.\n\nv1.9 — The Apps and “Keywords &amp; notes” screens now show a loading spinner while your app list is read, instead of looking empty.\n\nv1.8 — Per-app keywords &amp; notes: log only the notifications matching your keywords, and append a note to what gets logged.\n\nv1.7 — Bottom-nav layout (Status / Settings / About), settings menu with focused screens, and an Appearance section (theme mode + Default/Material color).\n\nv1.6 — Blue theme matching the app icon, for better visibility (follows system light/dark).\n\nv1.5 — Faster capture &amp; upload (less CPU/battery); change notes here; standard back navigation.\n\nv1.4 — New app icon, splash screen, About &amp; Help screens.\n\nv1.3 — Ignore duplicate notifications (content + time window).\n\nv1.2 — Material 3 redesign; choose which apps to capture.\n\nv1.1 — UI fixes; clearer auth setup; show-token toggle.\n\nv1.0 — Initial release.</string>
 
     <!-- Help screen -->
     <string name="help_title">Help</string>
     <string name="help_start_title">Getting started</string>
     <string name="help_start_body">1. Tap “Grant notification access” and enable noti in the system list — this lets the app see notifications.\n2. Tap “Ignore battery optimization” so uploads run reliably.\nWithout notification access, nothing is captured.</string>
     <string name="help_webhook_title">Setting up the webhook</string>
-    <string name="help_webhook_body">Enter your Webhook URL and the auth token. The token is sent as a header: by default “Authorization: Bearer &lt;token&gt;”. For an n8n Header Auth credential, set the Auth header name to “key” and clear the prefix so the raw token is sent. Tap the eye icon to reveal the token. Use an https URL — content is sensitive.</string>
+    <string name="help_webhook_body">Enter your Webhook URL and the auth token. The token is sent as a header: by default “Authorization: Bearer &lt;token&gt;”. For a custom Header Auth credential, set the Auth header name to “key” and clear the prefix so the raw token is sent. Tap the eye icon to reveal the token. Use an https URL — content is sensitive.</string>
     <string name="help_apps_title">Choosing which apps to capture</string>
     <string name="help_apps_body">Under “Included apps”, tap “Choose apps” to pick which apps to capture. If you select none, all apps are captured. Selecting apps limits capture to just those.</string>
     <string name="help_rules_title">Keywords &amp; notes (per app)</string>
@@ -95,7 +95,7 @@
     <string name="help_privacy_title">Privacy &amp; retention</string>
     <string name="help_privacy_body">Turn off “Capture notification body” to store metadata only. Add excluded keywords to drop notifications containing sensitive words (e.g. OTP). “Retention days” controls how long uploaded rows are kept before purging.</string>
     <string name="help_trouble_title">Troubleshooting</string>
-    <string name="help_trouble_body">• 403 on upload: the auth header/token is wrong — for n8n Header Auth use header name “key” and an empty prefix.\n• Nothing captured: grant notification access; check your included-apps selection.\n• Uploads delayed: allow the app to ignore battery optimization, or use “Sync now”.</string>
+    <string name="help_trouble_body">• 403 on upload: the auth header/token is wrong — for custom Header Auth use header name “key” and an empty prefix.\n• Nothing captured: grant notification access; check your included-apps selection.\n• Uploads delayed: allow the app to ignore battery optimization, or use “Sync now”.</string>
     <string name="never">Never</string>
 
     <!-- Permission status labels -->
@@ -126,7 +126,7 @@
     <!-- EditText hints -->
     <string name="hint_webhook_url">Webhook URL</string>
     <string name="hint_bearer_token">Auth token (tap the eye to show)</string>
-    <string name="hint_auth_header_name">Auth header name — e.g. Authorization, or \"key\" for n8n</string>
+    <string name="hint_auth_header_name">Auth header name — e.g. Authorization, or a custom header like \"key\"</string>
     <string name="hint_auth_header_prefix">Token prefix — \"Bearer \" or leave EMPTY for a raw token</string>
     <string name="hint_interval_minutes">Interval (minutes, ≥15)</string>
     <string name="hint_threshold_count">Threshold count</string>
@@ -163,10 +163,10 @@
 
     <!-- Switch labels -->
     <string name="sw_require_unmetered">Upload only on Wi-Fi (skip mobile data)</string>
-    <string name="auth_tip">Sends header \"[name]: [prefix][token]\". For n8n Header Auth: set the name to your header (e.g. \"key\") and clear the prefix so the raw token is sent.</string>
+    <string name="auth_tip">Sends header \"[name]: [prefix][token]\". For custom Header Auth: set the name to your header (e.g. \"key\") and clear the prefix so the raw token is sent.</string>
     <string name="sw_require_charging">Require charging</string>
     <string name="sw_capture_body">Capture notification body</string>
-    <string name="switch_gzip">Gzip upload body (off for n8n compatibility)</string>
+    <string name="switch_gzip">Gzip upload body (off for webhook compatibility)</string>
 
     <!-- Toasts / feedback -->
     <string name="settings_saved">Saved</string>

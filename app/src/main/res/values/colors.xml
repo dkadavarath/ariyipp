@@ -8,6 +8,8 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="noti_blue">#FF1565C0</color>
+    <!-- Splash background: matches the theme-adaptive launcher icon (light here, dark in -night). -->
+    <color name="splash_bg">#FFFFFFFF</color>
 
     <!-- Brand blue scheme (matches the app icon). Light values; dark in values-night/. -->
     <color name="brand_primary">#1565C0</color>

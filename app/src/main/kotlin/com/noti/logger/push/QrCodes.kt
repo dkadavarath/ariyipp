@@ -5,7 +5,7 @@ import android.graphics.Color
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 
-/** Renders text as a QR bitmap (used to show the pairing payload for sendi to scan). */
+/** Renders text as a QR bitmap (used to show the pairing payload for sndi to scan). */
 object QrCodes {
 
     fun encode(text: String, size: Int): Bitmap {

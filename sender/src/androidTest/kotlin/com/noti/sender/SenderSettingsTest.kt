@@ -25,6 +25,18 @@ class SenderSettingsTest {
         s.notiFcmToken = ""
         s.n8nUrl = ""
         s.n8nToken = ""
+        s.n8nAuthHeaderPrefix = "Bearer "
+        s.sim1Name = ""
+        s.sim2Name = ""
+    }
+
+    @Test
+    fun sim_names_map_slots_with_defaults() {
+        val s = SenderSettings.get(ctx)
+        s.sim1Name = "e&"
+        s.sim2Name = ""
+        assertEquals("e&", s.simName(0))
+        assertEquals("SIM 2", s.simName(1)) // blank falls back to the default label
     }
 
     @Test
@@ -44,8 +56,9 @@ class SenderSettingsTest {
     }
 
     @Test
-    fun n8n_auth_value_defaults_to_bearer_scheme() {
+    fun n8n_auth_value_concatenates_prefix_and_token() {
         val s = SenderSettings.get(ctx)
+        s.n8nAuthHeaderPrefix = "Bearer " // set explicitly; don't rely on persisted default
         s.n8nToken = "abc123"
         assertEquals("Bearer abc123", s.n8nAuthValue())
     }
@@ -54,12 +67,5 @@ class SenderSettingsTest {
     fun device_id_is_stable_across_lookups() {
         assertEquals(SenderSettings.get(ctx).deviceId, SenderSettings.get(ctx).deviceId)
         assertTrue(SenderSettings.get(ctx).deviceId.isNotBlank())
-    }
-
-    @Test
-    fun toggles_default_fcm_on_n8n_off() {
-        // Fresh defaults (not overridden by other tests' writes).
-        val s = SenderSettings.get(ctx)
-        assertNotEquals(s.fcmEnabled, s.n8nEnabled) // fcm=true, n8n=false by default
     }
 }

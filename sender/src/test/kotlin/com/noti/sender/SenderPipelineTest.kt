@@ -1,5 +1,6 @@
 package com.noti.sender
 
+import com.noti.sender.sms.CapturedSms
 import com.noti.shared.MessageCrypto
 import com.noti.shared.RelayMessage
 import kotlinx.serialization.json.Json
@@ -15,7 +16,6 @@ class SenderPipelineTest {
         val msg = RelayMessage("Bank", "Your OTP is 4567")
 
         val payload = SenderPipeline.encryptForFcm(msg, key)
-        // Mirror the receiver: decrypt then parse.
         val plain = MessageCrypto.decrypt(payload, key)
         val decoded = Json { ignoreUnknownKeys = true }.decodeFromString<RelayMessage>(plain)
 
@@ -23,16 +23,43 @@ class SenderPipelineTest {
     }
 
     @Test
-    fun `smsToUploadItem maps an SMS into noti's schema`() {
-        val item = SenderPipeline.smsToUploadItem(RelayMessage("+123456", "hi"), "dev-1", 1_700_000_000_000L)
+    fun `fcm message shows sender on the sim name as the title`() {
+        val sms = CapturedSms("+971500000000", "Test6", 1L, 2L, "e&")
+        val m = SenderPipeline.fcmMessage(sms)
+        assertEquals("+971500000000 on e&", m.title)
+        assertEquals("Test6", m.body)
+    }
 
-        assertEquals("+123456", item.title)
-        assertEquals("hi", item.text)
+    @Test
+    fun `fcm title omits the on-suffix when the sim is blank`() {
+        val m = SenderPipeline.fcmMessage(CapturedSms("+123", "hi", 1L, 2L, ""))
+        assertEquals("+123", m.title)
+    }
+
+    @Test
+    fun `n8n text uses the From-Message-Sent-Received-Sim block`() {
+        val sms = CapturedSms("+971500000000", "Test6", 1786172225000L, 1786172227087L, "e&")
+        assertEquals(
+            "From: +971500000000\n" +
+                "Message: Test6\n" +
+                "Sent: 1786172225000\n" +
+                "Received: 1786172227087\n" +
+                "Sim: e&",
+            SenderPipeline.n8nText(sms)
+        )
+    }
+
+    @Test
+    fun `smsToUploadItem carries the block in the text field and maps the rest`() {
+        val sms = CapturedSms("+971500000000", "Test6", 1786172225000L, 1786172227087L, "sim1")
+        val item = SenderPipeline.smsToUploadItem(sms, "dev-1")
+
+        assertEquals(SenderPipeline.n8nText(sms), item.text)
+        assertEquals("+971500000000", item.title)
         assertEquals("sms", item.pkg)
         assertEquals("sms", item.category)
         assertEquals("SMS", item.appLabel)
         assertEquals("dev-1", item.deviceId)
-        assertEquals("2023-11-14T22:13:20Z", item.postTime)
         assertTrue(item.uid.startsWith("dev-1|sms|"))
     }
 }

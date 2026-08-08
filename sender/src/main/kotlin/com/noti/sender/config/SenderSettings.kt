@@ -54,6 +54,22 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
 
     fun n8nAuthValue(): String = n8nAuthHeaderPrefix + n8nToken
 
+    /** User-given names for each SIM slot, so the payload can show the carrier without needing
+     *  READ_PHONE_STATE. Blank falls back to "SIM 1" / "SIM 2". */
+    var sim1Name: String
+        get() = prefs.getString(KEY_SIM1_NAME, "") ?: ""
+        set(value) { prefs.edit().putString(KEY_SIM1_NAME, value.trim()).apply() }
+
+    var sim2Name: String
+        get() = prefs.getString(KEY_SIM2_NAME, "") ?: ""
+        set(value) { prefs.edit().putString(KEY_SIM2_NAME, value.trim()).apply() }
+
+    /** The label for a 0-based SIM slot: the user's name, or a "SIM N" default. */
+    fun simName(slot: Int): String = when (slot) {
+        1 -> sim2Name.ifBlank { "SIM 2" }
+        else -> sim1Name.ifBlank { "SIM 1" }
+    }
+
     /** Generated once, stable for the install; identifies this device in the n8n payload. */
     @Volatile private var cachedDeviceId: String? = null
     val deviceId: String
@@ -80,6 +96,8 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_N8N_HEADER_NAME = "n8n_header_name"
         private const val KEY_N8N_HEADER_PREFIX = "n8n_header_prefix"
         private const val KEY_N8N_TOKEN = "n8n_token"
+        private const val KEY_SIM1_NAME = "sim1_name"
+        private const val KEY_SIM2_NAME = "sim2_name"
         private const val KEY_DEVICE_ID = "device_id"
 
         @Volatile private var INSTANCE: SenderSettings? = null

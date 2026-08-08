@@ -15,8 +15,8 @@ import com.noti.shared.MessageCrypto
 import com.noti.shared.PairingPayload
 
 /**
- * Configure receiving relayed messages (from sendi): enable inbound, hold the shared AES key, and
- * show this device's FCM token plus a pairing QR that sendi scans.
+ * Configure receiving relayed messages (from sndi): enable inbound, hold the shared AES key, and
+ * show this device's FCM token plus a pairing QR that sndi scans.
  */
 class RelayReceiveActivity : ScreenActivity() {
 
