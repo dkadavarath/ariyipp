@@ -7,6 +7,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -15,11 +16,9 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.graphics.ColorUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
@@ -215,10 +214,14 @@ class ChatActivity : AppCompatActivity() {
             .show()
     }
 
-    /** A chat row is either a day separator or a message bubble. */
+    /** A chat row is either a centered time separator or a message bubble (with its group position). */
     private sealed interface Row {
-        data class Day(val label: String) : Row
-        data class Msg(val message: RelayedMessageEntity) : Row
+        data class Separator(val label: String) : Row
+        data class Msg(
+            val message: RelayedMessageEntity,
+            val firstInGroup: Boolean,
+            val lastInGroup: Boolean,
+        ) : Row
     }
 
     private inner class MessageAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -227,19 +230,28 @@ class ChatActivity : AppCompatActivity() {
         /** When set, the matching row flashes once on bind then clears (notification deep-link). */
         var flashId: Long = -1L
 
-        /** Rebuilds the row list, inserting a day separator whenever the calendar day changes. */
+        /**
+         * Rebuilds the rows Google-Messages style: a centered time separator starts each cluster (new
+         * day or a gap over [CLUSTER_GAP_MS]); consecutive same-side messages inside a cluster are a
+         * "group" whose bubbles share connected corners.
+         */
         fun submit(messages: List<RelayedMessageEntity>) {
             rows.clear()
-            var lastAt = 0L
-            for (m in messages) {
-                if (rows.isEmpty() || !ChatTime.sameDay(lastAt, m.receivedAt)) {
-                    rows.add(Row.Day(ChatTime.daySeparator(this@ChatActivity, m.receivedAt)))
-                }
-                rows.add(Row.Msg(m))
-                lastAt = m.receivedAt
+            messages.forEachIndexed { i, m ->
+                val prev = messages.getOrNull(i - 1)
+                val next = messages.getOrNull(i + 1)
+                val newCluster = prev == null || startsNewCluster(prev, m)
+                if (newCluster) rows.add(Row.Separator(ChatTime.clusterHeader(this@ChatActivity, m.receivedAt)))
+                val firstInGroup = newCluster || prev!!.outgoing != m.outgoing
+                val lastInGroup = next == null || startsNewCluster(m, next) || next.outgoing != m.outgoing
+                rows.add(Row.Msg(m, firstInGroup, lastInGroup))
             }
             notifyDataSetChanged()
         }
+
+        private fun startsNewCluster(prev: RelayedMessageEntity, m: RelayedMessageEntity): Boolean =
+            !ChatTime.sameDay(prev.receivedAt, m.receivedAt) ||
+                (m.receivedAt - prev.receivedAt) > CLUSTER_GAP_MS
 
         fun rowIndexOfMessage(id: Long) =
             rows.indexOfFirst { it is Row.Msg && it.message.id == id }
@@ -247,12 +259,12 @@ class ChatActivity : AppCompatActivity() {
         override fun getItemCount() = rows.size
 
         override fun getItemViewType(position: Int) =
-            if (rows[position] is Row.Day) TYPE_DAY else TYPE_MSG
+            if (rows[position] is Row.Separator) TYPE_SEPARATOR else TYPE_MSG
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val inflater = LayoutInflater.from(parent.context)
-            return if (viewType == TYPE_DAY) {
-                DayVH(inflater.inflate(R.layout.item_date_header, parent, false))
+            return if (viewType == TYPE_SEPARATOR) {
+                SeparatorVH(inflater.inflate(R.layout.item_date_header, parent, false))
             } else {
                 MessageVH(inflater.inflate(R.layout.item_message, parent, false))
             }
@@ -260,53 +272,66 @@ class ChatActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             when (val row = rows[position]) {
-                is Row.Day -> (holder as DayVH).date.text = row.label
-                is Row.Msg -> {
-                    val prev = rows.getOrNull(position - 1)
-                    val grouped = prev is Row.Msg && prev.message.outgoing == row.message.outgoing
-                    bindMessage(holder as MessageVH, row.message, grouped)
-                }
+                is Row.Separator -> (holder as SeparatorVH).date.text = row.label
+                is Row.Msg -> bindMessage(holder as MessageVH, row)
             }
         }
     }
 
-    private fun bindMessage(holder: MessageVH, m: RelayedMessageEntity, groupedWithPrev: Boolean) {
+    private fun bindMessage(holder: MessageVH, row: Row.Msg) {
+        val m = row.message
         val outgoing = m.outgoing != 0
         holder.body.text = m.body
-        holder.time.text = ChatTime.clock(this, m.receivedAt)
-        holder.bubble.setBackgroundResource(if (outgoing) R.drawable.bubble_out else R.drawable.bubble_in)
-        (holder.bubble.layoutParams as FrameLayout.LayoutParams).gravity =
+
+        val metrics = resources.displayMetrics
+        holder.body.maxWidth = (metrics.widthPixels * 0.80f).toInt() - (32f * metrics.density).toInt()
+        (holder.body.layoutParams as FrameLayout.LayoutParams).gravity =
             if (outgoing) Gravity.END else Gravity.START
 
-        // Cap the bubble to ~80% of the screen (LinearLayout ignores maxWidth, so bound the text).
-        val metrics = resources.displayMetrics
-        holder.body.maxWidth = (metrics.widthPixels * 0.80f).toInt() - (28f * metrics.density).toInt()
-
-        // Tighter spacing within a run from the same side, more air when the side changes.
-        val h = (12f * metrics.density).toInt()
-        val topGap = ((if (groupedWithPrev) 2f else 8f) * metrics.density).toInt()
-        holder.itemView.setPadding(h, topGap, h, (2f * metrics.density).toInt())
-
-        // On the accent outgoing bubble, text is white; incoming uses on-surface tones.
-        val bodyColor = MaterialColors.getColor(
+        val fill = MaterialColors.getColor(
+            holder.body,
+            if (outgoing) com.google.android.material.R.attr.colorPrimary
+            else com.google.android.material.R.attr.colorSurfaceVariant,
+        )
+        val text = MaterialColors.getColor(
             holder.body,
             if (outgoing) com.google.android.material.R.attr.colorOnPrimary
             else com.google.android.material.R.attr.colorOnSurface,
         )
-        val timeColor = MaterialColors.getColor(
-            holder.time,
-            if (outgoing) com.google.android.material.R.attr.colorOnPrimary
-            else com.google.android.material.R.attr.colorOnSurfaceVariant,
-        )
-        holder.body.setTextColor(bodyColor)
-        holder.time.setTextColor(if (outgoing) ColorUtils.setAlphaComponent(timeColor, 190) else timeColor)
+        holder.body.setTextColor(text)
+        holder.body.background = groupedBubble(outgoing, row.firstInGroup, row.lastInGroup, fill)
 
-        holder.bubble.setOnLongClickListener { onMessageLongPress(m); true }
+        holder.body.setOnLongClickListener { onMessageLongPress(m); true }
         if (m.id == adapter.flashId) {
             adapter.flashId = -1L
             flash(holder.itemView)
         } else {
             holder.itemView.setBackgroundColor(Color.TRANSPARENT)
+        }
+    }
+
+    /**
+     * Builds a bubble background whose corners connect within a same-side group: the "free" side is
+     * always fully rounded; on the spine side, the top rounds only for the first message and the
+     * bottom only for the last, so a run of messages reads as one shape (Google Messages).
+     */
+    private fun groupedBubble(outgoing: Boolean, first: Boolean, last: Boolean, fill: Int): GradientDrawable {
+        val d = resources.displayMetrics.density
+        val big = 20f * d
+        val small = 6f * d
+        val topSpine = if (first) big else small
+        val botSpine = if (last) big else small
+        val radii = if (outgoing) {
+            // spine = right edge
+            floatArrayOf(big, big, topSpine, topSpine, botSpine, botSpine, big, big)
+        } else {
+            // spine = left edge
+            floatArrayOf(topSpine, topSpine, big, big, big, big, botSpine, botSpine)
+        }
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadii = radii
+            setColor(fill)
         }
     }
 
@@ -321,12 +346,10 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private inner class MessageVH(v: View) : RecyclerView.ViewHolder(v) {
-        val bubble: LinearLayout = v.findViewById(R.id.bubble)
         val body: TextView = v.findViewById(R.id.txt_body)
-        val time: TextView = v.findViewById(R.id.txt_time)
     }
 
-    private inner class DayVH(v: View) : RecyclerView.ViewHolder(v) {
+    private inner class SeparatorVH(v: View) : RecyclerView.ViewHolder(v) {
         val date: TextView = v.findViewById(R.id.txt_date)
     }
 
@@ -334,7 +357,8 @@ class ChatActivity : AppCompatActivity() {
         const val EXTRA_SENDER = "sender"
         const val EXTRA_HIGHLIGHT_ID = "highlight_id"
         private const val MENU_DELETE = 1
-        private const val TYPE_DAY = 0
+        private const val TYPE_SEPARATOR = 0
         private const val TYPE_MSG = 1
+        private const val CLUSTER_GAP_MS = 15 * 60 * 1000L
     }
 }

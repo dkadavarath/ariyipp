@@ -3,33 +3,16 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingHorizontal="12dp"
-    android:paddingVertical="2dp">
+    android:paddingVertical="1dp">
 
-    <LinearLayout
-        android:id="@+id/bubble"
+    <TextView
+        android:id="@+id/txt_body"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="@drawable/bubble_in"
-        android:paddingStart="14dp"
-        android:paddingEnd="14dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="6dp">
-
-        <TextView
-            android:id="@+id/txt_body"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceBodyLarge"
-            android:lineSpacingExtra="1dp" />
-
-        <TextView
-            android:id="@+id/txt_time"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:layout_marginTop="1dp"
-            android:textAppearance="?attr/textAppearanceLabelSmall"
-            android:textSize="11sp" />
-    </LinearLayout>
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="9dp"
+        android:paddingBottom="9dp"
+        android:textAppearance="?attr/textAppearanceBodyLarge"
+        android:lineSpacingExtra="1dp" />
 </FrameLayout>
