@@ -9,6 +9,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.appbar.AppBarLayout
+import com.google.android.material.appbar.CollapsingToolbarLayout
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.color.MaterialColors
 import com.noti.logger.R
@@ -35,7 +36,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         applyWindowInsets()
-        setSupportActionBar(findViewById(R.id.toolbar))
+        // No setSupportActionBar: the CollapsingToolbarLayout draws the title itself, and setting the
+        // Toolbar as the action bar suppresses it. The tab host has no options menu.
 
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
         bottomNav.setOnItemSelectedListener { item ->
@@ -93,7 +95,9 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager.beginTransaction()
             .replace(R.id.nav_container, fragment)
             .commitNow()
-        supportActionBar?.setTitle(titleRes)
+        // The large collapsing header owns the title; start each tab fully expanded.
+        findViewById<CollapsingToolbarLayout>(R.id.collapsing_toolbar).title = getString(titleRes)
+        findViewById<AppBarLayout>(R.id.appbar).setExpanded(true, false)
     }
 
     private fun applyWindowInsets() {

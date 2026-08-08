@@ -7,6 +7,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import com.google.android.material.appbar.AppBarLayout
+import com.google.android.material.appbar.CollapsingToolbarLayout
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.noti.sender.R
 import com.noti.sender.util.Theming
@@ -24,7 +25,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         applyWindowInsets()
-        setSupportActionBar(findViewById(R.id.toolbar))
+        // No setSupportActionBar: the CollapsingToolbarLayout draws the title itself.
 
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
         bottomNav.setOnItemSelectedListener { item ->
@@ -49,7 +50,8 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager.beginTransaction()
             .replace(R.id.nav_container, fragment)
             .commitNow()
-        supportActionBar?.setTitle(titleRes)
+        findViewById<CollapsingToolbarLayout>(R.id.collapsing_toolbar).title = getString(titleRes)
+        findViewById<AppBarLayout>(R.id.appbar).setExpanded(true, false)
     }
 
     private fun applyWindowInsets() {
