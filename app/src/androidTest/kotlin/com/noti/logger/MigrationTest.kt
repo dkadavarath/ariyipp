@@ -50,15 +50,17 @@ class MigrationTest {
         v1.version = 1
         v1.close()
 
-        // ---- Open with Room + migration; Room validates the resulting schema ----
+        // ---- Open with Room + migrations to the current version; Room validates the schema ----
         val db = Room.databaseBuilder(ctx, NotiDatabase::class.java, dbName)
-            .addMigrations(NotiDatabase.MIGRATION_1_2)
+            .addMigrations(NotiDatabase.MIGRATION_1_2, NotiDatabase.MIGRATION_2_3)
             .build()
         runBlocking {
             val dao = db.notificationDao()
             assertEquals("existing row preserved", 1, dao.totalCount())
             // Migrated row got contentHash '' (the ADD COLUMN default) and createdAt 100.
             assertEquals(1, dao.countRecentByHash("", 0))
+            // v2→v3 created the relayed_messages table (querying it must not throw).
+            assertEquals(0, db.relayedMessageDao().conversations().size)
         }
         db.close()
     }

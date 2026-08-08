@@ -7,10 +7,15 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [NotificationEntity::class], version = 2, exportSchema = false)
+@Database(
+    entities = [NotificationEntity::class, RelayedMessageEntity::class],
+    version = 3,
+    exportSchema = false,
+)
 abstract class NotiDatabase : RoomDatabase() {
 
     abstract fun notificationDao(): NotificationDao
+    abstract fun relayedMessageDao(): RelayedMessageDao
 
     companion object {
         @Volatile
@@ -24,13 +29,33 @@ abstract class NotiDatabase : RoomDatabase() {
             }
         }
 
+        /** v2 → v3: add the relayed_messages table (chat history for messages pushed from sndi). */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS relayed_messages (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        sender TEXT NOT NULL,
+                        sim TEXT NOT NULL,
+                        body TEXT NOT NULL,
+                        receivedAt INTEGER NOT NULL,
+                        outgoing INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_relayed_messages_sender ON relayed_messages(sender)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_relayed_messages_receivedAt ON relayed_messages(receivedAt)")
+            }
+        }
+
         fun get(context: Context): NotiDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     NotiDatabase::class.java,
                     "noti.db"
-                ).addMigrations(MIGRATION_1_2).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { INSTANCE = it }
             }
         }
     }

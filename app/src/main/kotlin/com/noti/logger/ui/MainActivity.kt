@@ -28,6 +28,7 @@ class MainActivity : AppCompatActivity() {
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_status -> show(StatusFragment(), R.string.nav_status)
+                R.id.nav_messages -> show(MessagesFragment(), R.string.nav_messages)
                 R.id.nav_settings -> show(SettingsFragment(), R.string.nav_settings)
                 R.id.nav_about -> show(AboutFragment(), R.string.nav_about)
                 else -> return@setOnItemSelectedListener false

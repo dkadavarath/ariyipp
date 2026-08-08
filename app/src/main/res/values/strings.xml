@@ -12,8 +12,16 @@
 
     <!-- Bottom navigation -->
     <string name="nav_status">Status</string>
+    <string name="nav_messages">Messages</string>
     <string name="nav_settings">Settings</string>
     <string name="nav_about">About</string>
+
+    <!-- Messages / chat -->
+    <string name="messages_search_hint">Search messages</string>
+    <string name="messages_empty">No messages yet.\n\nMessages relayed from sndi appear here.</string>
+    <string name="messages_count">%1$d</string>
+    <string name="chat_delete">Delete conversation</string>
+    <string name="chat_delete_confirm">Delete this conversation? This can\'t be undone.</string>
 
     <!-- Settings menu -->
     <string name="menu_connection_title">Connection</string>
@@ -76,7 +84,7 @@
     <string name="about_project_url">https://github.com/dkadavarath/noti</string>
     <string name="about_device_id">Device ID: %1$s</string>
     <string name="about_whats_new">What\'s new</string>
-    <string name="about_changelog">v1.12 — New wordmark app icon (adapts to light/dark and Material You). Relayed messages now show which SIM they arrived on (e.g. “+9715… on e&amp;”).\n\nv1.11 — Receive relayed messages: a new “Relay (receive)” screen lets a companion app (sndi) push you notifications — e.g. forwarded SMS — over end-to-end encrypted FCM. Pair by scanning a QR.\n\nv1.10 — The Apps and “Keywords &amp; notes” screens open much faster: app icons now load row by row as you scroll, instead of every icon being read before anything appears.\n\nv1.9 — The Apps and “Keywords &amp; notes” screens now show a loading spinner while your app list is read, instead of looking empty.\n\nv1.8 — Per-app keywords &amp; notes: log only the notifications matching your keywords, and append a note to what gets logged.\n\nv1.7 — Bottom-nav layout (Status / Settings / About), settings menu with focused screens, and an Appearance section (theme mode + Default/Material color).\n\nv1.6 — Blue theme matching the app icon, for better visibility (follows system light/dark).\n\nv1.5 — Faster capture &amp; upload (less CPU/battery); change notes here; standard back navigation.\n\nv1.4 — New app icon, splash screen, About &amp; Help screens.\n\nv1.3 — Ignore duplicate notifications (content + time window).\n\nv1.2 — Material 3 redesign; choose which apps to capture.\n\nv1.1 — UI fixes; clearer auth setup; show-token toggle.\n\nv1.0 — Initial release.</string>
+    <string name="about_changelog">v1.13 — New Messages tab: relayed messages are saved and shown as a searchable chat history. Fixes: app icon no longer clipped on some launchers; text fields now stay above the keyboard.\n\nv1.12 — New wordmark app icon (adapts to light/dark and Material You). Relayed messages now show which SIM they arrived on (e.g. “+9715… on e&amp;”).\n\nv1.11 — Receive relayed messages: a new “Relay (receive)” screen lets a companion app (sndi) push you notifications — e.g. forwarded SMS — over end-to-end encrypted FCM. Pair by scanning a QR.\n\nv1.10 — The Apps and “Keywords &amp; notes” screens open much faster: app icons now load row by row as you scroll, instead of every icon being read before anything appears.\n\nv1.9 — The Apps and “Keywords &amp; notes” screens now show a loading spinner while your app list is read, instead of looking empty.\n\nv1.8 — Per-app keywords &amp; notes: log only the notifications matching your keywords, and append a note to what gets logged.\n\nv1.7 — Bottom-nav layout (Status / Settings / About), settings menu with focused screens, and an Appearance section (theme mode + Default/Material color).\n\nv1.6 — Blue theme matching the app icon, for better visibility (follows system light/dark).\n\nv1.5 — Faster capture &amp; upload (less CPU/battery); change notes here; standard back navigation.\n\nv1.4 — New app icon, splash screen, About &amp; Help screens.\n\nv1.3 — Ignore duplicate notifications (content + time window).\n\nv1.2 — Material 3 redesign; choose which apps to capture.\n\nv1.1 — UI fixes; clearer auth setup; show-token toggle.\n\nv1.0 — Initial release.</string>
 
     <!-- Help screen -->
     <string name="help_title">Help</string>

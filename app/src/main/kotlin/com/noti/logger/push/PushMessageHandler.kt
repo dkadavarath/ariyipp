@@ -2,6 +2,8 @@ package com.noti.logger.push
 
 import android.content.Context
 import com.noti.logger.config.Settings
+import com.noti.logger.data.NotiDatabase
+import com.noti.logger.data.RelayedMessageEntity
 import com.noti.shared.MessageCrypto
 import com.noti.shared.RelayMessage
 import kotlinx.serialization.json.Json
@@ -37,7 +39,24 @@ object PushMessageHandler {
             RelayMessage(body = plaintext)
         }
 
-        MessageNotifier.show(context, msg.title.ifBlank { "Message" }, msg.body)
+        val title = msg.title.ifBlank { "Message" }
+
+        // Persist to the chat history (best-effort — a storage error must not block the notification).
+        val (sender, sim) = RelayTitle.parse(title)
+        try {
+            NotiDatabase.get(context).relayedMessageDao().insert(
+                RelayedMessageEntity(
+                    sender = sender,
+                    sim = sim,
+                    body = msg.body,
+                    receivedAt = System.currentTimeMillis(),
+                )
+            )
+        } catch (e: Exception) {
+            // ignore; still notify below
+        }
+
+        MessageNotifier.show(context, title, msg.body)
         return true
     }
 }

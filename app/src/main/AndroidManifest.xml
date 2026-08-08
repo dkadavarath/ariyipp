@@ -51,6 +51,7 @@
         <activity android:name=".ui.SyncActivity" android:exported="false" />
         <activity android:name=".ui.AppRulesActivity" android:exported="false" />
         <activity android:name=".ui.RelayReceiveActivity" android:exported="false" />
+        <activity android:name=".ui.ChatActivity" android:exported="false" />
         <activity android:name=".ui.PrivacyActivity" android:exported="false" />
         <activity android:name=".ui.AppearanceActivity" android:exported="false" />
 

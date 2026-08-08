@@ -27,7 +27,9 @@ abstract class ScreenActivity : AppCompatActivity() {
         val root = findViewById<View>(R.id.screen_root)
         ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(v.paddingLeft, bars.top, v.paddingRight, bars.bottom)
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            // Lift content above the keyboard when it's open, so focused fields stay visible.
+            v.setPadding(v.paddingLeft, bars.top, v.paddingRight, maxOf(bars.bottom, ime.bottom))
             insets
         }
 
