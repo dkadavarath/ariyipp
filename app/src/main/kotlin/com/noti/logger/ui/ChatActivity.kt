@@ -48,6 +48,12 @@ class ChatActivity : AppCompatActivity() {
     /** Message id to scroll to and flash once, when opened from a notification. */
     private var highlightId: Long = -1L
 
+    // Bubble colours, resolved once (stable for this activity instance) instead of per bind.
+    private var colorPrimary = 0
+    private var colorSurfaceVariant = 0
+    private var colorOnPrimary = 0
+    private var colorOnSurface = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         Theming.applyDynamicColorIfEnabled(this)
         super.onCreate(savedInstanceState)
@@ -76,6 +82,11 @@ class ChatActivity : AppCompatActivity() {
             findViewById(R.id.avatar_icon),
             sender,
         )
+
+        colorPrimary = MaterialColors.getColor(root, com.google.android.material.R.attr.colorPrimary)
+        colorSurfaceVariant = MaterialColors.getColor(root, com.google.android.material.R.attr.colorSurfaceVariant)
+        colorOnPrimary = MaterialColors.getColor(root, com.google.android.material.R.attr.colorOnPrimary)
+        colorOnSurface = MaterialColors.getColor(root, com.google.android.material.R.attr.colorOnSurface)
 
         adapter = MessageAdapter()
         recycler = findViewById<RecyclerView>(R.id.recycler).apply {
@@ -288,17 +299,8 @@ class ChatActivity : AppCompatActivity() {
         (holder.body.layoutParams as FrameLayout.LayoutParams).gravity =
             if (outgoing) Gravity.END else Gravity.START
 
-        val fill = MaterialColors.getColor(
-            holder.body,
-            if (outgoing) com.google.android.material.R.attr.colorPrimary
-            else com.google.android.material.R.attr.colorSurfaceVariant,
-        )
-        val text = MaterialColors.getColor(
-            holder.body,
-            if (outgoing) com.google.android.material.R.attr.colorOnPrimary
-            else com.google.android.material.R.attr.colorOnSurface,
-        )
-        holder.body.setTextColor(text)
+        val fill = if (outgoing) colorPrimary else colorSurfaceVariant
+        holder.body.setTextColor(if (outgoing) colorOnPrimary else colorOnSurface)
         holder.body.background = groupedBubble(outgoing, row.firstInGroup, row.lastInGroup, fill)
 
         holder.body.setOnLongClickListener { onMessageLongPress(m); true }

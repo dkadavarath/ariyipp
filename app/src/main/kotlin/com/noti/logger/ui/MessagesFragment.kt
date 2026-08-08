@@ -6,8 +6,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import com.google.android.material.color.MaterialColors
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
@@ -23,6 +25,8 @@ import com.noti.logger.data.NotiDatabase
 import com.noti.logger.util.Avatars
 import com.noti.logger.util.ChatTime
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -32,6 +36,12 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
     private lateinit var adapter: ConversationAdapter
     private lateinit var search: TextInputEditText
 
+    /** While the search is active (focused or non-empty), Back dismisses it instead of leaving the app. */
+    private lateinit var searchBack: OnBackPressedCallback
+
+    /** Debounce so a burst of keystrokes triggers one query, not one per character. */
+    private var searchJob: Job? = null
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         adapter = ConversationAdapter(
             onClick = { sender ->
@@ -39,16 +49,40 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
             },
             onLongClick = { sender -> showConversationMenu(sender) },
         )
+        adapter.resolveColors(view) // theme colours are stable for this fragment; resolve once, not per row
         view.findViewById<RecyclerView>(R.id.recycler).apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = this@MessagesFragment.adapter
         }
         search = view.findViewById(R.id.et_search)
-        search.doAfterTextChanged { refresh() }
+        search.doAfterTextChanged {
+            updateSearchBack()
+            searchJob?.cancel()
+            searchJob = viewLifecycleOwner.lifecycleScope.launch { delay(220); refresh() }
+        }
+        search.setOnFocusChangeListener { _, _ -> updateSearchBack() }
+
+        searchBack = object : OnBackPressedCallback(false) {
+            override fun handleOnBackPressed() = closeSearch()
+        }
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, searchBack)
 
         view.findViewById<View>(R.id.fab_compose).setOnClickListener {
             startActivity(Intent(requireContext(), ComposeActivity::class.java))
         }
+    }
+
+    private fun updateSearchBack() {
+        searchBack.isEnabled = search.hasFocus() || !search.text.isNullOrEmpty()
+    }
+
+    /** Clears the query, drops focus, and hides the keyboard — the search's "close" action. */
+    private fun closeSearch() {
+        search.setText("")
+        search.clearFocus()
+        requireContext().getSystemService(InputMethodManager::class.java)
+            ?.hideSoftInputFromWindow(search.windowToken, 0)
+        searchBack.isEnabled = false
     }
 
     override fun onResume() {
@@ -59,11 +93,13 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
     private fun refresh() {
         val query = search.text?.toString().orEmpty().trim()
         viewLifecycleOwner.lifecycleScope.launch {
-            val convos = withContext(Dispatchers.IO) {
+            val (convos, muted) = withContext(Dispatchers.IO) {
                 val dao = NotiDatabase.get(requireContext()).relayedMessageDao()
-                if (query.isEmpty()) dao.conversations() else dao.searchConversations(query)
+                val list = if (query.isEmpty()) dao.conversations() else dao.searchConversations(query)
+                // Read the muted set once here instead of decrypting it per row in onBindViewHolder.
+                list to Settings.get(requireContext()).mutedSenders
             }
-            adapter.submit(convos)
+            adapter.submit(convos, muted)
             view?.findViewById<View>(R.id.txt_empty)?.visibility =
                 if (convos.isEmpty()) View.VISIBLE else View.GONE
         }
@@ -121,9 +157,21 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
     ) : RecyclerView.Adapter<ConversationVH>() {
 
         private val items = ArrayList<ConversationSummary>()
+        private var mutedSenders: Set<String> = emptySet()
 
-        fun submit(list: List<ConversationSummary>) {
-            items.clear(); items.addAll(list); notifyDataSetChanged()
+        // Theme colours, resolved once (they don't change while the fragment is alive).
+        private var colorOnSurface = 0
+        private var colorOnSurfaceVariant = 0
+        private var colorPrimary = 0
+
+        fun resolveColors(v: View) {
+            colorOnSurface = MaterialColors.getColor(v, com.google.android.material.R.attr.colorOnSurface)
+            colorOnSurfaceVariant = MaterialColors.getColor(v, com.google.android.material.R.attr.colorOnSurfaceVariant)
+            colorPrimary = MaterialColors.getColor(v, com.google.android.material.R.attr.colorPrimary)
+        }
+
+        fun submit(list: List<ConversationSummary>, muted: Set<String>) {
+            items.clear(); items.addAll(list); mutedSenders = muted; notifyDataSetChanged()
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ConversationVH {
@@ -146,11 +194,8 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
             val unread = c.unread > 0
             holder.sender.setTypeface(null, if (unread) Typeface.BOLD else Typeface.NORMAL)
             holder.last.setTypeface(null, if (unread) Typeface.BOLD else Typeface.NORMAL)
-            val onSurface = MaterialColors.getColor(holder.last, com.google.android.material.R.attr.colorOnSurface)
-            val onSurfaceVariant = MaterialColors.getColor(holder.last, com.google.android.material.R.attr.colorOnSurfaceVariant)
-            val accent = MaterialColors.getColor(holder.time, com.google.android.material.R.attr.colorPrimary)
-            holder.last.setTextColor(if (unread) onSurface else onSurfaceVariant)
-            holder.time.setTextColor(if (unread) accent else onSurfaceVariant)
+            holder.last.setTextColor(if (unread) colorOnSurface else colorOnSurfaceVariant)
+            holder.time.setTextColor(if (unread) colorPrimary else colorOnSurfaceVariant)
             if (unread) {
                 holder.unread.visibility = View.VISIBLE
                 holder.unread.text = if (c.unread > 99) "99+" else c.unread.toString()
@@ -158,8 +203,7 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
                 holder.unread.visibility = View.GONE
             }
 
-            holder.muted.visibility =
-                if (Settings.get(ctx).isMuted(c.sender)) View.VISIBLE else View.GONE
+            holder.muted.visibility = if (c.sender in mutedSenders) View.VISIBLE else View.GONE
 
             holder.itemView.setOnClickListener { onClick(c.sender) }
             holder.itemView.setOnLongClickListener { onLongClick(c.sender); true }
