@@ -25,24 +25,25 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         val container = view.findViewById<LinearLayout>(R.id.settings_container)
         val inflater = LayoutInflater.from(requireContext())
 
-        fun addRow(titleRes: Int, subRes: Int, onClick: () -> Unit) {
+        fun addRow(titleRes: Int, subRes: Int, iconRes: Int, onClick: () -> Unit) {
             val row = inflater.inflate(R.layout.item_settings_row, container, false)
             row.findViewById<TextView>(R.id.row_title).setText(titleRes)
             row.findViewById<TextView>(R.id.row_sub).setText(subRes)
+            row.findViewById<android.widget.ImageView>(R.id.row_icon).setImageResource(iconRes)
             row.setOnClickListener { onClick() }
             container.addView(row)
         }
 
         fun open(cls: Class<*>) = startActivity(Intent(requireContext(), cls))
 
-        addRow(R.string.menu_connection_title, R.string.menu_connection_sub) { open(ConnectionActivity::class.java) }
-        addRow(R.string.menu_sync_title, R.string.menu_sync_sub) { open(SyncActivity::class.java) }
-        addRow(R.string.menu_apps_title, R.string.menu_apps_sub) { openApps() }
-        addRow(R.string.menu_app_rules_title, R.string.menu_app_rules_sub) { open(AppRulesActivity::class.java) }
-        addRow(R.string.menu_relay_title, R.string.menu_relay_sub) { open(RelayReceiveActivity::class.java) }
-        addRow(R.string.menu_privacy_title, R.string.menu_privacy_sub) { open(PrivacyActivity::class.java) }
-        addRow(R.string.menu_appearance_title, R.string.menu_appearance_sub) { open(AppearanceActivity::class.java) }
-        addRow(R.string.menu_purge_title, R.string.menu_purge_sub) { confirmPurge() }
+        addRow(R.string.menu_connection_title, R.string.menu_connection_sub, R.drawable.ic_connection) { open(ConnectionActivity::class.java) }
+        addRow(R.string.menu_sync_title, R.string.menu_sync_sub, R.drawable.ic_status_sync) { open(SyncActivity::class.java) }
+        addRow(R.string.menu_apps_title, R.string.menu_apps_sub, R.drawable.ic_apps) { openApps() }
+        addRow(R.string.menu_app_rules_title, R.string.menu_app_rules_sub, R.drawable.ic_keywords) { open(AppRulesActivity::class.java) }
+        addRow(R.string.menu_relay_title, R.string.menu_relay_sub, R.drawable.ic_relay) { open(RelayReceiveActivity::class.java) }
+        addRow(R.string.menu_privacy_title, R.string.menu_privacy_sub, R.drawable.ic_privacy) { open(PrivacyActivity::class.java) }
+        addRow(R.string.menu_appearance_title, R.string.menu_appearance_sub, R.drawable.ic_palette) { open(AppearanceActivity::class.java) }
+        addRow(R.string.menu_purge_title, R.string.menu_purge_sub, R.drawable.ic_status_warning) { confirmPurge() }
     }
 
     private val appPicker = registerForActivityResult(

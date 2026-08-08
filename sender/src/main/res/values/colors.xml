@@ -9,4 +9,12 @@
     <color name="brand_on_secondary">#FFFFFF</color>
     <color name="brand_secondary_container">#D8E3F8</color>
     <color name="brand_on_secondary_container">#111C2B</color>
+
+    <!-- Status & Container Accents -->
+    <color name="status_active_bg">#E8F5E9</color>
+    <color name="status_active_fg">#2E7D32</color>
+    <color name="status_warning_bg">#FFF3E0</color>
+    <color name="status_warning_fg">#E65100</color>
+    <color name="status_info_bg">#E3F2FD</color>
+    <color name="status_info_fg">#1565C0</color>
 </resources>

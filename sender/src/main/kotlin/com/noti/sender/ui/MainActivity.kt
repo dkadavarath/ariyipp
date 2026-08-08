@@ -48,16 +48,17 @@ class MainActivity : AppCompatActivity() {
 
         val container = findViewById<LinearLayout>(R.id.settings_container)
         val inflater = LayoutInflater.from(this)
-        fun addRow(titleRes: Int, subRes: Int, cls: Class<*>) {
+        fun addRow(titleRes: Int, subRes: Int, iconRes: Int, cls: Class<*>) {
             val row = inflater.inflate(R.layout.item_settings_row, container, false)
             row.findViewById<TextView>(R.id.row_title).setText(titleRes)
             row.findViewById<TextView>(R.id.row_sub).setText(subRes)
+            row.findViewById<android.widget.ImageView>(R.id.row_icon).setImageResource(iconRes)
             row.setOnClickListener { startActivity(Intent(this, cls)) }
             container.addView(row)
         }
-        addRow(R.string.menu_pairing_title, R.string.menu_pairing_sub, PairingActivity::class.java)
-        addRow(R.string.menu_sim_names_title, R.string.menu_sim_names_sub, SimNamesActivity::class.java)
-        addRow(R.string.menu_webhook_title, R.string.menu_webhook_sub, WebhookActivity::class.java)
+        addRow(R.string.menu_pairing_title, R.string.menu_pairing_sub, R.drawable.ic_qr_code, PairingActivity::class.java)
+        addRow(R.string.menu_sim_names_title, R.string.menu_sim_names_sub, R.drawable.ic_sim, SimNamesActivity::class.java)
+        addRow(R.string.menu_webhook_title, R.string.menu_webhook_sub, R.drawable.ic_connection, WebhookActivity::class.java)
     }
 
     override fun onResume() {
