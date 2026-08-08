@@ -3,7 +3,7 @@ package com.noti.sender
 import android.content.Context
 import android.util.Log
 import com.noti.sender.config.SenderSettings
-import com.noti.sender.fcm.FcmSender
+import com.noti.shared.FcmSender
 import com.noti.sender.net.WebhookPoster
 import com.noti.sender.sms.CapturedSms
 import com.noti.shared.MessageCrypto

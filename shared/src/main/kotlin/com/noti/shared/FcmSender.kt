@@ -1,4 +1,4 @@
-package com.noti.sender.fcm
+package com.noti.shared
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

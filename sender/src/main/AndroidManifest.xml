@@ -3,6 +3,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <!-- Send SMS on command from noti (Phase B). Not the default SMS app; permission granted at runtime. -->
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="false"
@@ -24,6 +27,15 @@
         <activity android:name=".ui.PairingActivity" android:exported="false" />
         <activity android:name=".ui.SimNamesActivity" android:exported="false" />
         <activity android:name=".ui.WebhookActivity" android:exported="false" />
+
+        <!-- Receive encrypted send-SMS commands pushed from noti (Phase B). -->
+        <service
+            android:name=".SmsCommandService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
 
         <!-- Observe incoming SMS. android:permission = only the system (holder of BROADCAST_SMS)
              may trigger this receiver. -->

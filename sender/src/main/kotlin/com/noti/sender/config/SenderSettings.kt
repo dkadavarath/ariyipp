@@ -28,6 +28,16 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         get() = prefs.getString(KEY_NOTI_TOKEN, "") ?: ""
         set(value) { prefs.edit().putString(KEY_NOTI_TOKEN, value.trim()).apply() }
 
+    /** This device's own FCM token, so noti can push send-SMS commands here (Phase B). */
+    var myFcmToken: String
+        get() = prefs.getString(KEY_MY_TOKEN, "") ?: ""
+        set(value) { prefs.edit().putString(KEY_MY_TOKEN, value).apply() }
+
+    /** Opt-in: honor send-SMS commands pushed from noti (requires SEND_SMS). Default off. */
+    var acceptCommands: Boolean
+        get() = prefs.getBoolean(KEY_ACCEPT_COMMANDS, false)
+        set(value) { prefs.edit().putBoolean(KEY_ACCEPT_COMMANDS, value).apply() }
+
     var fcmEnabled: Boolean
         get() = prefs.getBoolean(KEY_FCM_ENABLED, true)
         set(value) { prefs.edit().putBoolean(KEY_FCM_ENABLED, value).apply() }
@@ -90,6 +100,8 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_SA_JSON = "sa_json"
         private const val KEY_RELAY_KEY = "relay_key"
         private const val KEY_NOTI_TOKEN = "noti_token"
+        private const val KEY_MY_TOKEN = "my_token"
+        private const val KEY_ACCEPT_COMMANDS = "accept_commands"
         private const val KEY_FCM_ENABLED = "fcm_enabled"
         private const val KEY_N8N_ENABLED = "n8n_enabled"
         private const val KEY_N8N_URL = "n8n_url"

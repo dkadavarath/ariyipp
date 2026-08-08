@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.google.services)
 }
 
 // Release signing reuses noti's gitignored keystore.properties, when present.
@@ -68,6 +69,10 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.work.runtime.ktx)
+
+    // Firebase Cloud Messaging — sndi now also *receives* (send-SMS commands from noti)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     // Shared crypto + wire format
     implementation(project(":shared"))

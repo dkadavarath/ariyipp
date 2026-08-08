@@ -1,4 +1,4 @@
-package com.noti.sender.fcm
+package com.noti.shared
 
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeNotNull

@@ -22,6 +22,10 @@
     <string name="messages_count">%1$d</string>
     <string name="chat_delete">Delete conversation</string>
     <string name="chat_delete_confirm">Delete this conversation? This can\'t be undone.</string>
+    <string name="chat_compose_hint">Message</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_send_not_configured">Set up sending in Settings → Relay first.</string>
+    <string name="chat_send_failed">Couldn\'t reach sndi — will not retry.</string>
 
     <!-- Settings menu -->
     <string name="menu_connection_title">Connection</string>

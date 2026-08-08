@@ -18,8 +18,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.noti.logger.R
+import com.noti.logger.config.Settings
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.RelayedMessageEntity
+import com.noti.logger.push.NotiCommandSender
 import com.noti.logger.util.Theming
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -56,7 +58,33 @@ class ChatActivity : AppCompatActivity() {
             layoutManager = LinearLayoutManager(this@ChatActivity).apply { stackFromEnd = true }
             adapter = this@ChatActivity.adapter
         }
+
+        findViewById<View>(R.id.btn_send).setOnClickListener { sendComposed() }
         load()
+    }
+
+    private fun sendComposed() {
+        val field = findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_compose)
+        val text = field.text?.toString()?.trim().orEmpty()
+        if (text.isEmpty()) return
+        if (!NotiCommandSender.isConfigured(Settings.get(this))) {
+            android.widget.Toast.makeText(this, R.string.chat_send_not_configured, android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
+        field.setText("")
+        lifecycleScope.launch {
+            // Record it locally right away (optimistic), then push the command to sndi.
+            withContext(Dispatchers.IO) {
+                NotiDatabase.get(this@ChatActivity).relayedMessageDao().insert(
+                    RelayedMessageEntity(sender = sender, sim = "", body = text, receivedAt = System.currentTimeMillis(), outgoing = 1)
+                )
+            }
+            load()
+            val ok = withContext(Dispatchers.IO) { NotiCommandSender.send(applicationContext, sender, text) }
+            if (!ok) {
+                android.widget.Toast.makeText(this@ChatActivity, R.string.chat_send_failed, android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     override fun onResume() {
