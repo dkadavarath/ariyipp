@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">noti</string>
+    <string name="app_name">ippu</string>
 
     <!-- Generic -->
     <string name="loading">…</string>
@@ -18,14 +18,14 @@
 
     <!-- Messages / chat -->
     <string name="messages_search_hint">Search messages</string>
-    <string name="messages_empty">No messages yet.\n\nMessages relayed from sndi appear here.</string>
+    <string name="messages_empty">No messages yet.\n\nMessages relayed from ariy appear here.</string>
     <string name="messages_count">%1$d</string>
     <string name="chat_delete">Delete conversation</string>
     <string name="chat_delete_confirm">Delete this conversation? This can\'t be undone.</string>
     <string name="chat_compose_hint">Message</string>
     <string name="chat_send">Send</string>
     <string name="chat_send_not_configured">Set up sending in Settings → Relay first.</string>
-    <string name="chat_send_failed">Couldn\'t reach sndi — will not retry.</string>
+    <string name="chat_send_failed">Couldn\'t reach ariy — will not retry.</string>
     <string name="chat_close">Close</string>
 
     <!-- Per-message actions -->
@@ -59,22 +59,22 @@
     <string name="menu_app_rules_title">Keywords &amp; notes</string>
     <string name="menu_app_rules_sub">Per-app keyword filters and notes</string>
     <string name="menu_relay_title">Relay (receive)</string>
-    <string name="menu_relay_sub">Receive messages pushed from sndi</string>
+    <string name="menu_relay_sub">Receive messages pushed from ariy</string>
 
     <!-- Relay receive / pairing -->
     <string name="title_relay">Relay (receive)</string>
-    <string name="relay_intro">Receive messages (e.g. SMS forwarded by the sndi app) as notifications on this device, decrypted with a shared key. Pair by scanning the QR below in sndi, or copy the token and key across.</string>
+    <string name="relay_intro">Receive messages (e.g. SMS forwarded by the ariy app) as notifications on this device, decrypted with a shared key. Pair by scanning the QR below in ariy, or copy the token and key across.</string>
     <string name="sw_inbound_enabled">Receive relayed messages</string>
     <string name="label_relay_key">Shared key (base64)</string>
     <string name="btn_generate_key">Generate a new shared key</string>
     <string name="label_token">This device\'s token</string>
-    <string name="relay_qr_hint">Scan this in sndi to pair</string>
-    <string name="relay_reverse_intro">Reverse direction — compose messages here that sndi sends via its SIM. Import the same FCM service-account key and paste sndi\'s token (shown on sndi\'s Pairing screen).</string>
+    <string name="relay_qr_hint">Scan this in ariy to pair</string>
+    <string name="relay_reverse_intro">Reverse direction — compose messages here that ariy sends via its SIM. Import the same FCM service-account key and paste ariy\'s token (shown on ariy\'s Pairing screen).</string>
     <string name="relay_sa_none">No service-account key imported.</string>
     <string name="relay_sa_imported">Service-account key imported ✓ (project %1$s)</string>
     <string name="relay_sa_invalid">That file isn\'t a service-account key.</string>
     <string name="btn_import_sa">Import service-account key</string>
-    <string name="hint_sndi_token">sndi device token</string>
+    <string name="hint_sndi_token">ariy device token</string>
     <string name="menu_privacy_title">Privacy</string>
     <string name="menu_privacy_sub">Body, keywords, duplicates, retention</string>
     <string name="menu_appearance_title">Appearance</string>
@@ -112,16 +112,16 @@
     <!-- About screen -->
     <string name="about_title">About</string>
     <string name="about_version">Version %1$s</string>
-    <string name="about_description">noti captures your device notifications to a local database and forwards them, in batches, to a webhook you configure. It is built to be lightweight and battery-friendly: notifications are captured event-driven (no background polling), and uploads are deferred and batched.</string>
+    <string name="about_description">ippu captures your device notifications to a local database and forwards them, in batches, to a webhook you configure. It is built to be lightweight and battery-friendly: notifications are captured event-driven (no background polling), and uploads are deferred and batched.</string>
     <string name="about_project_url">https://github.com/dkadavarath/noti</string>
     <string name="about_device_id">Device ID: %1$s</string>
     <string name="about_whats_new">What\'s new</string>
-    <string name="about_changelog">v1.13 — New Messages tab: relayed messages are saved and shown as a searchable chat history. Fixes: app icon no longer clipped on some launchers; text fields now stay above the keyboard.\n\nv1.12 — New wordmark app icon (adapts to light/dark and Material You). Relayed messages now show which SIM they arrived on (e.g. “+9715… on e&amp;”).\n\nv1.11 — Receive relayed messages: a new “Relay (receive)” screen lets a companion app (sndi) push you notifications — e.g. forwarded SMS — over end-to-end encrypted FCM. Pair by scanning a QR.\n\nv1.10 — The Apps and “Keywords &amp; notes” screens open much faster: app icons now load row by row as you scroll, instead of every icon being read before anything appears.\n\nv1.9 — The Apps and “Keywords &amp; notes” screens now show a loading spinner while your app list is read, instead of looking empty.\n\nv1.8 — Per-app keywords &amp; notes: log only the notifications matching your keywords, and append a note to what gets logged.\n\nv1.7 — Bottom-nav layout (Status / Settings / About), settings menu with focused screens, and an Appearance section (theme mode + Default/Material color).\n\nv1.6 — Blue theme matching the app icon, for better visibility (follows system light/dark).\n\nv1.5 — Faster capture &amp; upload (less CPU/battery); change notes here; standard back navigation.\n\nv1.4 — New app icon, splash screen, About &amp; Help screens.\n\nv1.3 — Ignore duplicate notifications (content + time window).\n\nv1.2 — Material 3 redesign; choose which apps to capture.\n\nv1.1 — UI fixes; clearer auth setup; show-token toggle.\n\nv1.0 — Initial release.</string>
+    <string name="about_changelog">v1.15 — Renamed to ippu (the companion sender app is now ariy), with new wordmark icons. Message management: long-press any message to copy, select text, forward, or delete it. Tapping a message notification now opens that exact conversation with the message highlighted. New compose screen — pick a contact or type a number and choose which SIM ariy sends from.\n\nv1.14 — Reverse direction: compose a message here and have the sender phone send it from its SIM, over the same encrypted channel.\n\nv1.13 — New Messages tab: relayed messages are saved and shown as a searchable chat history. Fixes: app icon no longer clipped on some launchers; text fields now stay above the keyboard.\n\nv1.12 — New wordmark app icon (adapts to light/dark and Material You). Relayed messages now show which SIM they arrived on (e.g. “+9715… on e&amp;”).\n\nv1.11 — Receive relayed messages: a new “Relay (receive)” screen lets a companion app (ariy) push you notifications — e.g. forwarded SMS — over end-to-end encrypted FCM. Pair by scanning a QR.\n\nv1.10 — The Apps and “Keywords &amp; notes” screens open much faster: app icons now load row by row as you scroll, instead of every icon being read before anything appears.\n\nv1.9 — The Apps and “Keywords &amp; notes” screens now show a loading spinner while your app list is read, instead of looking empty.\n\nv1.8 — Per-app keywords &amp; notes: log only the notifications matching your keywords, and append a note to what gets logged.\n\nv1.7 — Bottom-nav layout (Status / Settings / About), settings menu with focused screens, and an Appearance section (theme mode + Default/Material color).\n\nv1.6 — Blue theme matching the app icon, for better visibility (follows system light/dark).\n\nv1.5 — Faster capture &amp; upload (less CPU/battery); change notes here; standard back navigation.\n\nv1.4 — New app icon, splash screen, About &amp; Help screens.\n\nv1.3 — Ignore duplicate notifications (content + time window).\n\nv1.2 — Material 3 redesign; choose which apps to capture.\n\nv1.1 — UI fixes; clearer auth setup; show-token toggle.\n\nv1.0 — Initial release.</string>
 
     <!-- Help screen -->
     <string name="help_title">Help</string>
     <string name="help_start_title">Getting started</string>
-    <string name="help_start_body">1. Tap “Grant notification access” and enable noti in the system list — this lets the app see notifications.\n2. Tap “Ignore battery optimization” so uploads run reliably.\nWithout notification access, nothing is captured.</string>
+    <string name="help_start_body">1. Tap “Grant notification access” and enable ippu in the system list — this lets the app see notifications.\n2. Tap “Ignore battery optimization” so uploads run reliably.\nWithout notification access, nothing is captured.</string>
     <string name="help_webhook_title">Setting up the webhook</string>
     <string name="help_webhook_body">Enter your Webhook URL and the auth token. The token is sent as a header: by default “Authorization: Bearer &lt;token&gt;”. For a custom Header Auth credential, set the Auth header name to “key” and clear the prefix so the raw token is sent. Tap the eye icon to reveal the token. Use an https URL — content is sensitive.</string>
     <string name="help_apps_title">Choosing which apps to capture</string>

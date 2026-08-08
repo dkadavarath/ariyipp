@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">sndi</string>
+    <string name="app_name">ariy</string>
     <string name="loading">…</string>
 
     <!-- Status -->
@@ -11,7 +11,7 @@
 
     <!-- Settings menu -->
     <string name="menu_pairing_title">Pairing</string>
-    <string name="menu_pairing_sub">Service-account key, noti token, shared key</string>
+    <string name="menu_pairing_sub">Service-account key, ippu token, shared key</string>
     <string name="menu_sim_names_title">SIM names</string>
     <string name="menu_sim_names_sub">Label each SIM (e.g. e&amp;, du)</string>
     <string name="menu_webhook_title">Webhook</string>
@@ -28,25 +28,25 @@
     <string name="hint_sim2_name">SIM 2 name (slot 2)</string>
 
     <!-- Pairing -->
-    <string name="pairing_intro">Import the FCM service-account key, then paste noti\'s device token and the shared key so messages can be encrypted end-to-end.</string>
+    <string name="pairing_intro">Import the FCM service-account key, then paste ippu\'s device token and the shared key so messages can be encrypted end-to-end.</string>
     <string name="key_status_none">No service-account key imported.</string>
     <string name="key_status_imported">Service-account key imported ✓ (project %1$s)</string>
     <string name="key_status_invalid">That file isn\'t a service-account key.</string>
     <string name="btn_import_key">Import service-account key</string>
-    <string name="btn_scan_qr">Scan pairing QR from noti</string>
-    <string name="scan_prompt">Point at the QR on noti\'s Relay screen</string>
-    <string name="scan_bad">That QR isn\'t a noti pairing code.</string>
+    <string name="btn_scan_qr">Scan pairing QR from ippu</string>
+    <string name="scan_prompt">Point at the QR on ippu\'s Relay screen</string>
+    <string name="scan_bad">That QR isn\'t a ippu pairing code.</string>
     <string name="scan_ok">Paired — token and key filled in.</string>
-    <string name="hint_noti_token">noti device token</string>
+    <string name="hint_noti_token">ippu device token</string>
     <string name="hint_relay_key">Shared key (base64)</string>
     <string name="btn_generate_key">Generate a new shared key</string>
-    <string name="sw_fcm_enabled">Relay to noti via FCM</string>
-    <string name="reverse_intro">Reverse direction — let noti compose messages that this phone sends via its SIM:</string>
-    <string name="sw_accept_commands">Send SMS on command from noti</string>
-    <string name="label_my_token">This device\'s token — paste into noti\'s Relay screen</string>
+    <string name="sw_fcm_enabled">Relay to ippu via FCM</string>
+    <string name="reverse_intro">Reverse direction — let ippu compose messages that this phone sends via its SIM:</string>
+    <string name="sw_accept_commands">Send SMS on command from ippu</string>
+    <string name="label_my_token">This device\'s token — paste into ippu\'s Relay screen</string>
 
     <!-- Webhook -->
-    <string name="webhook_intro">Optionally also POST each SMS to your webhook (plaintext, using noti\'s payload schema).</string>
+    <string name="webhook_intro">Optionally also POST each SMS to your webhook (plaintext, using ippu\'s payload schema).</string>
     <string name="hint_n8n_url">Webhook URL</string>
     <string name="hint_auth_header_name">Auth header name — e.g. Authorization, or a custom header like \"key\"</string>
     <string name="hint_auth_header_prefix">Token prefix — \"Bearer \" or leave EMPTY for a raw token</string>
@@ -56,5 +56,5 @@
     <!-- Shared -->
     <string name="btn_save">Save</string>
     <string name="saved">Saved</string>
-    <string name="key_generated">New shared key generated — copy it into noti too.</string>
+    <string name="key_generated">New shared key generated — copy it into ippu too.</string>
 </resources>

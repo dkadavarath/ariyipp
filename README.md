@@ -1,9 +1,9 @@
-# noti
+# ippu
 
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84)
 ![minSdk](https://img.shields.io/badge/minSdk-26-1565c0)
 ![targetSdk](https://img.shields.io/badge/targetSdk-35-1565c0)
-![Release](https://img.shields.io/badge/release-v1.12-1565c0)
+![Release](https://img.shields.io/badge/release-v1.15-1565c0)
 ![Language](https://img.shields.io/badge/kotlin-100%25-7f52ff)
 
 A deliberately **lightweight**, native-Kotlin Android app that logs your device notifications to
@@ -33,9 +33,10 @@ in-app Appearance section toggles Light/Dark/System and Default/Material You col
 - **Per-app keywords & notes** — for each selected app, log only the notifications containing one
   of your keywords (empty = log all of that app's notifications), and optionally append a free-text
   note to the logged text.
-- **Receive relayed messages** (Settings → *Relay*) — a companion app, **sendi**, can push you
-  notifications (e.g. forwarded SMS) over **end-to-end encrypted** FCM; pair by scanning a QR. noti
-  decrypts and shows them locally. Optional and off by default.
+- **Receive relayed messages** (Settings → *Relay*) — a companion app, **ariy**, can push you
+  notifications (e.g. forwarded SMS) over **end-to-end encrypted** FCM; pair by scanning a QR. ippu
+  decrypts and shows them locally, as a searchable chat history. You can also compose from ippu and
+  have ariy send the SMS from its SIM. Optional and off by default.
 - **Duplicate suppression** — apps that re-post the same notification are collapsed by content
   hash within a configurable time window (default 1 day).
 - **Privacy controls** — metadata-only mode (drop notification bodies), keyword exclusions
@@ -45,21 +46,21 @@ in-app Appearance section toggles Light/Dark/System and Default/Material You col
 - **Configurable auth** — send the token in any header (`Authorization: Bearer …`, or a custom
   header like `key` for n8n Header Auth).
 
-## Companion app — sndi
+## Companion app — ariy
 
-<img src="docs/icons/noti.png" width="72" align="left" hspace="8"> <img src="docs/icons/sndi.png" width="72" align="left" hspace="8">
+<img src="docs/icons/ippu.png" width="72" align="left" hspace="8"> <img src="docs/icons/ariy.png" width="72" align="left" hspace="8">
 
-**sndi** is a companion app (in this repo, `:sender` module) for a *second* phone — the one with the
+**ariy** is a companion app (in this repo, `:sender` module) for a *second* phone — the one with the
 SIM. It observes incoming **SMS** (via `RECEIVE_SMS`, not as the default SMS app) and relays each one
-to noti as an **AES-256-GCM encrypted** FCM push, so Google never sees the plaintext. It can also
-POST each SMS to your webhook. noti decrypts and shows it, labelled with the sender and SIM
-(e.g. *"+9715… on e&"*). Pair the two by scanning a QR in noti (or copy the token + key across), and
-label each SIM under **SIM names**. Both apps ship as adaptive icons that adapt to light/dark and
-Material You.
+to ippu as an **AES-256-GCM encrypted** FCM push, so Google never sees the plaintext. It can also
+POST each SMS to your webhook. ippu decrypts and shows it, labelled with the sender and SIM
+(e.g. *"+9715… on e&"*). The relay is bidirectional: compose in ippu and ariy sends it from the SIM
+you choose. Pair the two by scanning a QR in ippu (or copy the token + key across), and label each
+SIM under **SIM names**. Both apps ship as adaptive icons that adapt to light/dark and Material You.
 
 <br clear="left"/>
 
-*(App screenshots for sndi to follow.)*
+*(App screenshots for ariy to follow.)*
 
 ## How it works
 
@@ -87,10 +88,10 @@ batched pushes are the battery-optimal topology.
 ## Install
 
 Grab the latest signed APK from **[Releases](https://github.com/dkadavarath/noti/releases/latest)**
-(`noti-vX.Y.apk`) and sideload it:
+(`ippu-vX.Y.apk`) and sideload it:
 
 ```
-adb install noti-v1.12.apk
+adb install ippu-v1.15.apk
 ```
 
 Google Play Protect may warn on a sideloaded app that reads notifications — choose *Install anyway*
@@ -100,7 +101,7 @@ Google Play Protect may warn on a sideloaded app that reads notifications — ch
 
 The app has three tabs: **Status**, **Settings**, and **About**.
 
-1. **Grant access** (Status tab) — tap *Grant notification access* and enable noti in the system
+1. **Grant access** (Status tab) — tap *Grant notification access* and enable ippu in the system
    list. Tap *Ignore battery optimization* so uploads run reliably. *Sync now* and the captured/pending
    counts also live here.
 2. **Webhook** (Settings → Connection) — enter your **Webhook URL** and **auth token**. By default the
