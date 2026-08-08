@@ -66,11 +66,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateSmsStatus() {
-        val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) ==
-            PackageManager.PERMISSION_GRANTED
-        findViewById<TextView>(R.id.txt_sms_status)
-            .setText(if (granted) R.string.sms_status_granted else R.string.sms_status_denied)
+        fun granted(p: String) =
+            ContextCompat.checkSelfPermission(this, p) == PackageManager.PERMISSION_GRANTED
+        val canReceive = granted(Manifest.permission.RECEIVE_SMS)   // relay incoming SMS to ippu
+        val canSend = granted(Manifest.permission.SEND_SMS)         // send SMS on command from ippu
+        findViewById<TextView>(R.id.txt_sms_status).setText(
+            when {
+                canReceive && canSend -> R.string.sms_status_granted
+                canReceive -> R.string.sms_status_send_denied // relay works, reverse send won't
+                else -> R.string.sms_status_denied
+            }
+        )
+        // Keep the button until BOTH are granted, so an existing install that only has RECEIVE_SMS
+        // can still be prompted for SEND_SMS (needed for ippu-driven sends).
         findViewById<MaterialButton>(R.id.btn_grant_sms).visibility =
-            if (granted) View.GONE else View.VISIBLE
+            if (canReceive && canSend) View.GONE else View.VISIBLE
     }
 }
