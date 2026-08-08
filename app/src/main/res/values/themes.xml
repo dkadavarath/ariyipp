@@ -30,6 +30,16 @@
         <item name="elevationOverlayEnabled">false</item>
     </style>
 
+    <!-- Small uppercase coloured section header for the flat Status/Settings screens. -->
+    <style name="SectionLabel" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textAppearance">?attr/textAppearanceLabelLarge</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.06</item>
+    </style>
+
     <!-- Small uppercase section label used to group the compose form. -->
     <style name="Compose.Eyebrow" parent="">
         <item name="android:layout_width">wrap_content</item>

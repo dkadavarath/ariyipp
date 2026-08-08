@@ -8,122 +8,91 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="12dp">
+        android:paddingHorizontal="20dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="24dp">
 
         <!-- Permissions -->
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.Material3.CardView.Filled"
+        <TextView
+            style="@style/SectionLabel"
+            android:text="@string/status_permissions" />
+
+        <TextView
+            android:id="@+id/tv_notification_status"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/loading"
+            android:textAppearance="?attr/textAppearanceBodyMedium" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_grant_notification"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/btn_grant_notification" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/status_permissions"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
+        <TextView
+            android:id="@+id/tv_battery_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/loading"
+            android:textAppearance="?attr/textAppearanceBodyMedium" />
 
-                <TextView
-                    android:id="@+id/tv_notification_status"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="@string/loading"
-                    android:textAppearance="?attr/textAppearanceBodyMedium" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_ignore_battery"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/btn_ignore_battery" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_grant_notification"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/btn_grant_notification" />
-
-                <TextView
-                    android:id="@+id/tv_battery_status"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="@string/loading"
-                    android:textAppearance="?attr/textAppearanceBodyMedium" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_ignore_battery"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/btn_ignore_battery" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginVertical="22dp"
+            android:background="?attr/colorOutlineVariant"
+            android:alpha="0.5" />
 
         <!-- Sync -->
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.Material3.CardView.Filled"
+        <TextView
+            style="@style/SectionLabel"
+            android:text="@string/status_sync" />
+
+        <TextView
+            android:id="@+id/tv_last_upload"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp">
+            android:layout_marginTop="12dp"
+            android:textAppearance="?attr/textAppearanceBodyMedium" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_sync_now"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/btn_sync_now" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/status_sync"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
-
-                <TextView
-                    android:id="@+id/tv_last_upload"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:textAppearance="?attr/textAppearanceBodyMedium" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_sync_now"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="@string/btn_sync_now" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginVertical="22dp"
+            android:background="?attr/colorOutlineVariant"
+            android:alpha="0.5" />
 
         <!-- Data -->
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.Material3.CardView.Filled"
+        <TextView
+            style="@style/SectionLabel"
+            android:text="@string/status_data" />
+
+        <TextView
+            android:id="@+id/tv_data"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/status_data"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
-
-                <TextView
-                    android:id="@+id/tv_data"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:textAppearance="?attr/textAppearanceBodyMedium"
-                    android:lineSpacingExtra="4dp" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+            android:layout_marginTop="12dp"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:lineSpacingExtra="4dp" />
     </LinearLayout>
 </ScrollView>
