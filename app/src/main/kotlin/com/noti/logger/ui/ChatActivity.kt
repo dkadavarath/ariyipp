@@ -88,7 +88,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun sendComposed() {
-        val field = findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_compose)
+        val field = findViewById<android.widget.EditText>(R.id.et_compose)
         val text = field.text?.toString()?.trim().orEmpty()
         if (text.isEmpty()) return
         if (!NotiCommandSender.isConfigured(Settings.get(this))) {
@@ -119,7 +119,10 @@ class ChatActivity : AppCompatActivity() {
     private fun load() {
         lifecycleScope.launch {
             val messages = withContext(Dispatchers.IO) {
-                NotiDatabase.get(this@ChatActivity).relayedMessageDao().messagesFor(sender)
+                val dao = NotiDatabase.get(this@ChatActivity).relayedMessageDao()
+                val msgs = dao.messagesFor(sender)
+                dao.markRead(sender) // viewing the conversation clears its unread state
+                msgs
             }
             adapter.submit(messages)
             if (highlightId > 0) {
@@ -257,18 +260,31 @@ class ChatActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             when (val row = rows[position]) {
                 is Row.Day -> (holder as DayVH).date.text = row.label
-                is Row.Msg -> bindMessage(holder as MessageVH, row.message)
+                is Row.Msg -> {
+                    val prev = rows.getOrNull(position - 1)
+                    val grouped = prev is Row.Msg && prev.message.outgoing == row.message.outgoing
+                    bindMessage(holder as MessageVH, row.message, grouped)
+                }
             }
         }
     }
 
-    private fun bindMessage(holder: MessageVH, m: RelayedMessageEntity) {
+    private fun bindMessage(holder: MessageVH, m: RelayedMessageEntity, groupedWithPrev: Boolean) {
         val outgoing = m.outgoing != 0
         holder.body.text = m.body
         holder.time.text = ChatTime.clock(this, m.receivedAt)
         holder.bubble.setBackgroundResource(if (outgoing) R.drawable.bubble_out else R.drawable.bubble_in)
         (holder.bubble.layoutParams as FrameLayout.LayoutParams).gravity =
             if (outgoing) Gravity.END else Gravity.START
+
+        // Cap the bubble to ~80% of the screen (LinearLayout ignores maxWidth, so bound the text).
+        val metrics = resources.displayMetrics
+        holder.body.maxWidth = (metrics.widthPixels * 0.80f).toInt() - (28f * metrics.density).toInt()
+
+        // Tighter spacing within a run from the same side, more air when the side changes.
+        val h = (12f * metrics.density).toInt()
+        val topGap = ((if (groupedWithPrev) 2f else 8f) * metrics.density).toInt()
+        holder.itemView.setPadding(h, topGap, h, (2f * metrics.density).toInt())
 
         // On the accent outgoing bubble, text is white; incoming uses on-surface tones.
         val bodyColor = MaterialColors.getColor(

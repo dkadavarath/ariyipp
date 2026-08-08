@@ -47,39 +47,61 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:clipToPadding="false"
-        android:paddingVertical="8dp" />
+        android:paddingTop="8dp"
+        android:paddingBottom="6dp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/colorOutlineVariant"
+        android:alpha="0.5" />
 
     <LinearLayout
         android:id="@+id/compose_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingHorizontal="8dp"
-        android:paddingVertical="6dp">
+        android:gravity="bottom"
+        android:paddingStart="12dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
 
-        <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        <EditText
+            android:id="@+id/et_compose"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="@string/chat_compose_hint">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/et_compose"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="textShortMessage|textMultiLine|textCapSentences"
-                android:maxLines="4" />
-        </com.google.android.material.textfield.TextInputLayout>
+            android:layout_gravity="bottom"
+            android:background="@drawable/compose_input_bg"
+            android:hint="@string/chat_compose_hint"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:minHeight="44dp"
+            android:gravity="center_vertical"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            android:inputType="textShortMessage|textMultiLine|textCapSentences"
+            android:maxLines="5"
+            android:importantForAutofill="no" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_send"
             style="@style/Widget.Material3.Button.IconButton.Filled"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_marginStart="8dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:paddingHorizontal="0dp"
+            app:cornerRadius="23dp"
             app:icon="@drawable/ic_send"
+            app:iconSize="21dp"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
             android:contentDescription="@string/chat_send" />
     </LinearLayout>
 </LinearLayout>

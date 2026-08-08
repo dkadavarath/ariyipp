@@ -42,11 +42,34 @@
             android:ellipsize="end" />
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/txt_time"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
-        android:textAppearance="?attr/textAppearanceLabelSmall"
-        android:textColor="?attr/colorOnSurfaceVariant" />
+        android:orientation="vertical"
+        android:gravity="end"
+        android:minWidth="44dp">
+
+        <TextView
+            android:id="@+id/txt_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceLabelSmall"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+
+        <TextView
+            android:id="@+id/txt_unread"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:minWidth="20dp"
+            android:gravity="center"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="1dp"
+            android:background="@drawable/unread_badge"
+            android:textColor="?attr/colorOnPrimary"
+            android:textStyle="bold"
+            android:textSize="12sp"
+            android:visibility="gone" />
+    </LinearLayout>
 </LinearLayout>

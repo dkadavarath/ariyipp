@@ -10,13 +10,14 @@ interface RelayedMessageDao {
     @Insert
     fun insert(message: RelayedMessageEntity): Long
 
-    /** One row per conversation: sender, its latest message body/time, and message count. */
+    /** One row per conversation: sender, its latest message body/time, total count, and unread count. */
     @Query(
         """
         SELECT m.sender AS sender,
                (SELECT body FROM relayed_messages i WHERE i.sender = m.sender ORDER BY receivedAt DESC, id DESC LIMIT 1) AS lastBody,
                MAX(m.receivedAt) AS lastAt,
-               COUNT(*) AS count
+               COUNT(*) AS count,
+               SUM(CASE WHEN m.outgoing = 0 AND m.read = 0 THEN 1 ELSE 0 END) AS unread
         FROM relayed_messages m
         GROUP BY m.sender
         ORDER BY lastAt DESC
@@ -30,7 +31,8 @@ interface RelayedMessageDao {
         SELECT m.sender AS sender,
                (SELECT body FROM relayed_messages i WHERE i.sender = m.sender ORDER BY receivedAt DESC, id DESC LIMIT 1) AS lastBody,
                MAX(m.receivedAt) AS lastAt,
-               COUNT(*) AS count
+               COUNT(*) AS count,
+               SUM(CASE WHEN m.outgoing = 0 AND m.read = 0 THEN 1 ELSE 0 END) AS unread
         FROM relayed_messages m
         WHERE m.sender LIKE '%' || :q || '%'
            OR EXISTS (SELECT 1 FROM relayed_messages b WHERE b.sender = m.sender AND b.body LIKE '%' || :q || '%')
@@ -49,4 +51,12 @@ interface RelayedMessageDao {
 
     @Query("DELETE FROM relayed_messages WHERE id = :id")
     fun deleteMessage(id: Long)
+
+    /** Marks every incoming message in a conversation as read. Returns rows changed. */
+    @Query("UPDATE relayed_messages SET read = 1 WHERE sender = :sender AND outgoing = 0 AND read = 0")
+    fun markRead(sender: String): Int
+
+    /** Total unread incoming messages across all conversations (for the tab badge). */
+    @Query("SELECT COUNT(*) FROM relayed_messages WHERE outgoing = 0 AND read = 0")
+    fun totalUnread(): Int
 }

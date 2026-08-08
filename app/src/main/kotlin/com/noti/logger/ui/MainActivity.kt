@@ -7,10 +7,16 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.color.MaterialColors
 import com.noti.logger.R
+import com.noti.logger.data.NotiDatabase
 import com.noti.logger.util.Theming
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Bottom-nav host: Status / Settings / About tabs. */
 class MainActivity : AppCompatActivity() {
@@ -40,6 +46,30 @@ class MainActivity : AppCompatActivity() {
         }
 
         requestNotificationPermissionIfNeeded()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateMessagesBadge()
+    }
+
+    /** Shows the total unread count as a badge on the Messages tab (Signal-style). */
+    private fun updateMessagesBadge() {
+        val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
+        lifecycleScope.launch {
+            val unread = withContext(Dispatchers.IO) {
+                NotiDatabase.get(this@MainActivity).relayedMessageDao().totalUnread()
+            }
+            if (unread > 0) {
+                bottomNav.getOrCreateBadge(R.id.nav_messages).apply {
+                    isVisible = true
+                    number = unread
+                    backgroundColor = MaterialColors.getColor(bottomNav, com.google.android.material.R.attr.colorPrimary)
+                }
+            } else {
+                bottomNav.removeBadge(R.id.nav_messages)
+            }
+        }
     }
 
     private fun show(fragment: Fragment, titleRes: Int) {

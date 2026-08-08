@@ -79,4 +79,24 @@ class RelayedMessageDaoTest {
         assertEquals(listOf("keep"), dao.messagesFor("+111").map { it.body })
         assertEquals(keep, dao.messagesFor("+111").single().id)
     }
+
+    @Test
+    fun unread_counts_only_incoming_unread_and_markRead_clears_them() {
+        dao.insert(msg("+111", "in-a", 100))                                   // unread
+        dao.insert(msg("+111", "in-b", 200))                                   // unread
+        dao.insert(RelayedMessageEntity(sender = "+111", sim = "", body = "mine", receivedAt = 300, outgoing = 1)) // outgoing, never counts
+        dao.insert(msg("+222", "other", 150))                                  // unread, different convo
+
+        val before = dao.conversations().associateBy { it.sender }
+        assertEquals(2, before["+111"]!!.unread)
+        assertEquals(1, before["+222"]!!.unread)
+        assertEquals(3, dao.totalUnread())
+
+        assertEquals("two incoming rows marked", 2, dao.markRead("+111"))
+        val after = dao.conversations().associateBy { it.sender }
+        assertEquals(0, after["+111"]!!.unread)
+        assertEquals(1, after["+222"]!!.unread)   // untouched
+        assertEquals(1, dao.totalUnread())
+        assertEquals("marking again is a no-op", 0, dao.markRead("+111"))
+    }
 }

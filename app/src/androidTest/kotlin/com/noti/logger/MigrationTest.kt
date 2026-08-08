@@ -52,7 +52,7 @@ class MigrationTest {
 
         // ---- Open with Room + migrations to the current version; Room validates the schema ----
         val db = Room.databaseBuilder(ctx, NotiDatabase::class.java, dbName)
-            .addMigrations(NotiDatabase.MIGRATION_1_2, NotiDatabase.MIGRATION_2_3)
+            .addMigrations(NotiDatabase.MIGRATION_1_2, NotiDatabase.MIGRATION_2_3, NotiDatabase.MIGRATION_3_4)
             .build()
         runBlocking {
             val dao = db.notificationDao()

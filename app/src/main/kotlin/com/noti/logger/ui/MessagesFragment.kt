@@ -1,12 +1,14 @@
 package com.noti.logger.ui
 
 import android.content.Intent
+import android.graphics.Typeface
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import com.google.android.material.color.MaterialColors
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -81,10 +83,29 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
 
         override fun onBindViewHolder(holder: ConversationVH, position: Int) {
             val c = items[position]
+            val ctx = holder.itemView.context
             holder.sender.text = c.sender
             holder.last.text = c.lastBody
-            holder.time.text = ChatTime.listStamp(holder.itemView.context, c.lastAt)
+            holder.time.text = ChatTime.listStamp(ctx, c.lastAt)
             Avatars.apply(holder.avatar, holder.avatarInitials, holder.avatarIcon, c.sender)
+
+            // Signal-style: an unread conversation gets a bold name, a darker preview, an accent
+            // timestamp, and a count badge; a read one is quieter.
+            val unread = c.unread > 0
+            holder.sender.setTypeface(null, if (unread) Typeface.BOLD else Typeface.NORMAL)
+            holder.last.setTypeface(null, if (unread) Typeface.BOLD else Typeface.NORMAL)
+            val onSurface = MaterialColors.getColor(holder.last, com.google.android.material.R.attr.colorOnSurface)
+            val onSurfaceVariant = MaterialColors.getColor(holder.last, com.google.android.material.R.attr.colorOnSurfaceVariant)
+            val accent = MaterialColors.getColor(holder.time, com.google.android.material.R.attr.colorPrimary)
+            holder.last.setTextColor(if (unread) onSurface else onSurfaceVariant)
+            holder.time.setTextColor(if (unread) accent else onSurfaceVariant)
+            if (unread) {
+                holder.unread.visibility = View.VISIBLE
+                holder.unread.text = if (c.unread > 99) "99+" else c.unread.toString()
+            } else {
+                holder.unread.visibility = View.GONE
+            }
+
             holder.itemView.setOnClickListener { onClick(c.sender) }
         }
     }
@@ -93,6 +114,7 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
         val sender: TextView = v.findViewById(R.id.txt_sender)
         val last: TextView = v.findViewById(R.id.txt_last)
         val time: TextView = v.findViewById(R.id.txt_time)
+        val unread: TextView = v.findViewById(R.id.txt_unread)
         val avatar: View = v.findViewById(R.id.avatar)
         val avatarInitials: TextView = v.findViewById(R.id.avatar_initials)
         val avatarIcon: ImageView = v.findViewById(R.id.avatar_icon)

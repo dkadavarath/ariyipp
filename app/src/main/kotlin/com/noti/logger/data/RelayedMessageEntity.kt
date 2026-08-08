@@ -20,12 +20,15 @@ data class RelayedMessageEntity(
     val body: String,
     val receivedAt: Long,
     val outgoing: Int = 0,
+    /** 0 = unread, 1 = read. Only meaningful for incoming (outgoing == 0) messages. */
+    val read: Int = 0,
 )
 
-/** One conversation row: the sender, its most recent message/time, and how many messages it has. */
+/** One conversation row: the sender, its most recent message/time, count, and unread count. */
 data class ConversationSummary(
     val sender: String,
     val lastBody: String,
     val lastAt: Long,
     val count: Int,
+    val unread: Int,
 )

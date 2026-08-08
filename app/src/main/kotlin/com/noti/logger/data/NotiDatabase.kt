@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [NotificationEntity::class, RelayedMessageEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class NotiDatabase : RoomDatabase() {
@@ -49,13 +49,20 @@ abstract class NotiDatabase : RoomDatabase() {
             }
         }
 
+        /** v3 → v4: add a read flag to relayed_messages. Existing rows count as already read. */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE relayed_messages ADD COLUMN read INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
         fun get(context: Context): NotiDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     NotiDatabase::class.java,
                     "noti.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { INSTANCE = it }
             }
         }
     }

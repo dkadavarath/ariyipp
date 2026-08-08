@@ -9,7 +9,6 @@
         android:id="@+id/bubble"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:maxWidth="292dp"
         android:orientation="vertical"
         android:background="@drawable/bubble_in"
         android:paddingStart="14dp"
