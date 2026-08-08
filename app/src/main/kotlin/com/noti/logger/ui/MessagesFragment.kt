@@ -2,10 +2,10 @@ package com.noti.logger.ui
 
 import android.content.Intent
 import android.os.Bundle
-import android.text.format.DateUtils
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
@@ -16,6 +16,8 @@ import com.google.android.material.textfield.TextInputEditText
 import com.noti.logger.R
 import com.noti.logger.data.ConversationSummary
 import com.noti.logger.data.NotiDatabase
+import com.noti.logger.util.Avatars
+import com.noti.logger.util.ChatTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -81,9 +83,8 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
             val c = items[position]
             holder.sender.text = c.sender
             holder.last.text = c.lastBody
-            holder.time.text = DateUtils.getRelativeTimeSpanString(
-                c.lastAt, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS
-            )
+            holder.time.text = ChatTime.listStamp(holder.itemView.context, c.lastAt)
+            Avatars.apply(holder.avatar, holder.avatarInitials, holder.avatarIcon, c.sender)
             holder.itemView.setOnClickListener { onClick(c.sender) }
         }
     }
@@ -92,5 +93,8 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
         val sender: TextView = v.findViewById(R.id.txt_sender)
         val last: TextView = v.findViewById(R.id.txt_last)
         val time: TextView = v.findViewById(R.id.txt_time)
+        val avatar: View = v.findViewById(R.id.avatar)
+        val avatarInitials: TextView = v.findViewById(R.id.avatar_initials)
+        val avatarIcon: ImageView = v.findViewById(R.id.avatar_icon)
     }
 }

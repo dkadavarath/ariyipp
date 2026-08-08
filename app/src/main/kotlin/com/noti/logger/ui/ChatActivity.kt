@@ -8,7 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
-import android.text.format.DateUtils
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
@@ -19,6 +19,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.ColorUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
@@ -30,6 +31,8 @@ import com.noti.logger.config.Settings
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.RelayedMessageEntity
 import com.noti.logger.push.NotiCommandSender
+import com.noti.logger.util.Avatars
+import com.noti.logger.util.ChatTime
 import com.noti.logger.util.Theming
 import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.Dispatchers
@@ -64,8 +67,15 @@ class ChatActivity : AppCompatActivity() {
         setSupportActionBar(findViewById(R.id.toolbar))
         supportActionBar?.apply {
             setDisplayHomeAsUpEnabled(true)
-            title = sender
+            title = ""
         }
+        findViewById<TextView>(R.id.toolbar_title).text = sender
+        Avatars.apply(
+            findViewById(R.id.toolbar_avatar),
+            findViewById(R.id.avatar_initials),
+            findViewById(R.id.avatar_icon),
+            sender,
+        )
 
         adapter = MessageAdapter()
         recycler = findViewById<RecyclerView>(R.id.recycler).apply {
@@ -113,7 +123,7 @@ class ChatActivity : AppCompatActivity() {
             }
             adapter.submit(messages)
             if (highlightId > 0) {
-                val index = messages.indexOfFirst { it.id == highlightId }
+                val index = adapter.rowIndexOfMessage(highlightId)
                 if (index >= 0) {
                     adapter.flashId = highlightId
                     recycler.post { recycler.scrollToPosition(index); adapter.notifyItemChanged(index) }
@@ -201,40 +211,85 @@ class ChatActivity : AppCompatActivity() {
             .show()
     }
 
-    private inner class MessageAdapter : RecyclerView.Adapter<MessageVH>() {
-        private val items = ArrayList<RelayedMessageEntity>()
+    /** A chat row is either a day separator or a message bubble. */
+    private sealed interface Row {
+        data class Day(val label: String) : Row
+        data class Msg(val message: RelayedMessageEntity) : Row
+    }
+
+    private inner class MessageAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+        private val rows = ArrayList<Row>()
 
         /** When set, the matching row flashes once on bind then clears (notification deep-link). */
         var flashId: Long = -1L
 
-        fun submit(list: List<RelayedMessageEntity>) {
-            items.clear(); items.addAll(list); notifyDataSetChanged()
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageVH {
-            val v = LayoutInflater.from(parent.context).inflate(R.layout.item_message, parent, false)
-            return MessageVH(v)
-        }
-
-        override fun getItemCount() = items.size
-
-        override fun onBindViewHolder(holder: MessageVH, position: Int) {
-            val m = items[position]
-            holder.body.text = m.body
-            holder.time.text = DateUtils.getRelativeTimeSpanString(
-                m.receivedAt, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS
-            )
-            val outgoing = m.outgoing != 0
-            holder.bubble.setBackgroundResource(if (outgoing) R.drawable.bubble_out else R.drawable.bubble_in)
-            (holder.bubble.layoutParams as FrameLayout.LayoutParams).gravity =
-                if (outgoing) android.view.Gravity.END else android.view.Gravity.START
-            holder.bubble.setOnLongClickListener { onMessageLongPress(m); true }
-            if (m.id == flashId) {
-                flashId = -1L
-                flash(holder.itemView)
-            } else {
-                holder.itemView.setBackgroundColor(Color.TRANSPARENT)
+        /** Rebuilds the row list, inserting a day separator whenever the calendar day changes. */
+        fun submit(messages: List<RelayedMessageEntity>) {
+            rows.clear()
+            var lastAt = 0L
+            for (m in messages) {
+                if (rows.isEmpty() || !ChatTime.sameDay(lastAt, m.receivedAt)) {
+                    rows.add(Row.Day(ChatTime.daySeparator(this@ChatActivity, m.receivedAt)))
+                }
+                rows.add(Row.Msg(m))
+                lastAt = m.receivedAt
             }
+            notifyDataSetChanged()
+        }
+
+        fun rowIndexOfMessage(id: Long) =
+            rows.indexOfFirst { it is Row.Msg && it.message.id == id }
+
+        override fun getItemCount() = rows.size
+
+        override fun getItemViewType(position: Int) =
+            if (rows[position] is Row.Day) TYPE_DAY else TYPE_MSG
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+            val inflater = LayoutInflater.from(parent.context)
+            return if (viewType == TYPE_DAY) {
+                DayVH(inflater.inflate(R.layout.item_date_header, parent, false))
+            } else {
+                MessageVH(inflater.inflate(R.layout.item_message, parent, false))
+            }
+        }
+
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+            when (val row = rows[position]) {
+                is Row.Day -> (holder as DayVH).date.text = row.label
+                is Row.Msg -> bindMessage(holder as MessageVH, row.message)
+            }
+        }
+    }
+
+    private fun bindMessage(holder: MessageVH, m: RelayedMessageEntity) {
+        val outgoing = m.outgoing != 0
+        holder.body.text = m.body
+        holder.time.text = ChatTime.clock(this, m.receivedAt)
+        holder.bubble.setBackgroundResource(if (outgoing) R.drawable.bubble_out else R.drawable.bubble_in)
+        (holder.bubble.layoutParams as FrameLayout.LayoutParams).gravity =
+            if (outgoing) Gravity.END else Gravity.START
+
+        // On the accent outgoing bubble, text is white; incoming uses on-surface tones.
+        val bodyColor = MaterialColors.getColor(
+            holder.body,
+            if (outgoing) com.google.android.material.R.attr.colorOnPrimary
+            else com.google.android.material.R.attr.colorOnSurface,
+        )
+        val timeColor = MaterialColors.getColor(
+            holder.time,
+            if (outgoing) com.google.android.material.R.attr.colorOnPrimary
+            else com.google.android.material.R.attr.colorOnSurfaceVariant,
+        )
+        holder.body.setTextColor(bodyColor)
+        holder.time.setTextColor(if (outgoing) ColorUtils.setAlphaComponent(timeColor, 190) else timeColor)
+
+        holder.bubble.setOnLongClickListener { onMessageLongPress(m); true }
+        if (m.id == adapter.flashId) {
+            adapter.flashId = -1L
+            flash(holder.itemView)
+        } else {
+            holder.itemView.setBackgroundColor(Color.TRANSPARENT)
         }
     }
 
@@ -254,9 +309,15 @@ class ChatActivity : AppCompatActivity() {
         val time: TextView = v.findViewById(R.id.txt_time)
     }
 
+    private inner class DayVH(v: View) : RecyclerView.ViewHolder(v) {
+        val date: TextView = v.findViewById(R.id.txt_date)
+    }
+
     companion object {
         const val EXTRA_SENDER = "sender"
         const val EXTRA_HIGHLIGHT_ID = "highlight_id"
         private const val MENU_DELETE = 1
+        private const val TYPE_DAY = 0
+        private const val TYPE_MSG = 1
     }
 }
