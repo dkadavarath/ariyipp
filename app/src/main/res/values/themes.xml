@@ -13,18 +13,32 @@
         <item name="colorOnSecondaryContainer">@color/brand_on_secondary_container</item>
     </style>
 
-    <!-- AMOLED overlay: applied at runtime over the dark theme to push chrome/background surfaces to
-         true black. colorSurfaceVariant is left alone so chat bubbles/inputs stay visible. -->
+    <!-- AMOLED overlay: applied at runtime over the dark theme to push ALL chrome/background/card
+         surfaces to true black (cards, nav bar, app bar, Status/Settings blocks). colorSurfaceVariant
+         is deliberately left alone so chat bubbles, the compose field, and date pills stay visible.
+         Cards read as seamless black; section titles and spacing carry the structure. -->
     <style name="ThemeOverlay.Noti.Amoled" parent="">
         <item name="android:colorBackground">#FF000000</item>
         <item name="colorSurface">#FF000000</item>
         <item name="colorSurfaceContainerLowest">#FF000000</item>
         <item name="colorSurfaceContainerLow">#FF000000</item>
         <item name="colorSurfaceContainer">#FF000000</item>
-        <item name="colorSurfaceContainerHigh">#FF0C0E11</item>
-        <item name="colorSurfaceContainerHighest">#FF14171C</item>
-        <item name="colorSurfaceBright">#FF14171C</item>
+        <item name="colorSurfaceContainerHigh">#FF000000</item>
+        <item name="colorSurfaceContainerHighest">#FF000000</item>
+        <item name="colorSurfaceBright">#FF000000</item>
         <item name="colorSurfaceDim">#FF000000</item>
+        <item name="elevationOverlayEnabled">false</item>
+    </style>
+
+    <!-- Small uppercase section label used to group the compose form. -->
+    <style name="Compose.Eyebrow" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textAppearance">?attr/textAppearanceLabelMedium</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.08</item>
+        <item name="android:layout_marginBottom">8dp</item>
     </style>
 
     <!-- Launch splash: the "n." icon on the blue brand background (AndroidX SplashScreen). -->

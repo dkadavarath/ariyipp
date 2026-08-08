@@ -57,7 +57,8 @@ class ComposeActivity : ScreenActivity() {
         intent.getStringExtra(EXTRA_TO)?.let { toField.setText(it) }
         intent.getStringExtra(EXTRA_PREFILL_BODY)?.let { bodyField.setText(it) }
 
-        findViewById<MaterialButton>(R.id.btn_pick_contact).setOnClickListener { pickContact.launch(Unit) }
+        findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.til_to)
+            .setEndIconOnClickListener { pickContact.launch(Unit) }
         findViewById<MaterialButton>(R.id.btn_send).setOnClickListener { send() }
     }
 

@@ -28,10 +28,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Theming.applyDynamicColorIfEnabled(this)
-        Theming.applyAmoledIfEnabled(this)
-        themedAmoled = Theming.amoledActive(this)
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        Theming.applyAmoledIfEnabled(this) // after super so AppCompat doesn't reset the overlay
+        themedAmoled = Theming.amoledActive(this)
         setContentView(R.layout.activity_main)
 
         applyWindowInsets()
