@@ -12,6 +12,9 @@
     <string name="battery_optimized">Battery optimization: ON — the system may sleep this app and miss SMS. Exempt it for reliable relaying.</string>
     <string name="battery_exempt">Battery optimization: exempt ✓ — the relay can run in the background.</string>
     <string name="btn_ignore_battery">Ignore battery optimization</string>
+    <string name="status_permissions">Permissions</string>
+    <string name="status_sync">Sync</string>
+    <string name="status_sync_hint">Catch SMS missed while the app was asleep, or rebuild ippu\'s history from scratch.</string>
     <string name="btn_sync_missed">Sync missed SMS now</string>
     <string name="sync_started">Syncing missed SMS…</string>
 
@@ -79,6 +82,9 @@
     <string name="about_version">Version %1$s</string>
     <string name="about_description">ariy relays incoming SMS from this phone to your ippu device over end-to-end encrypted FCM, and can send SMS from this SIM on command from ippu. It can also forward each SMS to a webhook.</string>
     <string name="about_device_id">Device ID: %1$s</string>
+    <string name="about_project_url">https://github.com/dkadavarath/noti</string>
+    <string name="about_whats_new">What\'s new</string>
+    <string name="about_changelog">v1.14 — n8n no longer gets duplicate posts: each relay destination now dedups per message, so the missed-SMS sync stops re-sending messages the live relay already delivered.\n\nv1.13 — The Pairing screen now matches ippu\'s — same layout, order, and wording. Generating the shared key lives on ippu, where it belongs.\n\nv1.12 — \"Repush entire inbox to ippu\" (Status) re-sends every SMS so ippu can rebuild its history after a gap; ippu drops duplicates by content hash.\n\nv1.11 — Relayed messages carry the SMS\'s real time, so a delayed or synced message lands in the right place in ippu\'s conversation.\n\nv1.10 — Keep-alive service, battery-optimization exemption, and a missed-SMS sync to catch messages received while the app was asleep. Diagnostics screen to make failures visible.</string>
 
     <!-- Sub-screen titles -->
     <string name="title_pairing">Pairing</string>

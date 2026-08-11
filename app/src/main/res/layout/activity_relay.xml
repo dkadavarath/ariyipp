@@ -155,31 +155,6 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:text="@string/btn_save" />
-
-            <!-- Temporary: clear received messages before a full repush from ariy -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginVertical="20dp"
-                android:background="?attr/colorOutlineVariant" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:alpha="0.8"
-                android:lineSpacingExtra="3dp"
-                android:text="@string/clear_inbound_intro"
-                android:textAppearance="?attr/textAppearanceBodyMedium" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_clear_inbound"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text="@string/btn_clear_inbound"
-                android:textColor="?attr/colorError"
-                app:strokeColor="?attr/colorError" />
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

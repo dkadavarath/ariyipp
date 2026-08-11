@@ -7,7 +7,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.messaging.FirebaseMessaging
@@ -15,7 +14,6 @@ import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.noti.logger.R
 import com.noti.logger.config.Settings
-import com.noti.logger.data.NotiDatabase
 import com.noti.logger.push.QrCodes
 import com.noti.shared.MessageCrypto
 import com.noti.shared.PairingPayload
@@ -91,26 +89,6 @@ class RelayReceiveActivity : ScreenActivity() {
             Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show()
             finish()
         }
-
-        findViewById<MaterialButton>(R.id.btn_clear_inbound).setOnClickListener { confirmClearInbound() }
-    }
-
-    /** Wipes received messages (keeping ones composed here) so a full repush from ariy rebuilds a
-     *  clean history with no pre-hash duplicates. Confirmed, since it's destructive. */
-    private fun confirmClearInbound() {
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.clear_inbound_title)
-            .setMessage(R.string.clear_inbound_msg)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.clear_inbound_yes) { _, _ ->
-                Thread {
-                    val n = NotiDatabase.get(applicationContext).relayedMessageDao().deleteInbound()
-                    runOnUiThread {
-                        Toast.makeText(this, getString(R.string.clear_inbound_done, n), Toast.LENGTH_LONG).show()
-                    }
-                }.start()
-            }
-            .show()
     }
 
     private fun onAriyScanned(text: String) {
