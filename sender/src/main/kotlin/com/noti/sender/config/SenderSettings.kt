@@ -102,6 +102,18 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean(KEY_AMOLED, false)
         set(value) { prefs.edit().putBoolean(KEY_AMOLED, value).apply() }
 
+    // ---- Keep-alive / missed-SMS sync ----
+
+    /** Run the persistent foreground service to resist Doze / OEM app-standby. Default on. */
+    var keepAliveEnabled: Boolean
+        get() = prefs.getBoolean(KEY_KEEPALIVE, true)
+        set(value) { prefs.edit().putBoolean(KEY_KEEPALIVE, value).apply() }
+
+    /** `date` (epoch ms) of the newest inbox SMS the sync has relayed; 0 = never synced. */
+    var lastSyncedSmsDate: Long
+        get() = prefs.getLong(KEY_LAST_SYNCED, 0L)
+        set(value) { prefs.edit().putLong(KEY_LAST_SYNCED, value).apply() }
+
     /** Generated once, stable for the install; identifies this device in the n8n payload. */
     @Volatile private var cachedDeviceId: String? = null
     val deviceId: String
@@ -136,6 +148,8 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_DYNAMIC_COLOR = "dynamic_color"
         private const val KEY_AMOLED = "amoled"
+        private const val KEY_KEEPALIVE = "keepalive"
+        private const val KEY_LAST_SYNCED = "last_synced_sms_date"
 
         @Volatile private var INSTANCE: SenderSettings? = null
 

@@ -9,5 +9,8 @@ class SenderApp : Application() {
         super.onCreate()
         // Apply the user's light/dark/system choice; color + AMOLED are applied per-activity.
         Theming.applyNightMode(SenderSettings.get(this))
+        // Keep the missed-SMS backstop scheduled from any process start. (The keep-alive foreground
+        // service is only started from the foreground / boot, where a background FGS start is allowed.)
+        SmsSyncWorker.schedulePeriodic(this)
     }
 }

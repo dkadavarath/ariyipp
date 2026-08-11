@@ -9,6 +9,13 @@
     <string name="sms_status_send_denied">SMS access: receive only — relaying works, but ippu can\'t send from this phone yet. Tap below to grant Send SMS.</string>
     <string name="sms_status_denied">SMS access: NOT GRANTED — nothing will be relayed.</string>
     <string name="btn_grant_sms">Grant SMS access</string>
+    <string name="battery_optimized">Battery optimization: ON — the system may sleep this app and miss SMS. Exempt it for reliable relaying.</string>
+    <string name="battery_exempt">Battery optimization: exempt ✓ — the relay can run in the background.</string>
+    <string name="btn_ignore_battery">Ignore battery optimization</string>
+    <string name="btn_sync_missed">Sync missed SMS now</string>
+    <string name="sync_started">Syncing missed SMS…</string>
+    <string name="keepalive_title">ariy is relaying SMS</string>
+    <string name="keepalive_text">Keeping the SMS relay active in the background.</string>
 
     <!-- Bottom navigation -->
     <string name="nav_status">Status</string>
@@ -24,6 +31,16 @@
     <string name="menu_webhook_sub">Forward SMS to your webhook</string>
     <string name="menu_appearance_title">Appearance</string>
     <string name="menu_appearance_sub">Theme mode and colour</string>
+    <string name="menu_diag_title">Diagnostics</string>
+    <string name="menu_diag_sub">Live relay activity &amp; error reasons</string>
+
+    <!-- Diagnostics -->
+    <string name="title_diagnostics">Diagnostics</string>
+    <string name="diag_intro">What happened on each incoming SMS, relay, and command — with the reason when something fails.</string>
+    <string name="diag_empty">No activity yet.\n\nSend an SMS to this phone (or tap “Sync missed SMS”), then check back here.</string>
+    <string name="diag_clear">Clear</string>
+    <string name="diag_copy">Copy</string>
+    <string name="diag_copied">Copied</string>
 
     <!-- Appearance -->
     <string name="title_appearance">Appearance</string>

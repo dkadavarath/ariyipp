@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [NotificationEntity::class, RelayedMessageEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class NotiDatabase : RoomDatabase() {
@@ -56,13 +56,21 @@ abstract class NotiDatabase : RoomDatabase() {
             }
         }
 
+        /** v4 → v5: add a content-dedupe key to relayed_messages (+ index) for missed-SMS sync. */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE relayed_messages ADD COLUMN dedupe TEXT NOT NULL DEFAULT ''")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_relayed_messages_dedupe ON relayed_messages(dedupe)")
+            }
+        }
+
         fun get(context: Context): NotiDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     NotiDatabase::class.java,
                     "noti.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build().also { INSTANCE = it }
             }
         }
     }

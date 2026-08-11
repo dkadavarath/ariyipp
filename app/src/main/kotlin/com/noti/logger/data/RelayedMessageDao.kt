@@ -59,4 +59,8 @@ interface RelayedMessageDao {
     /** Total unread incoming messages across all conversations (for the tab badge). */
     @Query("SELECT COUNT(*) FROM relayed_messages WHERE outgoing = 0 AND read = 0")
     fun totalUnread(): Int
+
+    /** How many stored messages carry this content-dedupe key (for missed-SMS dedup). */
+    @Query("SELECT COUNT(*) FROM relayed_messages WHERE dedupe = :key")
+    fun countByDedupe(key: String): Int
 }

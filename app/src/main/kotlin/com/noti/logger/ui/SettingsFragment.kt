@@ -43,6 +43,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         addRow(R.string.menu_relay_title, R.string.menu_relay_sub, R.drawable.ic_relay) { open(RelayReceiveActivity::class.java) }
         addRow(R.string.menu_privacy_title, R.string.menu_privacy_sub, R.drawable.ic_privacy) { open(PrivacyActivity::class.java) }
         addRow(R.string.menu_appearance_title, R.string.menu_appearance_sub, R.drawable.ic_palette) { open(AppearanceActivity::class.java) }
+        addRow(R.string.menu_diag_title, R.string.menu_diag_sub, R.drawable.ic_status_warning) { open(DiagnosticsActivity::class.java) }
         addRow(R.string.menu_purge_title, R.string.menu_purge_sub, R.drawable.ic_status_warning) { confirmPurge() }
     }
 

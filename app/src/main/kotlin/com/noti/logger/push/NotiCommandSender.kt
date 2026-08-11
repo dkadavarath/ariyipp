@@ -2,6 +2,7 @@ package com.noti.logger.push
 
 import android.content.Context
 import com.noti.logger.config.Settings
+import com.noti.shared.Diag
 import com.noti.shared.FcmSender
 import com.noti.shared.MessageCrypto
 import com.noti.shared.SendCommand
@@ -27,11 +28,29 @@ object NotiCommandSender {
      */
     fun send(context: Context, to: String, body: String, sim: Int = -1): Boolean {
         val s = Settings.get(context)
-        if (!isConfigured(s)) return false
+        if (!isConfigured(s)) {
+            val missing = buildList {
+                if (s.serviceAccountJson.isBlank()) add("service-account key")
+                if (s.sndiFcmToken.isBlank()) add("ariy token")
+                if (s.relayKey.isBlank()) add("shared key")
+            }.joinToString(", ")
+            Diag.log("compose FAILED — not configured: missing $missing (Settings → Relay)")
+            return false
+        }
         val payload = MessageCrypto.encrypt(json.encodeToString(SendCommand(to, body, sim)), s.relayKey)
         return try {
-            FcmSender(s.serviceAccountJson).send(s.sndiFcmToken, mapOf("payload" to payload)).ok
+            val res = FcmSender(s.serviceAccountJson).send(s.sndiFcmToken, mapOf("payload" to payload))
+            Diag.log(
+                when {
+                    res.ok -> "compose → HTTP 200 ✓ command sent to ariy"
+                    res.httpCode == 401 || res.httpCode == 403 -> "compose → HTTP ${res.httpCode}: service-account key rejected"
+                    res.httpCode == 404 -> "compose → HTTP 404: ariy token stale — re-pair"
+                    else -> "compose → HTTP ${res.httpCode} (${res.detail.take(60)})"
+                }
+            )
+            res.ok
         } catch (e: Exception) {
+            Diag.log("compose → ERROR: ${e.message}")
             false
         }
     }

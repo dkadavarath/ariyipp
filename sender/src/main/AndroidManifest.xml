@@ -8,6 +8,13 @@
     <!-- Resolve a SIM slot to its subscription so noti can pick which SIM sends (Phase C). -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Read the SMS inbox to sync any messages missed while the app was asleep/killed. -->
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <!-- Keep the relay alive against Doze / OEM app-standby. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
         android:name=".SenderApp"
@@ -31,6 +38,7 @@
         <activity android:name=".ui.SimNamesActivity" android:exported="false" />
         <activity android:name=".ui.WebhookActivity" android:exported="false" />
         <activity android:name=".ui.AppearanceActivity" android:exported="false" />
+        <activity android:name=".ui.DiagnosticsActivity" android:exported="false" />
 
         <!-- Receive encrypted send-SMS commands pushed from noti (Phase B). -->
         <service
@@ -49,6 +57,25 @@
             android:permission="android.permission.BROADCAST_SMS">
             <intent-filter android:priority="999">
                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Persistent foreground service so the OS keeps the relay process warm. -->
+        <service
+            android:name=".KeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keeps the SMS relay alive so incoming SMS are forwarded reliably." />
+        </service>
+
+        <!-- Re-arm keep-alive + missed-SMS sync after reboot. -->
+        <receiver
+            android:name=".boot.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
 

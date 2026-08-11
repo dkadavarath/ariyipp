@@ -11,7 +11,7 @@ import androidx.room.PrimaryKey
  */
 @Entity(
     tableName = "relayed_messages",
-    indices = [Index("sender"), Index("receivedAt")]
+    indices = [Index("sender"), Index("receivedAt"), Index("dedupe")]
 )
 data class RelayedMessageEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -22,6 +22,8 @@ data class RelayedMessageEntity(
     val outgoing: Int = 0,
     /** 0 = unread, 1 = read. Only meaningful for incoming (outgoing == 0) messages. */
     val read: Int = 0,
+    /** Stable content key from the sender; drops duplicates (live relay vs missed-sync). Blank = none. */
+    val dedupe: String = "",
 )
 
 /** One conversation row: the sender, its most recent message/time, count, and unread count. */

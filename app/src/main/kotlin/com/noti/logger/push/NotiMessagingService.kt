@@ -12,11 +12,13 @@ import com.noti.logger.config.Settings
 class NotiMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
+        com.noti.shared.Diag.log("FCM push received")
         PushMessageHandler.handle(applicationContext, message.data)
     }
 
     /** Fired on (re)registration; cache the token so the pairing screen can show it. */
     override fun onNewToken(token: String) {
         Settings.get(applicationContext).fcmToken = token
+        com.noti.shared.Diag.log("FCM token refreshed — RE-PAIR so ariy gets the new token")
     }
 }

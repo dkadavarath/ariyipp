@@ -15,17 +15,24 @@ import com.noti.sender.sms.SmsSender
 class SmsCommandService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
-        val cmd = SmsCommandHandler.parse(applicationContext, message.data) ?: return
+        val cmd = SmsCommandHandler.parse(applicationContext, message.data)
+        if (cmd == null) {
+            com.noti.shared.Diag.log("command from ippu DROPPED (accept-commands off, wrong shared key, or malformed)")
+            return
+        }
         try {
             SmsSender.send(applicationContext, cmd.to, cmd.body, cmd.sim)
             Log.i(TAG, "sent SMS to '${cmd.to}' on slot ${cmd.sim} (${cmd.body.length} chars)")
+            com.noti.shared.Diag.log("command → sent SMS to ${cmd.to} (slot ${cmd.sim}, ${cmd.body.length} chars)")
         } catch (e: Exception) {
             Log.w(TAG, "SMS send failed: ${e.message}")
+            com.noti.shared.Diag.log("command → SMS send FAILED: ${e.message} (SEND_SMS granted?)")
         }
     }
 
     override fun onNewToken(token: String) {
         SenderSettings.get(applicationContext).myFcmToken = token
+        com.noti.shared.Diag.log("FCM token refreshed — RE-PAIR so ippu gets the new token")
     }
 
     private companion object {

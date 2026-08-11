@@ -4,6 +4,7 @@ import android.content.Context
 import com.noti.logger.config.Settings
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.RelayedMessageEntity
+import com.noti.shared.Diag
 import com.noti.shared.MessageCrypto
 import com.noti.shared.RelayMessage
 import kotlinx.serialization.json.Json
@@ -23,13 +24,21 @@ object PushMessageHandler {
         val ciphertext = data[PAYLOAD_KEY]?.takeIf { it.isNotBlank() } ?: return false
 
         val settings = Settings.get(context)
-        if (!settings.pushInboundEnabled) return false
-        val key = settings.relayKey.takeIf { it.isNotBlank() } ?: return false
+        if (!settings.pushInboundEnabled) {
+            Diag.log("inbound push DROPPED — \"Receive relayed messages\" is OFF (Settings → Relay)")
+            return false
+        }
+        val key = settings.relayKey.takeIf { it.isNotBlank() }
+        if (key == null) {
+            Diag.log("inbound push DROPPED — no shared key set (Settings → Relay)")
+            return false
+        }
 
         val plaintext = try {
             MessageCrypto.decrypt(ciphertext, key)
         } catch (e: Exception) {
-            return false // wrong key, tampered, or malformed — drop
+            Diag.log("inbound push: DECRYPT FAILED — shared key doesn't match ariy's (re-pair)")
+            return false
         }
 
         val msg = try {
@@ -41,15 +50,23 @@ object PushMessageHandler {
 
         val title = msg.title.ifBlank { "Message" }
 
+        // Drop a duplicate delivery (same SMS via the live relay and again via ariy's missed-sync).
+        val dao = NotiDatabase.get(context).relayedMessageDao()
+        if (msg.dedupe.isNotBlank()) {
+            val dup = try { dao.countByDedupe(msg.dedupe) > 0 } catch (e: Exception) { false }
+            if (dup) { Diag.log("inbound: duplicate ignored"); return true }
+        }
+
         // Persist to the chat history (best-effort — a storage error must not block the notification).
         val (sender, sim) = RelayTitle.parse(title)
         val messageId = try {
-            NotiDatabase.get(context).relayedMessageDao().insert(
+            dao.insert(
                 RelayedMessageEntity(
                     sender = sender,
                     sim = sim,
                     body = msg.body,
                     receivedAt = System.currentTimeMillis(),
+                    dedupe = msg.dedupe,
                 )
             )
         } catch (e: Exception) {
@@ -60,6 +77,9 @@ object PushMessageHandler {
         // it just doesn't raise a notification.
         if (!settings.isMuted(sender)) {
             MessageNotifier.show(context, title, msg.body, sender, messageId)
+            Diag.log("inbound: shown — from $sender (${msg.body.length} chars)")
+        } else {
+            Diag.log("inbound: stored (muted) — from $sender")
         }
         return true
     }

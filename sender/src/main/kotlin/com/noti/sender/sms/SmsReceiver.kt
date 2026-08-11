@@ -22,7 +22,8 @@ class SmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
 
-        val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return
+        val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
+        if (messages == null) { com.noti.shared.Diag.log("SMS broadcast had no messages — ignored"); return }
         val received = System.currentTimeMillis()
         val sim = SenderSettings.get(context).simName(resolveSlot(intent))
         val parts = messages.map { sms ->
@@ -34,6 +35,7 @@ class SmsReceiver : BroadcastReceiver() {
         }
 
         val sms = SmsAssembler.assemble(parts, received, sim) ?: return
+        com.noti.shared.Diag.log("SMS in from ${sms.from} → queued for relay")
 
         // Hand off to WorkManager so delivery survives process death and retries on network loss,
         // rather than doing the network inline in the short-lived receiver.
