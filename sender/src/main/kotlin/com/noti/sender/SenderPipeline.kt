@@ -123,6 +123,9 @@ object SenderPipeline {
         Log.i(TAG, "relaying SMS from '${sms.from}' (${sms.body.length} chars)")
         Diag.log("relay from ${sms.from} (${sms.body.length} chars)${if (sms.sim.isNotBlank()) " on ${sms.sim}" else ""}")
         var retryable = false
+        // Per-leg idempotency: skip a destination this message already reached, so the missed-SMS
+        // sync and worker retries don't re-send it. ippu dedups on its own, but n8n does not.
+        val key = dedupeKey(sms)
 
         if (!s.fcmEnabled) {
             Diag.log("FCM: OFF (\"Relay to ippu via FCM\" is disabled in Pairing)")
@@ -133,13 +136,19 @@ object SenderPipeline {
                 if (s.relayKey.isBlank()) add("shared key")
             }.joinToString(", ")
             Diag.log("FCM: NOT PAIRED — missing $missing (Settings → Pairing)")
+        } else if (RelayDedupe.alreadySent(context, "fcm", key)) {
+            Diag.log("FCM: already sent — skipping duplicate")
         } else {
             try {
                 val payload = encryptForFcm(fcmMessage(sms), s.relayKey)
                 val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload))
                 Log.i(TAG, "FCM leg: HTTP ${res.httpCode} ok=${res.ok}")
                 Diag.log(fcmDiag(res.httpCode, res.ok, res.detail))
-                if (!res.ok) retryable = res.httpCode == -1 || res.httpCode == 429 || res.httpCode in 500..599
+                if (res.ok) {
+                    RelayDedupe.record(context, "fcm", key)
+                } else {
+                    retryable = res.httpCode == -1 || res.httpCode == 429 || res.httpCode in 500..599
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "FCM leg failed: ${e.message}")
                 Diag.log("FCM → ERROR: ${e.message}")
@@ -148,14 +157,23 @@ object SenderPipeline {
         }
 
         if (s.n8nEnabled && s.n8nUrl.isNotBlank()) {
-            try {
-                val item = smsToUploadItem(sms, s.deviceId)
-                val code = WebhookPoster.post(s.n8nUrl, s.n8nAuthHeaderName, s.n8nAuthValue(), UploadBatch(listOf(item)))
-                Log.i(TAG, "n8n leg: HTTP $code")
-                Diag.log(if (code in 200..299) "webhook → HTTP $code ✓" else "webhook → HTTP $code (check URL/auth)")
-            } catch (e: Exception) {
-                Log.w(TAG, "n8n leg failed: ${e.message}")
-                Diag.log("webhook → ERROR: ${e.message}")
+            if (RelayDedupe.alreadySent(context, "n8n", key)) {
+                Diag.log("webhook: already sent — skipping duplicate")
+            } else {
+                try {
+                    val item = smsToUploadItem(sms, s.deviceId)
+                    val code = WebhookPoster.post(s.n8nUrl, s.n8nAuthHeaderName, s.n8nAuthValue(), UploadBatch(listOf(item)))
+                    Log.i(TAG, "n8n leg: HTTP $code")
+                    if (code in 200..299) {
+                        RelayDedupe.record(context, "n8n", key)
+                        Diag.log("webhook → HTTP $code ✓")
+                    } else {
+                        Diag.log("webhook → HTTP $code (check URL/auth)")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "n8n leg failed: ${e.message}")
+                    Diag.log("webhook → ERROR: ${e.message}")
+                }
             }
         }
 
