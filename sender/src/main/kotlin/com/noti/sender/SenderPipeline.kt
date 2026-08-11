@@ -129,30 +129,40 @@ object SenderPipeline {
 
         if (!s.fcmEnabled) {
             Diag.log("FCM: OFF (\"Relay to ippu via FCM\" is disabled in Pairing)")
-        } else if (s.serviceAccountJson.isBlank() || s.notiFcmToken.isBlank() || s.relayKey.isBlank()) {
-            val missing = buildList {
-                if (s.serviceAccountJson.isBlank()) add("service-account key")
-                if (s.notiFcmToken.isBlank()) add("ippu token")
-                if (s.relayKey.isBlank()) add("shared key")
-            }.joinToString(", ")
-            Diag.log("FCM: NOT PAIRED — missing $missing (Settings → Pairing)")
-        } else if (RelayDedupe.alreadySent(context, "fcm", key)) {
-            Diag.log("FCM: already sent — skipping duplicate")
         } else {
-            try {
-                val payload = encryptForFcm(fcmMessage(sms), s.relayKey)
-                val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload))
-                Log.i(TAG, "FCM leg: HTTP ${res.httpCode} ok=${res.ok}")
-                Diag.log(fcmDiag(res.httpCode, res.ok, res.detail))
-                if (res.ok) {
-                    RelayDedupe.record(context, "fcm", key)
-                } else {
-                    retryable = res.httpCode == -1 || res.httpCode == 429 || res.httpCode in 500..599
+            // Decrypt each encrypted setting once (the service-account JSON is ~2KB) — matters when
+            // the sync relays a batch of missed messages in a loop.
+            val sa = s.serviceAccountJson
+            val notiToken = s.notiFcmToken
+            val relayKey = s.relayKey
+            when {
+                sa.isBlank() || notiToken.isBlank() || relayKey.isBlank() -> {
+                    val missing = buildList {
+                        if (sa.isBlank()) add("service-account key")
+                        if (notiToken.isBlank()) add("ippu token")
+                        if (relayKey.isBlank()) add("shared key")
+                    }.joinToString(", ")
+                    Diag.log("FCM: NOT PAIRED — missing $missing (Settings → Pairing)")
                 }
-            } catch (e: Exception) {
-                Log.w(TAG, "FCM leg failed: ${e.message}")
-                Diag.log("FCM → ERROR: ${e.message}")
-                retryable = true
+                RelayDedupe.alreadySent(context, "fcm", key) ->
+                    Diag.log("FCM: already sent — skipping duplicate")
+                else -> {
+                    try {
+                        val payload = encryptForFcm(fcmMessage(sms), relayKey)
+                        val res = fcmSender(sa).send(notiToken, mapOf("payload" to payload))
+                        Log.i(TAG, "FCM leg: HTTP ${res.httpCode} ok=${res.ok}")
+                        Diag.log(fcmDiag(res.httpCode, res.ok, res.detail))
+                        if (res.ok) {
+                            RelayDedupe.record(context, "fcm", key)
+                        } else {
+                            retryable = res.httpCode == -1 || res.httpCode == 429 || res.httpCode in 500..599
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "FCM leg failed: ${e.message}")
+                        Diag.log("FCM → ERROR: ${e.message}")
+                        retryable = true
+                    }
+                }
             }
         }
 

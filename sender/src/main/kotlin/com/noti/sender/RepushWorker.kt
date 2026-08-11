@@ -58,18 +58,24 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
         var delivered = 0
         var failed = 0
         var consecutivePermanent = 0
+        // Track the resume point in memory and only persist it every 25 messages (plus on
+        // pause/finish), instead of an encrypted-prefs write per message across a big inbox. On an
+        // unclean kill we re-push at most the last 25 — harmless, ippu dedups them.
+        var localCursor = cursor
         for (sms in batch) {
             when (SenderPipeline.pushToIppu(ctx, sms)) {
                 SenderPipeline.SendOutcome.DELIVERED -> { delivered++; consecutivePermanent = 0 }
                 SenderPipeline.SendOutcome.PERMANENT -> {
                     failed++; consecutivePermanent++
                     if (delivered == 0 && consecutivePermanent >= 5) {
+                        s.repushCursorDate = localCursor
                         Diag.log("repush: aborted — ippu/FCM rejected every message (check the shared key & ippu token)")
                         RepushNotice.done(ctx, ctx.getString(R.string.repush_note_rejected))
                         return@withContext Result.success()
                     }
                 }
                 SenderPipeline.SendOutcome.TRANSIENT -> {
+                    s.repushCursorDate = localCursor
                     val at = base + delivered + failed
                     Diag.log("repush: paused at $at/$total (no network) — resumes automatically")
                     RepushNotice.progress(ctx, at, total, paused = true)
@@ -77,9 +83,12 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                 }
                 SenderPipeline.SendOutcome.NOT_CONFIGURED -> return@withContext Result.success()
             }
-            s.repushCursorDate = maxOf(s.repushCursorDate, sms.receivedMillis)
+            localCursor = maxOf(localCursor, sms.receivedMillis)
             val attempted = base + delivered + failed
-            if (attempted % 25 == 0) RepushNotice.progress(ctx, attempted, total, paused = false)
+            if (attempted % 25 == 0) {
+                s.repushCursorDate = localCursor
+                RepushNotice.progress(ctx, attempted, total, paused = false)
+            }
             delay(40) // gentle pacing so a big inbox doesn't hammer FCM
         }
 

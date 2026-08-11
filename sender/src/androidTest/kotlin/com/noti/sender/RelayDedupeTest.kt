@@ -16,8 +16,7 @@ class RelayDedupeTest {
 
     @Before @After
     fun clear() {
-        ctx.getSharedPreferences("noti_relay_dedupe", android.content.Context.MODE_PRIVATE)
-            .edit().clear().commit()
+        RelayDedupe.clear(ctx) // resets both the in-memory cache and disk
     }
 
     @Test

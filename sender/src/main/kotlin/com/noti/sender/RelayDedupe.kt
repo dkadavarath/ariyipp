@@ -15,23 +15,35 @@ object RelayDedupe {
     private const val KEY = "sent"
     private const val CAP = 6000 // ~3000 messages × 2 legs
 
+    // Loaded from disk once per process, then kept in memory; only a change touches disk. Avoids a
+    // full read + split (up to 6000 strings) on every relay's dedup check.
+    private var cache: LinkedHashSet<String>? = null
+
     /** True if [contentKey] was already delivered to [leg] ("fcm" or "n8n"). */
     @Synchronized
     fun alreadySent(context: Context, leg: String, contentKey: String): Boolean =
-        load(context).contains("$leg:$contentKey")
+        entries(context).contains("$leg:$contentKey")
 
     /** Marks [contentKey] as delivered to [leg]. */
     @Synchronized
     fun record(context: Context, leg: String, contentKey: String) {
-        val set = load(context)
+        val set = entries(context)
         if (!set.add("$leg:$contentKey")) return
         while (set.size > CAP) set.iterator().let { it.next(); it.remove() }
         prefs(context).edit().putString(KEY, set.joinToString("\n")).apply()
     }
 
-    private fun load(context: Context): LinkedHashSet<String> {
+    /** Clears everything (both the in-memory cache and disk). */
+    @Synchronized
+    fun clear(context: Context) {
+        cache = null
+        prefs(context).edit().clear().apply()
+    }
+
+    private fun entries(context: Context): LinkedHashSet<String> {
+        cache?.let { return it }
         val raw = prefs(context).getString(KEY, "").orEmpty()
-        return LinkedHashSet(if (raw.isEmpty()) emptyList() else raw.split('\n'))
+        return LinkedHashSet<String>(if (raw.isEmpty()) emptyList() else raw.split('\n')).also { cache = it }
     }
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

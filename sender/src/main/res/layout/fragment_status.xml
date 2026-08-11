@@ -38,7 +38,7 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:src="@drawable/ic_sim"
+                        android:src="@drawable/ic_privacy"
                         app:tint="?attr/colorPrimary"
                         android:contentDescription="@null" />
 
