@@ -12,7 +12,6 @@ import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.noti.sender.R
 import com.noti.sender.config.SenderSettings
-import com.noti.shared.MessageCrypto
 import com.noti.shared.PairingPayload
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -73,10 +72,6 @@ class PairingActivity : ScreenActivity() {
                     .setBeepEnabled(false)
                     .setOrientationLocked(false)
             )
-        }
-        findViewById<MaterialButton>(R.id.btn_generate_key).setOnClickListener {
-            relayKey.setText(MessageCrypto.generateKeyBase64())
-            Toast.makeText(this, R.string.key_generated, Toast.LENGTH_LONG).show()
         }
         findViewById<View>(R.id.btn_save).setOnClickListener {
             s.notiFcmToken = token.text.toString()

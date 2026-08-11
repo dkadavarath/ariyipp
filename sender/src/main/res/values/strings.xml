@@ -91,12 +91,19 @@
     <string name="hint_sim2_name">SIM 2 name (slot 2)</string>
 
     <!-- Pairing -->
-    <string name="pairing_intro">Import the FCM service-account key, then paste ippu\'s device token and the shared key so messages can be encrypted end-to-end.</string>
+    <string name="pairing_intro">Pair this phone with the ippu app so SMS relay there, encrypted end-to-end. Scan ippu\'s code to exchange device tokens and the shared key, or enter them by hand.</string>
+
+    <!-- Section headers, kept identical to ippu's Pairing screen -->
+    <string name="pair_hdr_key">Shared key</string>
+    <string name="pair_hdr_this">This device\'s code</string>
+    <string name="pair_hdr_other">The other device</string>
+    <string name="pair_hdr_sa">Service-account key</string>
+    <string name="pair_hdr_options">Options</string>
     <string name="key_status_none">No service-account key imported.</string>
     <string name="key_status_imported">Service-account key imported ✓ (project %1$s)</string>
     <string name="key_status_invalid">That file isn\'t a service-account key.</string>
     <string name="btn_import_key">Import service-account key</string>
-    <string name="btn_scan_qr">Scan pairing QR from ippu</string>
+    <string name="btn_scan_qr">Scan ippu\'s code</string>
     <string name="scan_prompt">Point at the QR on ippu\'s Relay screen</string>
     <string name="scan_bad">That QR isn\'t a ippu pairing code.</string>
     <string name="scan_ok">Paired — token and key filled in.</string>
@@ -106,8 +113,8 @@
     <string name="sw_fcm_enabled">Relay to ippu via FCM</string>
     <string name="reverse_intro">Reverse direction — let ippu compose messages that this phone sends via its SIM:</string>
     <string name="sw_accept_commands">Send SMS on command from ippu</string>
-    <string name="label_my_token">This device\'s token — paste into ippu\'s Relay screen</string>
-    <string name="my_token_qr_hint">…or scan this in ippu\'s Relay screen</string>
+    <string name="label_my_token">This device\'s token</string>
+    <string name="my_token_qr_hint">Scan this on ippu to pair</string>
 
     <!-- Webhook -->
     <string name="webhook_intro">Optionally also POST each SMS to your webhook (plaintext, using ippu\'s payload schema).</string>

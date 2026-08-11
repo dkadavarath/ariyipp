@@ -27,26 +27,24 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <!-- Intro -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                android:alpha="0.8"
+                android:alpha="0.85"
                 android:lineSpacingExtra="3dp"
                 android:text="@string/relay_intro"
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
 
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/sw_inbound_enabled"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/sw_inbound_enabled" />
+            <!-- 1. Shared key -->
+            <TextView
+                style="@style/PairSectionHeader"
+                android:text="@string/pair_hdr_key" />
 
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
                 android:hint="@string/label_relay_key">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -64,74 +62,46 @@
                 android:layout_height="wrap_content"
                 android:text="@string/btn_generate_key" />
 
+            <!-- 2. This device's code -->
             <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/label_token"
-                android:textAppearance="?attr/textAppearanceLabelMedium" />
+                style="@style/PairSectionHeader"
+                android:text="@string/pair_hdr_this" />
 
             <TextView
                 android:id="@+id/txt_token"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
                 android:alpha="0.7"
                 android:text="@string/loading"
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textIsSelectable="true" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:gravity="center"
-                android:text="@string/relay_qr_hint"
-                android:textAppearance="?attr/textAppearanceBodyMedium" />
 
             <ImageView
                 android:id="@+id/img_qr"
                 android:layout_width="240dp"
                 android:layout_height="240dp"
                 android:layout_gravity="center"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="12dp"
                 android:contentDescription="@string/relay_qr_hint" />
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginVertical="20dp"
-                android:background="?attr/colorOutlineVariant" />
-
             <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/relay_reverse_intro"
-                android:alpha="0.8"
-                android:lineSpacingExtra="3dp"
-                android:textAppearance="?attr/textAppearanceBodyMedium" />
-
-            <TextView
-                android:id="@+id/txt_sa_status"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:textAppearance="?attr/textAppearanceBodyMedium" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_import_sa"
-                style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="@string/btn_import_sa" />
+                android:gravity="center"
+                android:text="@string/relay_qr_hint"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+            <!-- 3. The other device -->
+            <TextView
+                style="@style/PairSectionHeader"
+                android:text="@string/pair_hdr_other" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_scan_ariy"
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
                 android:text="@string/btn_scan_ariy" />
 
             <com.google.android.material.textfield.TextInputLayout
@@ -149,13 +119,44 @@
                     android:maxLines="3" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- 4. Service-account key -->
+            <TextView
+                style="@style/PairSectionHeader"
+                android:text="@string/pair_hdr_sa" />
+
+            <TextView
+                android:id="@+id/txt_sa_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_import_sa"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/btn_import_sa" />
+
+            <!-- 5. Options -->
+            <TextView
+                style="@style/PairSectionHeader"
+                android:text="@string/pair_hdr_options" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/sw_inbound_enabled"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/sw_inbound_enabled" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_save"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="24dp"
                 android:text="@string/btn_save" />
 
+            <!-- Temporary: clear received messages before a full repush from ariy -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
@@ -177,8 +178,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:text="@string/btn_clear_inbound"
-                app:strokeColor="?attr/colorError"
-                android:textColor="?attr/colorError" />
+                android:textColor="?attr/colorError"
+                app:strokeColor="?attr/colorError" />
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

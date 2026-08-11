@@ -68,4 +68,15 @@ interface RelayedMessageDao {
     /** How many stored messages carry this content-dedupe key (for missed-SMS dedup). */
     @Query("SELECT COUNT(*) FROM relayed_messages WHERE dedupe = :key")
     fun countByDedupe(key: String): Int
+
+    /** Every stored message (for export/backup). */
+    @Query("SELECT * FROM relayed_messages ORDER BY receivedAt ASC, id ASC")
+    fun allMessages(): List<RelayedMessageEntity>
+
+    /** Removes every message (used before a restore replaces the history). */
+    @Query("DELETE FROM relayed_messages")
+    fun clearAll(): Int
+
+    @Insert
+    fun insertAll(messages: List<RelayedMessageEntity>)
 }
