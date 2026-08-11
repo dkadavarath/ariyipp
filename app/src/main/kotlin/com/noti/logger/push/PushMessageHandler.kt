@@ -58,6 +58,8 @@ object PushMessageHandler {
         }
 
         // Persist to the chat history (best-effort — a storage error must not block the notification).
+        // Order by the SMS's real time (from the sender) so a delayed/synced message lands correctly
+        // in the timeline; fall back to arrival time for older senders that don't send it.
         val (sender, sim) = RelayTitle.parse(title)
         val messageId = try {
             dao.insert(
@@ -65,7 +67,7 @@ object PushMessageHandler {
                     sender = sender,
                     sim = sim,
                     body = msg.body,
-                    receivedAt = System.currentTimeMillis(),
+                    receivedAt = if (msg.time > 0) msg.time else System.currentTimeMillis(),
                     dedupe = msg.dedupe,
                 )
             )

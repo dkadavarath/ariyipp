@@ -54,6 +54,7 @@ object SenderPipeline {
             title = if (sms.sim.isNotBlank()) "${sms.from} on ${sms.sim}" else sms.from,
             body = sms.body,
             dedupe = dedupeKey(sms),
+            time = sms.receivedMillis,
         )
 
     /** Stable content key so live-relay and missed-sync deliveries of the same SMS collapse on noti. */
