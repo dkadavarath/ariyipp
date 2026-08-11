@@ -14,6 +14,25 @@
     <string name="btn_ignore_battery">Ignore battery optimization</string>
     <string name="btn_sync_missed">Sync missed SMS now</string>
     <string name="sync_started">Syncing missed SMS…</string>
+
+    <!-- Full repush: push the whole inbox so ippu can rebuild after a gap -->
+    <string name="btn_repush">Repush entire inbox to ippu…</string>
+    <string name="repush_confirm_title">Repush entire inbox?</string>
+    <string name="repush_confirm_msg">This sends every SMS in this phone\'s inbox to ippu so it can fill any gaps. ippu ignores messages it already has, so it\'s safe — but a large inbox can take a while and use data. Make sure you\'ve cleared ippu\'s received messages first if you want a clean rebuild.</string>
+    <string name="repush_confirm_yes">Repush</string>
+    <string name="repush_started">Repush started — see the notification for progress.</string>
+    <string name="repush_need_read">Grant SMS access first (Status screen).</string>
+    <string name="repush_need_pairing">Pair with ippu first (Pairing screen).</string>
+    <string name="repush_channel">Inbox repush</string>
+    <string name="repush_note_title">Repushing inbox to ippu</string>
+    <string name="repush_note_progress">Sent %1$d of %2$d</string>
+    <string name="repush_note_paused">Paused at %1$d of %2$d — waiting for network</string>
+    <string name="repush_note_done">Repush complete — %1$d sent</string>
+    <string name="repush_note_failed_suffix"> (%1$d failed)</string>
+    <string name="repush_note_no_read">Repush needs SMS read access.</string>
+    <string name="repush_note_not_paired">Repush needs pairing with ippu.</string>
+    <string name="repush_note_rejected">Repush stopped — ippu rejected messages. Check the shared key and ippu token.</string>
+
     <string name="keepalive_title">ariy is relaying SMS</string>
     <string name="keepalive_text">Keeping the SMS relay active in the background.</string>
 

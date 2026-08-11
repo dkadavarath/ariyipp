@@ -68,6 +68,28 @@ object SenderPipeline {
     fun isConfigured(s: SenderSettings): Boolean =
         s.fcmEnabled && s.serviceAccountJson.isNotBlank() && s.notiFcmToken.isNotBlank() && s.relayKey.isNotBlank()
 
+    enum class SendOutcome { DELIVERED, TRANSIENT, PERMANENT, NOT_CONFIGURED }
+
+    /**
+     * FCM-only push to ippu (no n8n leg) — used by the full repush, which walks the whole inbox.
+     * ippu dedups by content hash, so re-pushing an already-held message is a no-op there.
+     */
+    fun pushToIppu(context: Context, sms: CapturedSms): SendOutcome {
+        val s = SenderSettings.get(context)
+        if (!isConfigured(s)) return SendOutcome.NOT_CONFIGURED
+        return try {
+            val payload = encryptForFcm(fcmMessage(sms), s.relayKey)
+            val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload))
+            when {
+                res.ok -> SendOutcome.DELIVERED
+                res.httpCode == -1 || res.httpCode == 429 || res.httpCode in 500..599 -> SendOutcome.TRANSIENT
+                else -> SendOutcome.PERMANENT // bad key/token/request — retrying won't help
+            }
+        } catch (e: Exception) {
+            SendOutcome.TRANSIENT
+        }
+    }
+
     /** The structured block placed in the n8n item's `text` field. */
     fun n8nText(sms: CapturedSms): String =
         "From: ${sms.from}\n" +

@@ -114,6 +114,18 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         get() = prefs.getLong(KEY_LAST_SYNCED, 0L)
         set(value) { prefs.edit().putLong(KEY_LAST_SYNCED, value).apply() }
 
+    // ---- Full repush (one-shot: push the entire inbox so ippu can rebuild after a gap) ----
+
+    /** Resume point for an in-progress repush (0 = start from the beginning of the inbox). */
+    var repushCursorDate: Long
+        get() = prefs.getLong(KEY_REPUSH_CURSOR, 0L)
+        set(value) { prefs.edit().putLong(KEY_REPUSH_CURSOR, value).apply() }
+
+    /** Inbox size captured when a repush starts, for the progress notification. */
+    var repushTotal: Int
+        get() = prefs.getInt(KEY_REPUSH_TOTAL, 0)
+        set(value) { prefs.edit().putInt(KEY_REPUSH_TOTAL, value).apply() }
+
     /** Generated once, stable for the install; identifies this device in the n8n payload. */
     @Volatile private var cachedDeviceId: String? = null
     val deviceId: String
@@ -150,6 +162,8 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_AMOLED = "amoled"
         private const val KEY_KEEPALIVE = "keepalive"
         private const val KEY_LAST_SYNCED = "last_synced_sms_date"
+        private const val KEY_REPUSH_CURSOR = "repush_cursor_date"
+        private const val KEY_REPUSH_TOTAL = "repush_total"
 
         @Volatile private var INSTANCE: SenderSettings? = null
 

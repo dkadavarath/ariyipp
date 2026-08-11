@@ -52,6 +52,11 @@ interface RelayedMessageDao {
     @Query("DELETE FROM relayed_messages WHERE id = :id")
     fun deleteMessage(id: Long)
 
+    /** Deletes all received (inbound) messages, keeping ones composed here. Returns rows removed.
+     *  Used before a full repush from ariy so the rebuilt history has no pre-hash duplicates. */
+    @Query("DELETE FROM relayed_messages WHERE outgoing = 0")
+    fun deleteInbound(): Int
+
     /** Marks every incoming message in a conversation as read. Returns rows changed. */
     @Query("UPDATE relayed_messages SET read = 1 WHERE sender = :sender AND outgoing = 0 AND read = 0")
     fun markRead(sender: String): Int

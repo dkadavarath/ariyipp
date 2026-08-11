@@ -14,9 +14,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.noti.sender.KeepAliveService
 import com.noti.sender.R
+import com.noti.sender.RepushWorker
+import com.noti.sender.SenderPipeline
 import com.noti.sender.SmsSyncWorker
+import com.noti.sender.config.SenderSettings
 
 /** Status tab: SMS-access state, battery-optimization exemption, keep-alive, and a missed-SMS sync. */
 class StatusFragment : Fragment(R.layout.fragment_status) {
@@ -42,6 +46,27 @@ class StatusFragment : Fragment(R.layout.fragment_status) {
             SmsSyncWorker.syncNow(requireContext())
             Toast.makeText(requireContext(), R.string.sync_started, Toast.LENGTH_SHORT).show()
         }
+        view.findViewById<MaterialButton>(R.id.btn_repush).setOnClickListener { confirmRepush() }
+    }
+
+    private fun confirmRepush() {
+        val ctx = requireContext()
+        val readSms = ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+        if (!readSms) {
+            Toast.makeText(ctx, R.string.repush_need_read, Toast.LENGTH_LONG).show(); return
+        }
+        if (!SenderPipeline.isConfigured(SenderSettings.get(ctx))) {
+            Toast.makeText(ctx, R.string.repush_need_pairing, Toast.LENGTH_LONG).show(); return
+        }
+        MaterialAlertDialogBuilder(ctx)
+            .setTitle(R.string.repush_confirm_title)
+            .setMessage(R.string.repush_confirm_msg)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.repush_confirm_yes) { _, _ ->
+                RepushWorker.start(ctx)
+                Toast.makeText(ctx, R.string.repush_started, Toast.LENGTH_SHORT).show()
+            }
+            .show()
     }
 
     override fun onResume() {

@@ -94,6 +94,13 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:text="@string/btn_sync_missed" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_repush"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/btn_repush" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
