@@ -66,10 +66,7 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
             override fun handleOnBackPressed() = closeSearch()
         }
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, searchBack)
-
-        view.findViewById<View>(R.id.fab_compose).setOnClickListener {
-            startActivity(Intent(requireContext(), ComposeActivity::class.java))
-        }
+        // The compose FAB lives in MainActivity (pinned to the screen); it opens ComposeActivity.
     }
 
     private fun updateSearchBack() {

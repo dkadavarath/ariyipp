@@ -1,5 +1,6 @@
 package com.noti.logger.ui
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
@@ -38,6 +39,10 @@ class MainActivity : AppCompatActivity() {
         applyWindowInsets()
         // No setSupportActionBar: the CollapsingToolbarLayout draws the title itself, and setting the
         // Toolbar as the action bar suppresses it. The tab host has no options menu.
+
+        findViewById<View>(R.id.fab_compose).setOnClickListener {
+            startActivity(Intent(this, ComposeActivity::class.java))
+        }
 
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
         bottomNav.setOnItemSelectedListener { item ->
@@ -98,6 +103,9 @@ class MainActivity : AppCompatActivity() {
         // The large collapsing header owns the title; start each tab fully expanded.
         findViewById<CollapsingToolbarLayout>(R.id.collapsing_toolbar).title = getString(titleRes)
         findViewById<AppBarLayout>(R.id.appbar).setExpanded(true, false)
+        // The compose FAB is only for the Messages tab.
+        findViewById<View>(R.id.fab_compose).visibility =
+            if (fragment is MessagesFragment) View.VISIBLE else View.GONE
     }
 
     private fun applyWindowInsets() {
