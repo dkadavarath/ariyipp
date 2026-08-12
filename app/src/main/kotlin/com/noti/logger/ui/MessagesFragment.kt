@@ -24,6 +24,7 @@ import com.noti.logger.data.ConversationSummary
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.util.Avatars
 import com.noti.logger.util.ChatTime
+import com.noti.logger.util.Haptics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -203,7 +204,7 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
             holder.muted.visibility = if (c.sender in mutedSenders) View.VISIBLE else View.GONE
 
             holder.itemView.setOnClickListener { onClick(c.sender) }
-            holder.itemView.setOnLongClickListener { onLongClick(c.sender); true }
+            holder.itemView.setOnLongClickListener { Haptics.longPress(it); onLongClick(c.sender); true }
         }
     }
 

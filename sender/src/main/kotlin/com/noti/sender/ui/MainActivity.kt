@@ -10,12 +10,16 @@ import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.CollapsingToolbarLayout
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.noti.sender.R
+import com.noti.sender.util.Haptics
 import com.noti.sender.util.Theming
 
 /** Bottom-nav host: Status / Settings / About tabs. */
 class MainActivity : AppCompatActivity() {
 
     private var themedAmoled = false
+
+    /** Gates tab-select haptics so the launch-time programmatic selection doesn't buzz. */
+    private var navHapticsReady = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Theming.applyDynamicColorIfEnabled(this)
@@ -29,6 +33,7 @@ class MainActivity : AppCompatActivity() {
 
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
         bottomNav.setOnItemSelectedListener { item ->
+            if (navHapticsReady) Haptics.tabSelect(bottomNav)
             when (item.itemId) {
                 R.id.nav_status -> show(StatusFragment(), R.string.nav_status)
                 R.id.nav_settings -> show(SettingsFragment(), R.string.nav_settings)
@@ -38,6 +43,7 @@ class MainActivity : AppCompatActivity() {
             true
         }
         if (savedInstanceState == null) bottomNav.selectedItemId = R.id.nav_status
+        navHapticsReady = true // don't buzz on the initial programmatic selection above
     }
 
     override fun onResume() {

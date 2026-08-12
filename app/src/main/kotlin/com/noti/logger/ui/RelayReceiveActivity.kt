@@ -98,8 +98,10 @@ class RelayReceiveActivity : ScreenActivity() {
     }
 
     private fun onAriyScanned(text: String) {
+        val root = findViewById<View>(R.id.screen_root)
         val parsed = PairingPayload.parseReverse(text)
         if (parsed == null) {
+            com.noti.logger.util.Haptics.reject(root)
             Toast.makeText(this, R.string.relay_scan_ariy_bad, Toast.LENGTH_SHORT).show()
             return
         }
@@ -109,6 +111,7 @@ class RelayReceiveActivity : ScreenActivity() {
         // fully sets up the reverse direction.
         val keyField = findViewById<TextInputEditText>(R.id.et_relay_key)
         if (key.isNotBlank() && keyField.text.isNullOrBlank()) keyField.setText(key)
+        com.noti.logger.util.Haptics.confirm(root)
         Toast.makeText(this, R.string.relay_scan_ariy_ok, Toast.LENGTH_SHORT).show()
     }
 

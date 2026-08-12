@@ -303,7 +303,7 @@ class ChatActivity : AppCompatActivity() {
         holder.body.setTextColor(if (outgoing) colorOnPrimary else colorOnSurface)
         holder.body.background = groupedBubble(outgoing, row.firstInGroup, row.lastInGroup, fill)
 
-        holder.body.setOnLongClickListener { onMessageLongPress(m); true }
+        holder.body.setOnLongClickListener { com.noti.logger.util.Haptics.longPress(it); onMessageLongPress(m); true }
         if (m.id == adapter.flashId) {
             adapter.flashId = -1L
             flash(holder.itemView)

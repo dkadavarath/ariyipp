@@ -12,6 +12,7 @@ import android.widget.Toast
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.RemoteInput
 import com.noti.logger.R
+import com.noti.logger.config.Settings
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.RelayedMessageEntity
 
@@ -43,6 +44,19 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 Thread {
                     try {
                         NotiDatabase.get(app).relayedMessageDao().markRead(sender)
+                        NotificationManagerCompat.from(app).cancel(notifId)
+                    } finally {
+                        pending.finish()
+                    }
+                }.start()
+            }
+
+            ACTION_MUTE -> {
+                // Mute only this conversation: future messages still arrive as unread, just silently.
+                val pending = goAsync()
+                Thread {
+                    try {
+                        Settings.get(app).setMuted(sender, true)
                         NotificationManagerCompat.from(app).cancel(notifId)
                     } finally {
                         pending.finish()
@@ -103,6 +117,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_REPLY = "com.noti.logger.action.REPLY"
         const val ACTION_MARK_READ = "com.noti.logger.action.MARK_READ"
+        const val ACTION_MUTE = "com.noti.logger.action.MUTE"
         const val ACTION_COPY_CODE = "com.noti.logger.action.COPY_CODE"
         const val EXTRA_SENDER = "sender"
         const val EXTRA_NOTIF_ID = "notif_id"

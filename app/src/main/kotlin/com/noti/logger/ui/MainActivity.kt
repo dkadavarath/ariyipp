@@ -15,6 +15,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.color.MaterialColors
 import com.noti.logger.R
 import com.noti.logger.data.NotiDatabase
+import com.noti.logger.util.Haptics
 import com.noti.logger.util.Theming
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -46,6 +47,7 @@ class MainActivity : AppCompatActivity() {
 
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
         bottomNav.setOnItemSelectedListener { item ->
+            if (navHapticsReady) Haptics.tabSelect(bottomNav)
             when (item.itemId) {
                 R.id.nav_status -> show(StatusFragment(), R.string.nav_status)
                 R.id.nav_messages -> show(MessagesFragment(), R.string.nav_messages)
@@ -60,12 +62,16 @@ class MainActivity : AppCompatActivity() {
                 if (intent.getStringExtra(EXTRA_START_TAB) == TAB_MESSAGES) R.id.nav_messages
                 else R.id.nav_status
         }
+        navHapticsReady = true // don't buzz on the initial programmatic selection above
 
         requestNotificationPermissionIfNeeded()
     }
 
     /** The AMOLED state this activity was themed with, so we can re-theme if it changed in Settings. */
     private var themedAmoled = false
+
+    /** Gates tab-select haptics so the launch-time programmatic selection doesn't buzz. */
+    private var navHapticsReady = false
 
     override fun onResume() {
         super.onResume()

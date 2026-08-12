@@ -90,13 +90,16 @@ class PairingActivity : ScreenActivity() {
     }
 
     private fun onScanned(text: String) {
+        val root = findViewById<View>(R.id.screen_root)
         val parsed = PairingPayload.parse(text)
         if (parsed == null) {
+            com.noti.sender.util.Haptics.reject(root)
             Toast.makeText(this, R.string.scan_bad, Toast.LENGTH_SHORT).show()
             return
         }
         findViewById<TextInputEditText>(R.id.et_noti_token).setText(parsed.first)
         findViewById<TextInputEditText>(R.id.et_relay_key).setText(parsed.second)
+        com.noti.sender.util.Haptics.confirm(root)
         Toast.makeText(this, R.string.scan_ok, Toast.LENGTH_SHORT).show()
     }
 

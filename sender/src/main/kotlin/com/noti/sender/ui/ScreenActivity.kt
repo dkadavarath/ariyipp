@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.noti.sender.R
+import com.noti.sender.util.Haptics
 import com.noti.sender.util.Theming
 
 /**
@@ -41,11 +42,13 @@ abstract class ScreenActivity : AppCompatActivity() {
         }
 
         onScreenCreated()
+        Haptics.attachToToggles(root) // after subclasses have inflated their switches
     }
 
     protected open fun onScreenCreated() {}
 
     override fun onSupportNavigateUp(): Boolean {
+        findViewById<View>(R.id.toolbar)?.let { Haptics.navUp(it) }
         finish()
         return true
     }

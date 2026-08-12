@@ -12,6 +12,7 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.noti.logger.R
 import com.noti.logger.backup.Backup
+import com.noti.logger.util.Haptics
 import com.noti.shared.BackupCrypto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -58,16 +59,18 @@ class BackupActivity : ScreenActivity() {
         pendingPassphrase = null
         setStatus(getString(R.string.backup_working))
         lifecycleScope.launch(Dispatchers.IO) {
+            var ok = false
             val result = try {
                 val jsonText = Backup.export(applicationContext)
                 val blob = BackupCrypto.encrypt(jsonText.toByteArray(Charsets.UTF_8), pass)
                 contentResolver.openOutputStream(uri)?.use { it.write(blob) }
                     ?: throw IllegalStateException("could not open file")
+                ok = true
                 getString(R.string.backup_done)
             } catch (e: Exception) {
                 getString(R.string.backup_failed, e.message ?: "error")
             }
-            withContext(Dispatchers.Main) { setStatus(result); toast(result) }
+            withContext(Dispatchers.Main) { setStatus(result); toast(result); feedback(ok) }
         }
     }
 
@@ -89,7 +92,7 @@ class BackupActivity : ScreenActivity() {
             val plain = try {
                 String(BackupCrypto.decrypt(blob, pass), Charsets.UTF_8)
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) { setStatus(""); toast(getString(R.string.restore_bad_pass)) }
+                withContext(Dispatchers.Main) { setStatus(""); toast(getString(R.string.restore_bad_pass)); feedback(false) }
                 return@launch
             }
             withContext(Dispatchers.Main) {
@@ -107,14 +110,21 @@ class BackupActivity : ScreenActivity() {
     private fun applyRestore(jsonText: String) {
         setStatus(getString(R.string.restore_working))
         lifecycleScope.launch(Dispatchers.IO) {
+            var ok = false
             val result = try {
                 Backup.import(applicationContext, jsonText)
+                ok = true
                 getString(R.string.restore_done)
             } catch (e: Exception) {
                 getString(R.string.restore_failed, e.message ?: "error")
             }
-            withContext(Dispatchers.Main) { setStatus(result); toast(result) }
+            withContext(Dispatchers.Main) { setStatus(result); toast(result); feedback(ok) }
         }
+    }
+
+    private fun feedback(ok: Boolean) {
+        val v = findViewById<View>(R.id.screen_root)
+        if (ok) Haptics.confirm(v) else Haptics.reject(v)
     }
 
     /** Password dialog. When [confirm], a second field must match before [onOk] fires. */

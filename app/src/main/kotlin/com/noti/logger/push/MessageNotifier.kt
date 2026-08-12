@@ -66,6 +66,7 @@ object MessageNotifier {
         }
         if (sender.isNotBlank()) {
             builder.addAction(markReadAction(context, sender, id))
+            builder.addAction(muteAction(context, sender, id))
         }
         val notification = builder.build()
         try {
@@ -137,6 +138,20 @@ object MessageNotifier {
         )
         return NotificationCompat.Action.Builder(
             R.drawable.ic_status_active, context.getString(R.string.notif_action_mark_read), pending,
+        ).build()
+    }
+
+    private fun muteAction(context: Context, sender: String, id: Int): NotificationCompat.Action {
+        val intent = Intent(context, NotificationActionReceiver::class.java)
+            .setAction(NotificationActionReceiver.ACTION_MUTE)
+            .putExtra(NotificationActionReceiver.EXTRA_SENDER, sender)
+            .putExtra(NotificationActionReceiver.EXTRA_NOTIF_ID, id)
+        val pending = PendingIntent.getBroadcast(
+            context, id + 4_000_000, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return NotificationCompat.Action.Builder(
+            R.drawable.ic_mute, context.getString(R.string.notif_action_mute), pending,
         ).build()
     }
 
