@@ -54,20 +54,19 @@ object ChatTime {
         return ca.get(Calendar.YEAR) == cb.get(Calendar.YEAR)
     }
 
+    /** The local calendar-day index for an instant — cheap (no Calendar allocation), so the
+     *  per-row day checks below don't churn objects while binding a list. */
+    private fun localDay(millis: Long): Long {
+        val offset = java.util.TimeZone.getDefault().getOffset(millis)
+        return Math.floorDiv(millis + offset, DateUtils.DAY_IN_MILLIS)
+    }
+
     /** True when [a] and [b] fall on the same calendar day. */
-    fun sameDay(a: Long, b: Long): Boolean {
-        val ca = Calendar.getInstance().apply { timeInMillis = a }
-        val cb = Calendar.getInstance().apply { timeInMillis = b }
-        return ca.get(Calendar.YEAR) == cb.get(Calendar.YEAR) &&
-            ca.get(Calendar.DAY_OF_YEAR) == cb.get(Calendar.DAY_OF_YEAR)
-    }
+    fun sameDay(a: Long, b: Long): Boolean = localDay(a) == localDay(b)
 
-    private fun isToday(millis: Long) = sameDay(millis, System.currentTimeMillis())
+    private fun isToday(millis: Long) = localDay(millis) == localDay(System.currentTimeMillis())
 
-    private fun isYesterday(millis: Long): Boolean {
-        val y = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.timeInMillis
-        return sameDay(millis, y)
-    }
+    private fun isYesterday(millis: Long) = localDay(millis) == localDay(System.currentTimeMillis()) - 1
 
     private fun withinDays(millis: Long, days: Int) =
         System.currentTimeMillis() - millis < days * DateUtils.DAY_IN_MILLIS

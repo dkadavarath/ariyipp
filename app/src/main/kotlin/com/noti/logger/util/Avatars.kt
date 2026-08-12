@@ -28,11 +28,14 @@ object Avatars {
         0xFF455A64.toInt(), // blue grey
     )
 
+    // Compiled once, not per row-bind.
+    private val SEPARATORS = Regex("[\\s\\-_./]+")
+
     fun colorFor(key: String): Int = palette[Math.floorMod(key.hashCode(), palette.size)]
 
     /** Up to two letters: first-of-first + first-of-last word. Empty for a numeric-only sender. */
     fun initials(name: String): String {
-        val words = name.trim().split(Regex("[\\s\\-_./]+")).filter { it.any(Char::isLetter) }
+        val words = name.trim().split(SEPARATORS).filter { it.any(Char::isLetter) }
         val letters = words.mapNotNull { w -> w.firstOrNull(Char::isLetter) }
         return when {
             letters.isEmpty() -> ""
