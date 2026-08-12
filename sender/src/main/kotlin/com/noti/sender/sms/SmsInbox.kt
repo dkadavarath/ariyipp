@@ -54,7 +54,8 @@ object SmsInbox {
     private fun simLabel(context: Context, subId: Int): String {
         if (subId < 0) return ""
         return try {
-            val slot = SubscriptionManager.from(context).getActiveSubscriptionInfo(subId)?.simSlotIndex ?: return ""
+            val sm = context.getSystemService(SubscriptionManager::class.java) ?: return ""
+            val slot = sm.getActiveSubscriptionInfo(subId)?.simSlotIndex ?: return ""
             SenderSettings.get(context).simName(slot)
         } catch (e: Exception) {
             ""
