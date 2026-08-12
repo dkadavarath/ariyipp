@@ -87,6 +87,10 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".push.NotificationActionReceiver"
+            android:exported="false" />
+
     </application>
 
 </manifest>

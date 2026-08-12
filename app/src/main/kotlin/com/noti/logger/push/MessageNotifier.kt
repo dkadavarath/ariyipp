@@ -8,9 +8,12 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.RemoteInput
 import androidx.core.app.TaskStackBuilder
+import com.noti.logger.R
 import com.noti.logger.ui.ChatActivity
 import com.noti.logger.ui.MainActivity
+import com.noti.logger.util.OtpExtractor
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -40,7 +43,7 @@ object MessageNotifier {
     ): Int {
         ensureChannel(context)
         val id = nextId.getAndIncrement()
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_notify_chat)
             .setContentTitle(title)
             .setContentText(body)
@@ -49,13 +52,87 @@ object MessageNotifier {
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .build()
+        // Offer Copy code for an OTP, or Reply otherwise — not both — plus Mark as read.
+        val code = OtpExtractor.extract(body)
+        if (code != null) {
+            builder.addAction(copyCodeAction(context, code, id))
+        } else if (sender.isNotBlank()) {
+            builder.addAction(replyAction(context, sender, id))
+        }
+        if (sender.isNotBlank()) {
+            builder.addAction(markReadAction(context, sender, id))
+        }
+        val notification = builder.build()
         try {
             // No-ops if POST_NOTIFICATIONS is not granted (API 33+); guard against SecurityException.
             NotificationManagerCompat.from(context).notify(id, notification)
         } catch (_: SecurityException) {
         }
         return id
+    }
+
+    /** Re-posts the notification to clear the inline-reply spinner when a reply couldn't be sent. */
+    fun showReplyFailed(context: Context, sender: String, id: Int, replyText: String) {
+        ensureChannel(context)
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_notify_error)
+            .setContentTitle(context.getString(R.string.notif_reply_failed_title, sender))
+            .setContentText(context.getString(R.string.notif_reply_failed_body))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(R.string.notif_reply_failed_body)))
+            .setContentIntent(contentIntent(context, sender, -1L, id))
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+        try {
+            NotificationManagerCompat.from(context).notify(id, notification)
+        } catch (_: SecurityException) {
+        }
+    }
+
+    private fun replyAction(context: Context, sender: String, id: Int): NotificationCompat.Action {
+        val remoteInput = RemoteInput.Builder(NotificationActionReceiver.KEY_REPLY)
+            .setLabel(context.getString(R.string.notif_action_reply))
+            .build()
+        val intent = Intent(context, NotificationActionReceiver::class.java)
+            .setAction(NotificationActionReceiver.ACTION_REPLY)
+            .putExtra(NotificationActionReceiver.EXTRA_SENDER, sender)
+            .putExtra(NotificationActionReceiver.EXTRA_NOTIF_ID, id)
+        // RemoteInput requires a mutable PendingIntent so the system can attach the typed text.
+        val pending = PendingIntent.getBroadcast(
+            context, id + 1_000_000, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+        )
+        return NotificationCompat.Action.Builder(
+            R.drawable.ic_edit, context.getString(R.string.notif_action_reply), pending,
+        ).addRemoteInput(remoteInput).setAllowGeneratedReplies(true).build()
+    }
+
+    private fun copyCodeAction(context: Context, code: String, id: Int): NotificationCompat.Action {
+        val intent = Intent(context, NotificationActionReceiver::class.java)
+            .setAction(NotificationActionReceiver.ACTION_COPY_CODE)
+            .putExtra(NotificationActionReceiver.EXTRA_CODE, code)
+        val pending = PendingIntent.getBroadcast(
+            context, id + 3_000_000, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return NotificationCompat.Action.Builder(
+            R.drawable.ic_edit, context.getString(R.string.notif_action_copy_code, code), pending,
+        ).build()
+    }
+
+    private fun markReadAction(context: Context, sender: String, id: Int): NotificationCompat.Action {
+        val intent = Intent(context, NotificationActionReceiver::class.java)
+            .setAction(NotificationActionReceiver.ACTION_MARK_READ)
+            .putExtra(NotificationActionReceiver.EXTRA_SENDER, sender)
+            .putExtra(NotificationActionReceiver.EXTRA_NOTIF_ID, id)
+        val pending = PendingIntent.getBroadcast(
+            context, id + 2_000_000, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return NotificationCompat.Action.Builder(
+            R.drawable.ic_status_active, context.getString(R.string.notif_action_mark_read), pending,
+        ).build()
     }
 
     private fun ensureChannel(context: Context) {
