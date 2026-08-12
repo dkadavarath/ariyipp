@@ -45,12 +45,16 @@ class RelayReceiveActivity : ScreenActivity() {
     override fun onScreenCreated() {
         val s = Settings.get(this)
         val enabled = findViewById<MaterialSwitch>(R.id.sw_inbound_enabled)
+        val otpCopy = findViewById<MaterialSwitch>(R.id.sw_otp_copy)
+        val suppressSystem = findViewById<MaterialSwitch>(R.id.sw_suppress_system)
         val keyField = findViewById<TextInputEditText>(R.id.et_relay_key)
         val tokenView = findViewById<TextView>(R.id.txt_token)
         val qr = findViewById<ImageView>(R.id.img_qr)
         val sndiToken = findViewById<TextInputEditText>(R.id.et_sndi_token)
 
         enabled.isChecked = s.pushInboundEnabled
+        otpCopy.isChecked = s.otpCopyEnabled
+        suppressSystem.isChecked = s.suppressSystemNotifActions
         if (s.relayKey.isBlank()) s.relayKey = MessageCrypto.generateKeyBase64()
         keyField.setText(s.relayKey)
         sndiToken.setText(s.sndiFcmToken)
@@ -84,6 +88,8 @@ class RelayReceiveActivity : ScreenActivity() {
 
         findViewById<View>(R.id.btn_save).setOnClickListener {
             s.pushInboundEnabled = enabled.isChecked
+            s.otpCopyEnabled = otpCopy.isChecked
+            s.suppressSystemNotifActions = suppressSystem.isChecked
             s.relayKey = keyField.text.toString()
             s.sndiFcmToken = sndiToken.text.toString()
             Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show()

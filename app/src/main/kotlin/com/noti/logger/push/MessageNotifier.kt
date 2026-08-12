@@ -11,6 +11,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.RemoteInput
 import androidx.core.app.TaskStackBuilder
 import com.noti.logger.R
+import com.noti.logger.config.Settings
 import com.noti.logger.ui.ChatActivity
 import com.noti.logger.ui.MainActivity
 import com.noti.logger.util.OtpExtractor
@@ -42,6 +43,7 @@ object MessageNotifier {
         messageId: Long = -1L,
     ): Int {
         ensureChannel(context)
+        val settings = Settings.get(context)
         val id = nextId.getAndIncrement()
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_notify_chat)
@@ -52,12 +54,15 @@ object MessageNotifier {
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-        // Offer Copy code for an OTP, or Reply otherwise — not both — plus Mark as read.
+        // Optionally stop the OS adding its own contextual actions (e.g. its OTP-copy chip).
+        if (settings.suppressSystemNotifActions) {
+            builder.setAllowSystemGeneratedContextualActions(false)
+        }
+        // Offer Copy code for an OTP (if enabled), or Reply otherwise — not both — plus Mark as read.
         val code = OtpExtractor.extract(body)
-        if (code != null) {
-            builder.addAction(copyCodeAction(context, code, id))
-        } else if (sender.isNotBlank()) {
-            builder.addAction(replyAction(context, sender, id))
+        when {
+            code != null && settings.otpCopyEnabled -> builder.addAction(copyCodeAction(context, code, id))
+            code == null && sender.isNotBlank() -> builder.addAction(replyAction(context, sender, id))
         }
         if (sender.isNotBlank()) {
             builder.addAction(markReadAction(context, sender, id))

@@ -179,6 +179,21 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putBoolean(KEY_PUSH_INBOUND_ENABLED, value).apply()
         }
 
+    /** Add an in-app "Copy" action to a relayed-message notification when it contains a one-time code. */
+    var otpCopyEnabled: Boolean
+        get() = prefs.getBoolean(KEY_OTP_COPY, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_OTP_COPY, value).apply()
+        }
+
+    /** Ask the OS not to add its own auto-generated actions (e.g. its OTP-copy chip) to our
+     *  notifications — leaving only the app's own actions. Default off. */
+    var suppressSystemNotifActions: Boolean
+        get() = prefs.getBoolean(KEY_SUPPRESS_SYS_ACTIONS, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_SUPPRESS_SYS_ACTIONS, value).apply()
+        }
+
     /** Pre-shared AES-256-GCM key (base64) for decrypting inbound relayed messages. */
     var relayKey: String
         get() = prefs.getString(KEY_RELAY_KEY, "") ?: ""
@@ -305,6 +320,8 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_RETENTION_DAYS = "retention_days"
         private const val KEY_DEDUPE_WINDOW_SECONDS = "dedupe_window_seconds"
         private const val KEY_PUSH_INBOUND_ENABLED = "push_inbound_enabled"
+        private const val KEY_OTP_COPY = "otp_copy_enabled"
+        private const val KEY_SUPPRESS_SYS_ACTIONS = "suppress_system_notif_actions"
         private const val KEY_RELAY_KEY = "relay_key"
         private const val KEY_FCM_TOKEN = "fcm_token"
         private const val KEY_SA_JSON = "sa_json"
