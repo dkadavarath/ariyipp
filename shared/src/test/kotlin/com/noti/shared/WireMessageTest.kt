@@ -13,6 +13,8 @@ class WireMessageTest {
             WireMessage.Command(to = "+971500000000", body = "hi", sim = 1),
             WireMessage.WebhookConfig(enabled = true, url = "https://n8n.example/hook", authHeaderName = "key", authHeaderPrefix = "", authToken = "s3cr3t"),
             WireMessage.Token(endpoint = "fcm-token-xyz"),
+            WireMessage.Heartbeat(request = true),
+            WireMessage.Heartbeat(request = false),
         )
         for (m in messages) assertEquals(m, Wire.decode(Wire.encode(m)))
     }

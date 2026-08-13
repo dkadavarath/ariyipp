@@ -55,6 +55,17 @@ sealed interface WireMessage {
     data class Token(
         val endpoint: String = "",
     ) : WireMessage
+
+    /**
+     * Either way: a liveness ping. Both devices send one periodically; each tracks the peer's last
+     * arrival and warns when too many are missed. [request] = "pong back now" (the force-retry ping),
+     * which the receiver answers with a non-request heartbeat.
+     */
+    @Serializable
+    @SerialName("heartbeat")
+    data class Heartbeat(
+        val request: Boolean = false,
+    ) : WireMessage
 }
 
 /** Serializes [WireMessage] to/from the string carried in the encrypted FCM payload. */
