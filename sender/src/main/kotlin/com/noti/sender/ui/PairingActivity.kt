@@ -79,6 +79,7 @@ class PairingActivity : ScreenActivity() {
             s.fcmEnabled = fcmEnabled.isChecked
             s.acceptCommands = accept.isChecked
             com.noti.sender.SmsSyncWorker.baselineIfNeeded(this) // mark before the first new SMS
+            com.noti.sender.TokenAnnounceWorker.enqueue(this) // tell Main our endpoint (no copy-back)
             Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
             finish()
         }

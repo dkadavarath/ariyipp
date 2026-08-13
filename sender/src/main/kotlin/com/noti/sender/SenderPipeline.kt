@@ -83,6 +83,28 @@ object SenderPipeline {
         }
     }
 
+    /**
+     * Companion → Main: announce this device's push endpoint (its FCM token) so Main can reach it
+     * for reverse-send, with nothing copied back by hand. Sent after pairing and on token refresh.
+     */
+    fun announceToken(context: Context): SendOutcome {
+        val s = SenderSettings.get(context)
+        if (s.serviceAccountJson.isBlank() || s.notiFcmToken.isBlank() || s.relayKey.isBlank() || s.myFcmToken.isBlank()) {
+            return SendOutcome.NOT_CONFIGURED
+        }
+        return try {
+            val payload = MessageCrypto.encrypt(Wire.encode(WireMessage.Token(s.myFcmToken)), s.relayKey)
+            val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload))
+            when {
+                res.ok -> { Diag.log("endpoint announced to Main ✓"); SendOutcome.DELIVERED }
+                res.httpCode == -1 || res.httpCode == 429 || res.httpCode in 500..599 -> SendOutcome.TRANSIENT
+                else -> { Diag.log(fcmDiag(res.httpCode, res.detail)); SendOutcome.PERMANENT }
+            }
+        } catch (e: Exception) {
+            SendOutcome.TRANSIENT
+        }
+    }
+
     /** Posts one SMS to the n8n webhook. Logs a reason only on failure. */
     fun pushToWebhook(context: Context, sms: CapturedSms): SendOutcome {
         val s = SenderSettings.get(context)

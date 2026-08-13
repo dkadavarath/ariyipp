@@ -41,11 +41,17 @@ class NotiMessagingService : FirebaseMessagingService() {
         }
     }
 
-    /** Cache the refreshed token in both stores so the active role has it. (Peer auto-announce comes
-     *  with the pairing rework.) */
+    /** Cache the refreshed token in both stores; if this is the companion, re-announce it to Main so
+     *  reverse-send keeps working with no copy-back. */
     override fun onNewToken(token: String) {
-        Settings.get(applicationContext).fcmToken = token
+        val s = Settings.get(applicationContext)
+        s.fcmToken = token
         SenderSettings.get(applicationContext).myFcmToken = token
-        Diag.log("FCM token refreshed — re-pair so the peer gets the new token")
+        if (s.role == Role.COMPANION) {
+            com.noti.sender.TokenAnnounceWorker.enqueue(applicationContext)
+            Diag.log("FCM token refreshed — re-announcing endpoint to Main")
+        } else {
+            Diag.log("FCM token refreshed — re-pair if the companion needs the new hub token")
+        }
     }
 }
