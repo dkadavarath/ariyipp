@@ -14,7 +14,6 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.content.ContextCompat
 import com.noti.sender.config.SenderSettings
-import com.noti.sender.ui.MainActivity
 
 /**
  * A persistent foreground service whose only job is to keep ariy's process warm so the SMS receiver
@@ -28,8 +27,11 @@ class KeepAliveService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         ensureChannel()
+        // Open the app's launcher (this is a library — it can't name the app's Activity directly).
+        val launch = packageManager.getLaunchIntentForPackage(packageName)
+            ?: Intent().setPackage(packageName)
         val open = PendingIntent.getActivity(
-            this, 0, Intent(this, MainActivity::class.java),
+            this, 0, launch,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val n: Notification = Notification.Builder(this, CHANNEL)

@@ -107,6 +107,9 @@ dependencies {
     // Shared crypto + wire format (used by this app and the sender app)
     implementation(project(":shared"))
 
+    // Companion (SMS-source) role, as a library; its manifest components + permissions merge in.
+    implementation(project(":sender"))
+
     // QR generation + scanning for pairing (embedded bundles zxing core)
     implementation(libs.zxing.core)
     implementation(libs.zxing.embedded)
