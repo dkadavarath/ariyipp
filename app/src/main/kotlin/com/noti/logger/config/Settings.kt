@@ -170,6 +170,15 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putInt(KEY_DEDUPE_WINDOW_SECONDS, value.coerceAtLeast(0)).apply()
         }
 
+    // ---- Role (ariyipp: hub vs SMS companion) ----
+
+    /** Which role this device plays. null until the user picks one at onboarding. */
+    var role: com.noti.shared.Role?
+        get() = prefs.getString(KEY_ROLE, null)?.let { runCatching { com.noti.shared.Role.valueOf(it) }.getOrNull() }
+        set(value) {
+            prefs.edit().putString(KEY_ROLE, value?.name).apply()
+        }
+
     // ---- Inbound push (FCM relay receiver) ----
 
     /** Opt-in: show notifications pushed from the sender app. Default off. */
@@ -319,6 +328,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_CAPTURE_BODY = "capture_body"
         private const val KEY_RETENTION_DAYS = "retention_days"
         private const val KEY_DEDUPE_WINDOW_SECONDS = "dedupe_window_seconds"
+        private const val KEY_ROLE = "role"
         private const val KEY_PUSH_INBOUND_ENABLED = "push_inbound_enabled"
         private const val KEY_OTP_COPY = "otp_copy_enabled"
         private const val KEY_SUPPRESS_SYS_ACTIONS = "suppress_system_notif_actions"

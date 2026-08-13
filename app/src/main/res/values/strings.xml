@@ -16,6 +16,14 @@
     <string name="nav_settings">Settings</string>
     <string name="nav_about">About</string>
 
+    <!-- First-run role picker -->
+    <string name="onboarding_intro">How will this device be used? You can switch this later in Settings.</string>
+    <string name="onboarding_main_title">Main device</string>
+    <string name="onboarding_main_body">Receive relayed messages as a chat, get notifications, and reply. This is the phone you carry — the hub that manages the pair.</string>
+    <string name="onboarding_companion_title">Companion (SMS phone)</string>
+    <string name="onboarding_companion_body">Relay this phone\'s incoming SMS to your main device, and send SMS on its command. Usually the phone with the SIM you want reachable.</string>
+    <string name="onboarding_switch_hint">Both devices run the same app — one as Main, one as Companion.</string>
+
     <!-- Messages / chat -->
     <string name="messages_search_hint">Search messages</string>
     <string name="messages_empty">No messages yet.\n\nMessages relayed from ariy appear here.</string>

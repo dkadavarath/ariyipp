@@ -14,14 +14,19 @@ import com.google.android.material.appbar.CollapsingToolbarLayout
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.color.MaterialColors
 import com.noti.logger.R
+import com.noti.logger.config.Settings
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.util.Haptics
 import com.noti.logger.util.Theming
+import com.noti.shared.Role
+import com.noti.sender.ui.StatusFragment as CompanionStatusFragment
+import com.noti.sender.ui.SettingsFragment as CompanionSettingsFragment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Bottom-nav host: Status / Messages / Settings / About tabs. */
+/** Bottom-nav host. Tabs depend on the role: MAIN = Status/Messages/Settings/About, COMPANION =
+ *  Status/Settings/About (the companion Status/Settings fragments come from the companion library). */
 class MainActivity : AppCompatActivity() {
 
     companion object {
@@ -29,29 +34,48 @@ class MainActivity : AppCompatActivity() {
         const val TAB_MESSAGES = "messages"
     }
 
+    private var role: Role = Role.MAIN
+
     override fun onCreate(savedInstanceState: Bundle?) {
         Theming.applyDynamicColorIfEnabled(this)
         installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        val settings = Settings.get(this)
+        var chosen = settings.role
+        // An existing hub (ippu) install updating to the merged app has no role yet but clearly has
+        // hub data — default it to MAIN silently instead of showing onboarding.
+        if (chosen == null && (settings.webhookUrl.isNotBlank() || settings.pushInboundEnabled || settings.relayKey.isNotBlank())) {
+            chosen = Role.MAIN
+            settings.role = Role.MAIN
+        }
+        if (chosen == null) {
+            startActivity(Intent(this, RoleOnboardingActivity::class.java))
+            finish()
+            return
+        }
+        role = chosen
+
         Theming.applyAmoledIfEnabled(this) // after super so AppCompat doesn't reset the overlay
         themedAmoled = Theming.amoledActive(this)
         setContentView(R.layout.activity_main)
 
         applyWindowInsets()
-        // No setSupportActionBar: the CollapsingToolbarLayout draws the title itself, and setting the
-        // Toolbar as the action bar suppresses it. The tab host has no options menu.
+        // No setSupportActionBar: the CollapsingToolbarLayout draws the title itself.
 
         findViewById<View>(R.id.fab_compose).setOnClickListener {
             startActivity(Intent(this, ComposeActivity::class.java))
         }
 
+        val companion = role == Role.COMPANION
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
+        bottomNav.inflateMenu(if (companion) R.menu.bottom_nav_menu_companion else R.menu.bottom_nav_menu)
         bottomNav.setOnItemSelectedListener { item ->
             if (navHapticsReady) Haptics.tabSelect(bottomNav)
             when (item.itemId) {
-                R.id.nav_status -> show(StatusFragment(), R.string.nav_status)
+                R.id.nav_status -> show(if (companion) CompanionStatusFragment() else StatusFragment(), R.string.nav_status)
                 R.id.nav_messages -> show(MessagesFragment(), R.string.nav_messages)
-                R.id.nav_settings -> show(SettingsFragment(), R.string.nav_settings)
+                R.id.nav_settings -> show(if (companion) CompanionSettingsFragment() else SettingsFragment(), R.string.nav_settings)
                 R.id.nav_about -> show(AboutFragment(), R.string.nav_about)
                 else -> return@setOnItemSelectedListener false
             }
@@ -59,7 +83,7 @@ class MainActivity : AppCompatActivity() {
         }
         if (savedInstanceState == null) {
             bottomNav.selectedItemId =
-                if (intent.getStringExtra(EXTRA_START_TAB) == TAB_MESSAGES) R.id.nav_messages
+                if (!companion && intent.getStringExtra(EXTRA_START_TAB) == TAB_MESSAGES) R.id.nav_messages
                 else R.id.nav_status
         }
         navHapticsReady = true // don't buzz on the initial programmatic selection above
@@ -75,6 +99,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (isFinishing) return // routed to onboarding; UI not built
         // The Appearance toggle lives in a sub-screen; if it changed while we were away, re-theme.
         if (Theming.amoledActive(this) != themedAmoled) {
             recreate()
@@ -83,8 +108,9 @@ class MainActivity : AppCompatActivity() {
         updateMessagesBadge()
     }
 
-    /** Shows the total unread count as a badge on the Messages tab (Signal-style). */
+    /** Shows the total unread count as a badge on the Messages tab (Signal-style). MAIN only. */
     fun updateMessagesBadge() {
+        if (role != Role.MAIN) return
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
         lifecycleScope.launch {
             val unread = withContext(Dispatchers.IO) {
