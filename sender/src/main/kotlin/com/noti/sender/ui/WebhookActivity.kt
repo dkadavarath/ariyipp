@@ -33,6 +33,7 @@ class WebhookActivity : ScreenActivity() {
             s.n8nAuthHeaderPrefix = headerPrefix.text.toString()
             s.n8nToken = token.text.toString()
             s.n8nEnabled = enabled.isChecked
+            com.noti.sender.SmsSyncWorker.baselineIfNeeded(this) // mark before the first new SMS
             Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
             finish()
         }

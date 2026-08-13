@@ -43,7 +43,7 @@ class StatusFragment : Fragment(R.layout.fragment_status) {
         }
         view.findViewById<MaterialButton>(R.id.btn_battery).setOnClickListener { requestBatteryExemption() }
         view.findViewById<MaterialButton>(R.id.btn_sync).setOnClickListener {
-            SmsSyncWorker.syncNow(requireContext())
+            SmsSyncWorker.scanNow(requireContext())
             Toast.makeText(requireContext(), R.string.sync_started, Toast.LENGTH_SHORT).show()
         }
         view.findViewById<MaterialButton>(R.id.btn_repush).setOnClickListener { confirmRepush() }
@@ -74,12 +74,14 @@ class StatusFragment : Fragment(R.layout.fragment_status) {
         updateStatus()
         // Keep the relay warm and the backstop scheduled whenever the app is opened.
         KeepAliveService.ensureRunning(requireContext())
+        SmsSyncWorker.baselineIfNeeded(requireContext())
         SmsSyncWorker.schedulePeriodic(requireContext())
     }
 
     private fun onPermsChanged() {
         updateStatus()
         KeepAliveService.ensureRunning(requireContext())
+        SmsSyncWorker.baselineIfNeeded(requireContext())
         SmsSyncWorker.schedulePeriodic(requireContext())
     }
 

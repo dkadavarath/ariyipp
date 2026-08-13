@@ -46,7 +46,7 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
             return@withContext Result.success()
         }
 
-        val cursor = s.repushCursorDate
+        val cursor = s.repushCursorId
         val batch = SmsInbox.since(ctx, cursor)
         if (cursor == 0L) s.repushTotal = batch.size
         val total = s.repushTotal.coerceAtLeast(1)
@@ -68,14 +68,14 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                 SenderPipeline.SendOutcome.PERMANENT -> {
                     failed++; consecutivePermanent++
                     if (delivered == 0 && consecutivePermanent >= 5) {
-                        s.repushCursorDate = localCursor
+                        s.repushCursorId = localCursor
                         Diag.log("repush: aborted — ippu/FCM rejected every message (check the shared key & ippu token)")
                         RepushNotice.done(ctx, ctx.getString(R.string.repush_note_rejected))
                         return@withContext Result.success()
                     }
                 }
                 SenderPipeline.SendOutcome.TRANSIENT -> {
-                    s.repushCursorDate = localCursor
+                    s.repushCursorId = localCursor
                     val at = base + delivered + failed
                     Diag.log("repush: paused at $at/$total (no network) — resumes automatically")
                     RepushNotice.progress(ctx, at, total, paused = true)
@@ -83,16 +83,16 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                 }
                 SenderPipeline.SendOutcome.NOT_CONFIGURED -> return@withContext Result.success()
             }
-            localCursor = maxOf(localCursor, sms.receivedMillis)
+            localCursor = maxOf(localCursor, sms.id)
             val attempted = base + delivered + failed
             if (attempted % 25 == 0) {
-                s.repushCursorDate = localCursor
+                s.repushCursorId = localCursor
                 RepushNotice.progress(ctx, attempted, total, paused = false)
             }
             delay(40) // gentle pacing so a big inbox doesn't hammer FCM
         }
 
-        s.repushCursorDate = 0L // full pass complete — next press starts fresh
+        s.repushCursorId = 0L // full pass complete — next press starts fresh
         Diag.log("repush: complete — $delivered pushed" + if (failed > 0) ", $failed rejected" else "")
         RepushNotice.done(
             ctx,
@@ -107,7 +107,7 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
 
         /** Kick off a fresh full repush of the entire inbox (resets the resume cursor). */
         fun start(context: Context) {
-            SenderSettings.get(context).repushCursorDate = 0L
+            SenderSettings.get(context).repushCursorId = 0L
             WorkManager.getInstance(context).enqueueUniqueWork(
                 UNIQUE, ExistingWorkPolicy.REPLACE,
                 OneTimeWorkRequestBuilder<RepushWorker>()

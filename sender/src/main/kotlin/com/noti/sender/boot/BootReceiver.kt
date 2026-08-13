@@ -12,6 +12,6 @@ class BootReceiver : BroadcastReceiver() {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
         KeepAliveService.ensureRunning(context)
         SmsSyncWorker.schedulePeriodic(context)
-        SmsSyncWorker.syncNow(context)
+        SmsSyncWorker.scanNow(context)
     }
 }

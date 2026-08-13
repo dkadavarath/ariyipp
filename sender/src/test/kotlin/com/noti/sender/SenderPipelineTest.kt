@@ -23,25 +23,6 @@ class SenderPipelineTest {
     }
 
     @Test
-    fun `contentSig ignores the timestamp so live and sync agree`() {
-        // Same SMS seen by the live relay (SMSC time) and the inbox sync (DATE_SENT often 0/received).
-        val live = CapturedSms("+971500000000", "Your OTP is 4567", 1786172225000L, 1786172227000L, "e&")
-        val sync = CapturedSms("+971500000000", "Your OTP is 4567", 0L, 1786172230000L, "e&")
-
-        // The send-dedup key must match across paths despite the different timestamps...
-        assertEquals(SenderPipeline.contentSig(live), SenderPipeline.contentSig(sync))
-        // ...while the ippu content hash (with timestamp) legitimately differs.
-        assertTrue(SenderPipeline.dedupeKey(live) != SenderPipeline.dedupeKey(sync))
-    }
-
-    @Test
-    fun `contentSig differs for different content`() {
-        val a = CapturedSms("+111", "hello", 1L, 2L, "")
-        val b = CapturedSms("+111", "world", 1L, 2L, "")
-        assertTrue(SenderPipeline.contentSig(a) != SenderPipeline.contentSig(b))
-    }
-
-    @Test
     fun `fcm message shows sender on the sim name as the title`() {
         val sms = CapturedSms("+971500000000", "Test6", 1L, 2L, "e&")
         val m = SenderPipeline.fcmMessage(sms)

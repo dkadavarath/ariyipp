@@ -109,15 +109,21 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean(KEY_KEEPALIVE, true)
         set(value) { prefs.edit().putBoolean(KEY_KEEPALIVE, value).apply() }
 
-    /** `date` (epoch ms) of the newest inbox SMS the sync has relayed; 0 = never synced. */
-    var lastSyncedSmsDate: Long
-        get() = prefs.getLong(KEY_LAST_SYNCED, 0L)
-        set(value) { prefs.edit().putLong(KEY_LAST_SYNCED, value).apply() }
+    /** Provider `_id` high-water mark for the ippu (FCM) relay leg. -1 = not yet baselined. */
+    var lastRelayedSmsId: Long
+        get() = prefs.getLong(KEY_LAST_RELAYED_ID, -1L)
+        set(value) { prefs.edit().putLong(KEY_LAST_RELAYED_ID, value).apply() }
+
+    /** Provider `_id` high-water mark for the webhook (n8n) leg. -1 = not yet baselined. Independent
+     *  of the FCM mark so one leg failing/retrying can't re-send the other. */
+    var lastWebhookSmsId: Long
+        get() = prefs.getLong(KEY_LAST_WEBHOOK_ID, -1L)
+        set(value) { prefs.edit().putLong(KEY_LAST_WEBHOOK_ID, value).apply() }
 
     // ---- Full repush (one-shot: push the entire inbox so ippu can rebuild after a gap) ----
 
-    /** Resume point for an in-progress repush (0 = start from the beginning of the inbox). */
-    var repushCursorDate: Long
+    /** Resume point (provider `_id`) for an in-progress repush (0 = start from the whole inbox). */
+    var repushCursorId: Long
         get() = prefs.getLong(KEY_REPUSH_CURSOR, 0L)
         set(value) { prefs.edit().putLong(KEY_REPUSH_CURSOR, value).apply() }
 
@@ -161,8 +167,9 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_DYNAMIC_COLOR = "dynamic_color"
         private const val KEY_AMOLED = "amoled"
         private const val KEY_KEEPALIVE = "keepalive"
-        private const val KEY_LAST_SYNCED = "last_synced_sms_date"
-        private const val KEY_REPUSH_CURSOR = "repush_cursor_date"
+        private const val KEY_LAST_RELAYED_ID = "last_relayed_sms_id"
+        private const val KEY_LAST_WEBHOOK_ID = "last_webhook_sms_id"
+        private const val KEY_REPUSH_CURSOR = "repush_cursor_id"
         private const val KEY_REPUSH_TOTAL = "repush_total"
 
         @Volatile private var INSTANCE: SenderSettings? = null

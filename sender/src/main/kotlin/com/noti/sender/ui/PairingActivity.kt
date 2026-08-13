@@ -78,6 +78,7 @@ class PairingActivity : ScreenActivity() {
             s.relayKey = relayKey.text.toString()
             s.fcmEnabled = fcmEnabled.isChecked
             s.acceptCommands = accept.isChecked
+            com.noti.sender.SmsSyncWorker.baselineIfNeeded(this) // mark before the first new SMS
             Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
             finish()
         }

@@ -4,73 +4,20 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
-import androidx.work.Constraints
-import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.workDataOf
-import com.noti.sender.RelayWorker
-import com.noti.sender.SenderPipeline
-import com.noti.sender.config.SenderSettings
+import com.noti.sender.SmsSyncWorker
+import com.noti.shared.Diag
 
 /**
- * Observes incoming SMS (via RECEIVE_SMS; not the default SMS app). Parses the broadcast into parts,
- * assembles them, and hands the result to [SenderPipeline]. Kept thin — the parsing logic lives in
- * the pure, tested [SmsAssembler].
+ * Wakes on an incoming SMS (via RECEIVE_SMS; not the default SMS app) and nudges a relay scan. It
+ * deliberately does not read the broadcast payload — the relay works off the SMS provider's stable
+ * row id instead, so a duplicate broadcast (some OEMs / dual-SIM fire it more than once) can't cause
+ * a double-relay. The scan (in [SmsSyncWorker]) reads the provider and relays anything new.
  */
 class SmsReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
-
-        val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
-        if (messages == null) { com.noti.shared.Diag.log("SMS broadcast had no messages — ignored"); return }
-        val received = System.currentTimeMillis()
-        val sim = SenderSettings.get(context).simName(resolveSlot(intent))
-        val parts = messages.map { sms ->
-            SmsPart(
-                from = sms.displayOriginatingAddress ?: sms.originatingAddress,
-                body = sms.displayMessageBody ?: sms.messageBody.orEmpty(),
-                sentMillis = sms.timestampMillis
-            )
-        }
-
-        val sms = SmsAssembler.assemble(parts, received, sim) ?: return
-        com.noti.shared.Diag.log("SMS in from ${sms.from} → queued for relay")
-
-        // Hand off to WorkManager so delivery survives process death and retries on network loss,
-        // rather than doing the network inline in the short-lived receiver.
-        val request = OneTimeWorkRequestBuilder<RelayWorker>()
-            .setInputData(
-                workDataOf(
-                    RelayWorker.KEY_FROM to sms.from,
-                    RelayWorker.KEY_BODY to sms.body,
-                    RelayWorker.KEY_SENT to sms.sentMillis,
-                    RelayWorker.KEY_RECEIVED to sms.receivedMillis,
-                    RelayWorker.KEY_SIM to sms.sim,
-                )
-            )
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-            .build()
-        // Unique per SMS content so a duplicate SMS_RECEIVED broadcast (some OEMs / dual-SIM fire it
-        // more than once) doesn't enqueue a second worker and double-post to the webhook. KEEP drops
-        // the duplicate while the first is still pending/running.
-        WorkManager.getInstance(context.applicationContext)
-            .enqueueUniqueWork("relay-" + SenderPipeline.dedupeKey(sms), ExistingWorkPolicy.KEEP, request)
-    }
-
-    /**
-     * The 0-based SIM slot the SMS arrived on, from the broadcast's slot extra (permission-free; the
-     * key varies by OEM). Falls back to slot 0 when absent (single-SIM devices). The user-facing name
-     * is then looked up in [SenderSettings], sidestepping the READ_PHONE_STATE requirement for carrier
-     * names.
-     */
-    private fun resolveSlot(intent: Intent): Int {
-        for (key in listOf("android.telephony.extra.SLOT_INDEX", "slot", "simSlot", "phone")) {
-            val slot = intent.getIntExtra(key, -1)
-            if (slot in 0..3) return slot
-        }
-        return 0
+        Diag.log("SMS received — scanning inbox to relay")
+        SmsSyncWorker.scanSoon(context.applicationContext)
     }
 }

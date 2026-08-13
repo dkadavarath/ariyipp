@@ -13,6 +13,9 @@ data class CapturedSms(
     val sentMillis: Long,
     val receivedMillis: Long,
     val sim: String,
+    /** The SMS provider's stable row id (-1 when not read from the provider). Used as the relay
+     *  high-water mark so a message is relayed exactly once regardless of duplicate broadcasts. */
+    val id: Long = -1,
 )
 
 /**
