@@ -10,9 +10,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.noti.logger.config.Settings
 import com.noti.logger.push.PushMessageHandler
 import com.noti.shared.MessageCrypto
-import com.noti.shared.RelayMessage
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import com.noti.shared.Wire
+import com.noti.shared.WireMessage
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -60,7 +59,7 @@ class PushMessageHandlerTest {
     }
 
     private fun payload(title: String, body: String, encKey: String = key): Map<String, String> {
-        val plain = Json.encodeToString(RelayMessage(title, body))
+        val plain = Wire.encode(WireMessage.Relay(title = title, body = body))
         return mapOf(PushMessageHandler.PAYLOAD_KEY to MessageCrypto.encrypt(plain, encKey))
     }
 

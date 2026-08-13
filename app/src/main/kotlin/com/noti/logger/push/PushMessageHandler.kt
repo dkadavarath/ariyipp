@@ -6,28 +6,23 @@ import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.RelayedMessageEntity
 import com.noti.shared.Diag
 import com.noti.shared.MessageCrypto
-import com.noti.shared.RelayMessage
-import kotlinx.serialization.json.Json
+import com.noti.shared.Wire
+import com.noti.shared.WireMessage
 
 /**
- * Turns an inbound FCM data message into a local notification: pulls the ciphertext, decrypts it
- * with the pre-shared key, parses it, and posts it. Kept free of Firebase types so it can be tested
- * without Google Play Services (which only the FCM *transport* requires). Returns true iff a
- * notification was shown; every failure path drops silently so a bad/hostile message is a no-op.
+ * Turns an inbound FCM data message into a local notification (or applies a control message): pulls
+ * the ciphertext, decrypts with the pre-shared key, decodes the typed wire message, and dispatches.
+ * Kept free of Firebase types so it can be tested without Google Play Services. Returns true iff the
+ * message was handled; every failure path drops silently so a bad/hostile message is a no-op.
  */
 object PushMessageHandler {
 
     const val PAYLOAD_KEY = "payload"
-    private val json = Json { ignoreUnknownKeys = true }
 
     fun handle(context: Context, data: Map<String, String>): Boolean {
         val ciphertext = data[PAYLOAD_KEY]?.takeIf { it.isNotBlank() } ?: return false
 
         val settings = Settings.get(context)
-        if (!settings.pushInboundEnabled) {
-            Diag.log("inbound push DROPPED — \"Receive relayed messages\" is OFF (Settings → Relay)")
-            return false
-        }
         val key = settings.relayKey.takeIf { it.isNotBlank() }
         if (key == null) {
             Diag.log("inbound push DROPPED — no shared key set (Settings → Relay)")
@@ -37,15 +32,33 @@ object PushMessageHandler {
         val plaintext = try {
             MessageCrypto.decrypt(ciphertext, key)
         } catch (e: Exception) {
-            Diag.log("inbound push: DECRYPT FAILED — shared key doesn't match ariy's (re-pair)")
+            Diag.log("inbound push: DECRYPT FAILED — shared key doesn't match the companion's (re-pair)")
             return false
         }
 
-        val msg = try {
-            json.decodeFromString<RelayMessage>(plaintext)
+        val wire = try {
+            Wire.decode(plaintext)
         } catch (e: Exception) {
-            // Tolerate a non-JSON plaintext by treating the whole thing as the body.
-            RelayMessage(body = plaintext)
+            Diag.log("inbound push: unrecognized payload")
+            return false
+        }
+
+        return when (wire) {
+            is WireMessage.Token -> {
+                // The companion announced its push endpoint — store it so reverse-send can reach it.
+                settings.sndiFcmToken = wire.endpoint
+                Diag.log("companion endpoint received — reverse-send ready")
+                true
+            }
+            is WireMessage.Relay -> showRelay(context, settings, wire)
+            else -> false
+        }
+    }
+
+    private fun showRelay(context: Context, settings: Settings, msg: WireMessage.Relay): Boolean {
+        if (!settings.pushInboundEnabled) {
+            Diag.log("inbound push DROPPED — \"Receive relayed messages\" is OFF (Settings → Relay)")
+            return false
         }
 
         val title = msg.title.ifBlank { "Message" }

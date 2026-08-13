@@ -5,18 +5,15 @@ import com.noti.logger.config.Settings
 import com.noti.shared.Diag
 import com.noti.shared.FcmSender
 import com.noti.shared.MessageCrypto
-import com.noti.shared.SendCommand
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import com.noti.shared.Wire
+import com.noti.shared.WireMessage
 
 /**
- * Pushes an encrypted "send this SMS" command from noti to sndi (Phase B, reverse send): encrypts a
- * [SendCommand] with the shared key and sends it via FCM to sndi's token, using noti's copy of the
- * service-account key. Blocking network — call off the main thread.
+ * Pushes an encrypted "send this SMS" command from the hub to the companion (reverse send): encrypts
+ * a [WireMessage.Command] with the shared key and sends it via FCM to the companion's token, using
+ * the hub's copy of the service-account key. Blocking network — call off the main thread.
  */
 object NotiCommandSender {
-
-    private val json = Json { encodeDefaults = true }
 
     /** True when noti has everything needed to push a command to sndi. */
     fun isConfigured(s: Settings): Boolean =
@@ -37,7 +34,7 @@ object NotiCommandSender {
             Diag.log("compose FAILED — not configured: missing $missing (Settings → Relay)")
             return false
         }
-        val payload = MessageCrypto.encrypt(json.encodeToString(SendCommand(to, body, sim)), s.relayKey)
+        val payload = MessageCrypto.encrypt(Wire.encode(WireMessage.Command(to, body, sim)), s.relayKey)
         return try {
             val res = FcmSender(s.serviceAccountJson).send(s.sndiFcmToken, mapOf("payload" to payload))
             Diag.log(

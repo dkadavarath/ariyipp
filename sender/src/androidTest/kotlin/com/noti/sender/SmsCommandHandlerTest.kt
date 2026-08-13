@@ -6,9 +6,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.noti.sender.config.SenderSettings
 import com.noti.sender.sms.SmsCommandHandler
 import com.noti.shared.MessageCrypto
-import com.noti.shared.SendCommand
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import com.noti.shared.Wire
+import com.noti.shared.WireMessage
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -37,13 +36,13 @@ class SmsCommandHandlerTest {
     }
 
     private fun payload(to: String, body: String, encKey: String = key): Map<String, String> {
-        val plain = Json.encodeToString(SendCommand(to, body))
+        val plain = Wire.encode(WireMessage.Command(to = to, body = body))
         return mapOf(SmsCommandHandler.PAYLOAD_KEY to MessageCrypto.encrypt(plain, encKey))
     }
 
     @Test
     fun parses_a_valid_command() {
-        assertEquals(SendCommand("+123456", "hello"), SmsCommandHandler.parse(ctx, payload("+123456", "hello")))
+        assertEquals(WireMessage.Command("+123456", "hello"), SmsCommandHandler.parse(ctx, payload("+123456", "hello")))
     }
 
     @Test
