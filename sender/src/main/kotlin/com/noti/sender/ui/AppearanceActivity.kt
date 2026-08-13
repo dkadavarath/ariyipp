@@ -10,7 +10,7 @@ import com.noti.sender.util.Theming
 /** Theme mode (system/light/dark), Default vs Material You colour, and an AMOLED toggle. */
 class AppearanceActivity : ScreenActivity() {
 
-    override val layoutRes = R.layout.activity_appearance
+    override val layoutRes = R.layout.cmp_activity_appearance
     override val titleRes = R.string.title_appearance
 
     override fun onScreenCreated() {

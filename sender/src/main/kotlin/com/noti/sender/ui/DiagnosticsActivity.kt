@@ -13,7 +13,7 @@ import com.noti.shared.Diag
 /** Shows the in-app diagnostics log so relay/command failures are visible (with their reasons). */
 class DiagnosticsActivity : ScreenActivity() {
 
-    override val layoutRes = R.layout.activity_diagnostics
+    override val layoutRes = R.layout.cmp_activity_diagnostics
     override val titleRes = R.string.title_diagnostics
 
     private lateinit var logView: TextView

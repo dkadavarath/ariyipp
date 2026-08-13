@@ -9,7 +9,7 @@ import com.noti.sender.R
 import com.noti.sender.config.SenderSettings
 
 /** About tab: app info, changelog, and a Help button. */
-class AboutFragment : Fragment(R.layout.fragment_about) {
+class AboutFragment : Fragment(R.layout.cmp_fragment_about) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val version = try {
