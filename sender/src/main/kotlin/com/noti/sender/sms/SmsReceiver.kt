@@ -5,11 +5,13 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
 import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.noti.sender.RelayWorker
+import com.noti.sender.SenderPipeline
 import com.noti.sender.config.SenderSettings
 
 /**
@@ -51,7 +53,11 @@ class SmsReceiver : BroadcastReceiver() {
             )
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .build()
-        WorkManager.getInstance(context.applicationContext).enqueue(request)
+        // Unique per SMS content so a duplicate SMS_RECEIVED broadcast (some OEMs / dual-SIM fire it
+        // more than once) doesn't enqueue a second worker and double-post to the webhook. KEEP drops
+        // the duplicate while the first is still pending/running.
+        WorkManager.getInstance(context.applicationContext)
+            .enqueueUniqueWork("relay-" + SenderPipeline.dedupeKey(sms), ExistingWorkPolicy.KEEP, request)
     }
 
     /**

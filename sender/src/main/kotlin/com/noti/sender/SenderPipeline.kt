@@ -58,11 +58,19 @@ object SenderPipeline {
         )
 
     /** Stable content key so live-relay and missed-sync deliveries of the same SMS collapse on noti. */
-    fun dedupeKey(sms: CapturedSms): String {
-        val raw = "${sms.from}|${sms.body}|${sms.sentMillis}"
-        val md = java.security.MessageDigest.getInstance("SHA-256").digest(raw.toByteArray())
-        return md.joinToString("") { "%02x".format(it) }.take(24)
-    }
+    fun dedupeKey(sms: CapturedSms): String = sha256Hex("${sms.from}|${sms.body}|${sms.sentMillis}")
+
+    /**
+     * Timestamp-free content signature (from|body), used for the local send-dedup. Unlike [dedupeKey]
+     * it stays identical between the live relay (SMSC time) and the inbox sync (DATE_SENT, often 0),
+     * so the sync doesn't slip a duplicate past the webhook because the two paths timestamped it
+     * differently.
+     */
+    fun contentSig(sms: CapturedSms): String = sha256Hex("${sms.from}|${sms.body}")
+
+    private fun sha256Hex(raw: String): String =
+        java.security.MessageDigest.getInstance("SHA-256").digest(raw.toByteArray())
+            .joinToString("") { "%02x".format(it) }.take(24)
 
     /** True when ariy has everything needed to push a relay to noti (used to gate the sync). */
     fun isConfigured(s: SenderSettings): Boolean =
@@ -124,8 +132,9 @@ object SenderPipeline {
         Diag.log("relay from ${sms.from} (${sms.body.length} chars)${if (sms.sim.isNotBlank()) " on ${sms.sim}" else ""}")
         var retryable = false
         // Per-leg idempotency: skip a destination this message already reached, so the missed-SMS
-        // sync and worker retries don't re-send it. ippu dedups on its own, but n8n does not.
-        val key = dedupeKey(sms)
+        // sync and worker retries don't re-send it. ippu dedups on its own, but n8n does not. Keyed
+        // on the timestamp-free signature so the sync (DATE_SENT) matches the live relay (SMSC time).
+        val key = contentSig(sms)
 
         if (!s.fcmEnabled) {
             Diag.log("FCM: OFF (\"Relay to ippu via FCM\" is disabled in Pairing)")
