@@ -24,6 +24,18 @@
     <string name="onboarding_companion_body">Relay this phone\'s incoming SMS to your main device, and send SMS on its command. Usually the phone with the SIM you want reachable.</string>
     <string name="onboarding_switch_hint">Both devices run the same app — one as Main, one as Companion.</string>
 
+    <!-- Device role (About tab) -->
+    <string name="about_role_title">Device role</string>
+    <string name="about_role_main">This device is the Main device (the hub).</string>
+    <string name="about_role_companion">This device is the Companion (SMS phone).</string>
+    <string name="about_role_main_name">Main</string>
+    <string name="about_role_companion_name">Companion</string>
+    <string name="about_switch_to_companion">Switch to Companion</string>
+    <string name="about_switch_to_main">Switch to Main</string>
+    <string name="about_switch_title">Switch role?</string>
+    <string name="about_switch_msg">Switch this device to %1$s? Your keys and settings are kept; the app restarts.</string>
+    <string name="about_switch_confirm">Switch</string>
+
     <!-- Messages / chat -->
     <string name="messages_search_hint">Search messages</string>
     <string name="messages_empty">No messages yet.\n\nMessages relayed from ariy appear here.</string>
