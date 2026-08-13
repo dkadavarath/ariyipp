@@ -60,7 +60,7 @@
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/btn_generate_key" />
+                android:text="@string/btn_regenerate_key" />
 
             <!-- 2. This device's code -->
             <TextView
@@ -92,32 +92,8 @@
                 android:text="@string/relay_qr_hint"
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
 
-            <!-- 3. The other device -->
-            <TextView
-                style="@style/PairSectionHeader"
-                android:text="@string/pair_hdr_other" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_scan_ariy"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/btn_scan_ariy" />
-
-            <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="@string/hint_sndi_token">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/et_sndi_token"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="textNoSuggestions"
-                    android:maxLines="3" />
-            </com.google.android.material.textfield.TextInputLayout>
+            <!-- (The companion's endpoint arrives automatically over the encrypted channel after it
+                 scans this code — nothing to enter or scan here.) -->
 
             <!-- 4. Service-account key -->
             <TextView

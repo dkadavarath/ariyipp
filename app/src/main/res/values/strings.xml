@@ -108,6 +108,10 @@
     <string name="sw_inbound_enabled">Receive relayed messages</string>
     <string name="label_relay_key">Shared key (base64)</string>
     <string name="btn_generate_key">Generate a new shared key</string>
+    <string name="btn_regenerate_key">Regenerate shared key</string>
+    <string name="regen_key_title">Regenerate the shared key?</string>
+    <string name="regen_key_msg">This creates a brand-new key. Every paired companion will stop working until you re-pair it (re-scan this device\'s code). Only do this if you want to reset pairing.</string>
+    <string name="regen_key_yes">Regenerate</string>
     <string name="label_token">This device\'s token</string>
     <string name="relay_qr_hint">Scan this on ariy to pair</string>
     <string name="relay_reverse_intro">Reverse direction — compose messages here that ariy sends via its SIM. Import the same FCM service-account key and paste ariy\'s token (shown on ariy\'s Pairing screen).</string>

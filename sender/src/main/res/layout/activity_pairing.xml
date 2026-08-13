@@ -55,37 +55,7 @@
                     android:maxLines="2" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- 2. This device's code -->
-            <TextView
-                style="@style/PairSectionHeader"
-                android:text="@string/pair_hdr_this" />
-
-            <TextView
-                android:id="@+id/txt_my_token"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:alpha="0.7"
-                android:text="@string/loading"
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textIsSelectable="true" />
-
-            <ImageView
-                android:id="@+id/img_my_token_qr"
-                android:layout_width="240dp"
-                android:layout_height="240dp"
-                android:layout_gravity="center"
-                android:layout_marginTop="12dp"
-                android:contentDescription="@string/my_token_qr_hint" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:gravity="center"
-                android:text="@string/my_token_qr_hint"
-                android:textAppearance="?attr/textAppearanceBodyMedium" />
-
-            <!-- 3. The other device -->
+            <!-- 2. The other device -->
             <TextView
                 style="@style/PairSectionHeader"
                 android:text="@string/pair_hdr_other" />
