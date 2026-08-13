@@ -20,12 +20,14 @@ class WebhookActivity : ScreenActivity() {
         val headerPrefix = findViewById<TextInputEditText>(R.id.et_header_prefix)
         val token = findViewById<TextInputEditText>(R.id.et_auth_token)
         val enabled = findViewById<MaterialSwitch>(R.id.sw_n8n_enabled)
+        val acceptRemote = findViewById<MaterialSwitch>(R.id.sw_accept_remote_config)
 
         url.setText(s.n8nUrl)
         headerName.setText(s.n8nAuthHeaderName)
         headerPrefix.setText(s.n8nAuthHeaderPrefix)
         token.setText(s.n8nToken)
         enabled.isChecked = s.n8nEnabled
+        acceptRemote.isChecked = s.acceptRemoteConfig
 
         findViewById<View>(R.id.btn_save).setOnClickListener {
             s.n8nUrl = url.text.toString()
@@ -33,6 +35,7 @@ class WebhookActivity : ScreenActivity() {
             s.n8nAuthHeaderPrefix = headerPrefix.text.toString()
             s.n8nToken = token.text.toString()
             s.n8nEnabled = enabled.isChecked
+            s.acceptRemoteConfig = acceptRemote.isChecked
             com.noti.sender.SmsSyncWorker.baselineIfNeeded(this) // mark before the first new SMS
             Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
             finish()

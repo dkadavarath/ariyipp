@@ -145,6 +145,7 @@
     <string name="hint_auth_header_prefix">Token prefix — \"Bearer \" or leave EMPTY for a raw token</string>
     <string name="hint_auth_token">Auth token</string>
     <string name="sw_n8n_enabled">Also forward to a webhook</string>
+    <string name="sw_accept_remote_config">Accept webhook config from Main</string>
 
     <!-- Shared -->
     <string name="btn_save">Save</string>

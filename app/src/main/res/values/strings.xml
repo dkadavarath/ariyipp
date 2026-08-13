@@ -160,6 +160,19 @@
     <string name="menu_appearance_sub">Theme mode and color</string>
     <string name="menu_backup_title">Backup &amp; restore</string>
     <string name="menu_backup_sub">Encrypted backup to any storage</string>
+    <string name="menu_cmp_webhook_title">Companion webhook</string>
+    <string name="menu_cmp_webhook_sub">Set and push the companion\'s webhook</string>
+
+    <!-- Companion webhook (Main pushes it to the companion) -->
+    <string name="cmp_webhook_intro">Configure the companion\'s SMS-forwarding webhook from here and push it over the encrypted channel — handy when the companion device is hard to reach. The companion keeps posting to the webhook directly.</string>
+    <string name="cmp_webhook_enabled">Forward SMS to this webhook</string>
+    <string name="cmp_webhook_url">Webhook URL</string>
+    <string name="cmp_webhook_header">Auth header name</string>
+    <string name="cmp_webhook_prefix">Auth value prefix</string>
+    <string name="cmp_webhook_token">Auth token</string>
+    <string name="cmp_webhook_push">Push to companion</string>
+    <string name="cmp_webhook_pushed">Pushed to the companion.</string>
+    <string name="cmp_webhook_push_failed">Push failed — is the companion paired and reachable?</string>
 
     <!-- Backup & restore -->
     <string name="backup_intro">Save an encrypted backup of your settings and message history to any location — Drive, OneDrive, or local storage — through the system file picker. Restore it on this or a new device.</string>

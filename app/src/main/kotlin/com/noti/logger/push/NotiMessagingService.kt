@@ -6,6 +6,7 @@ import com.noti.logger.config.Settings
 import com.noti.sender.config.SenderSettings
 import com.noti.sender.sms.SmsCommandHandler
 import com.noti.sender.sms.SmsSender
+import com.noti.sender.sms.WebhookConfigHandler
 import com.noti.shared.Diag
 import com.noti.shared.Role
 
@@ -28,17 +29,23 @@ class NotiMessagingService : FirebaseMessagingService() {
     }
 
     private fun handleCommand(message: RemoteMessage) {
-        val cmd = SmsCommandHandler.parse(applicationContext, message.data)
-        if (cmd == null) {
-            Diag.log("command from Main DROPPED (accept-commands off, wrong shared key, or malformed)")
+        // A send-SMS command?
+        SmsCommandHandler.parse(applicationContext, message.data)?.let { cmd ->
+            try {
+                SmsSender.send(applicationContext, cmd.to, cmd.body, cmd.sim)
+                Diag.log("command → sent SMS to ${cmd.to} (slot ${cmd.sim}, ${cmd.body.length} chars)")
+            } catch (e: Exception) {
+                Diag.log("command → SMS send FAILED: ${e.message} (SEND_SMS granted?)")
+            }
             return
         }
-        try {
-            SmsSender.send(applicationContext, cmd.to, cmd.body, cmd.sim)
-            Diag.log("command → sent SMS to ${cmd.to} (slot ${cmd.sim}, ${cmd.body.length} chars)")
-        } catch (e: Exception) {
-            Diag.log("command → SMS send FAILED: ${e.message} (SEND_SMS granted?)")
+        // A webhook-config push from Main?
+        WebhookConfigHandler.parse(applicationContext, message.data)?.let { cfg ->
+            WebhookConfigHandler.apply(applicationContext, cfg)
+            Diag.log("webhook config applied from Main (${if (cfg.enabled) "enabled" else "disabled"})")
+            return
         }
+        Diag.log("push from Main DROPPED (not accepted, wrong shared key, or unknown type)")
     }
 
     /** Cache the refreshed token in both stores; if this is the companion, re-announce it to Main so
