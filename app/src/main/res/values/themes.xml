@@ -11,6 +11,14 @@
         <item name="colorOnSecondary">@color/brand_on_secondary</item>
         <item name="colorSecondaryContainer">@color/brand_secondary_container</item>
         <item name="colorOnSecondaryContainer">@color/brand_on_secondary_container</item>
+        <!-- Neutralise the M3 lavender/blue-tinted surface ramp so cards and pages read neutral and
+             consistent (Settings especially, being one large filled card). -->
+        <item name="colorSurfaceVariant">@color/app_surface_variant</item>
+        <item name="colorSurfaceContainerLowest">@color/app_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/app_surface_container_low</item>
+        <item name="colorSurfaceContainer">@color/app_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/app_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/app_surface_container_highest</item>
         <!-- Slide + fade for opening/closing screens (settings sub-screens, chat, compose). -->
         <item name="android:windowAnimationStyle">@style/Noti.WindowAnimation</item>
     </style>

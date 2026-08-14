@@ -110,6 +110,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:text="@string/btn_grant_notification"
+                    android:visibility="gone"
                     app:icon="@drawable/ic_status_active" />
 
                 <TextView
@@ -128,6 +129,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:text="@string/btn_ignore_battery"
+                    android:visibility="gone"
                     app:icon="@drawable/ic_status_active" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

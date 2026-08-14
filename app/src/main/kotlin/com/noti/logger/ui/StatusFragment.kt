@@ -76,11 +76,17 @@ class StatusFragment : Fragment(R.layout.fragment_status) {
             R.string.notification_access_status,
             if (granted) getString(R.string.granted) else getString(R.string.not_granted)
         )
+        // Only offer the action when it's actually needed (no flash: the button defaults to gone).
+        requireView().findViewById<View>(R.id.btn_grant_notification).visibility =
+            if (granted) View.GONE else View.VISIBLE
+
         val exempt = isBatteryOptimizationExempt()
         tvBattery.text = getString(
             R.string.battery_optimization_status,
             if (exempt) getString(R.string.exempt) else getString(R.string.not_exempt)
         )
+        requireView().findViewById<View>(R.id.btn_ignore_battery).visibility =
+            if (exempt) View.GONE else View.VISIBLE
     }
 
     private fun refreshStatus() {

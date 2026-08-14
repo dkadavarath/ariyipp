@@ -21,6 +21,15 @@
     <color name="brand_secondary_container">#D8E3F8</color>
     <color name="brand_on_secondary_container">#111C2B</color>
 
+    <!-- Neutral surfaces (light). The M3 baseline surface ramp is lavender-tinted; these are near-
+         neutral greys so cards/pages don't cast a colour. Dark values in values-night/. -->
+    <color name="app_surface_variant">#E3E3E6</color>
+    <color name="app_surface_container_lowest">#FFFFFF</color>
+    <color name="app_surface_container_low">#F6F6F8</color>
+    <color name="app_surface_container">#F1F1F3</color>
+    <color name="app_surface_container_high">#EBEBEE</color>
+    <color name="app_surface_container_highest">#E5E5E8</color>
+
     <!-- Status & Container Accents -->
     <color name="status_active_bg">#E8F5E9</color>
     <color name="status_active_fg">#2E7D32</color>
