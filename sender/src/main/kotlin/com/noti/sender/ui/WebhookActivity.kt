@@ -23,17 +23,23 @@ class WebhookActivity : ScreenActivity() {
         val acceptRemote = findViewById<MaterialSwitch>(R.id.sw_accept_remote_config)
 
         url.setText(s.n8nUrl)
-        headerName.setText(s.n8nAuthHeaderName)
-        headerPrefix.setText(s.n8nAuthHeaderPrefix)
         token.setText(s.n8nToken)
+        // Leave header name/prefix blank when they're at their defaults, so the greyed hint shows
+        // instead of a solid value that reads like help text. Defaults are re-applied on save.
+        if (s.n8nAuthHeaderName != "Authorization") headerName.setText(s.n8nAuthHeaderName)
+        if (s.n8nAuthHeaderPrefix != "Bearer ") headerPrefix.setText(s.n8nAuthHeaderPrefix)
         enabled.isChecked = s.n8nEnabled
         acceptRemote.isChecked = s.acceptRemoteConfig
 
         findViewById<View>(R.id.btn_save).setOnClickListener {
             s.n8nUrl = url.text.toString()
-            s.n8nAuthHeaderName = headerName.text.toString()
-            s.n8nAuthHeaderPrefix = headerPrefix.text.toString()
             s.n8nToken = token.text.toString()
+            val name = headerName.text.toString().trim().ifBlank { "Authorization" }
+            s.n8nAuthHeaderName = name
+            // Blank prefix means "Bearer " for the standard Authorization header, or a raw token for
+            // a custom header (e.g. "key"). Not trimmed — the default "Bearer " needs its space.
+            val prefix = headerPrefix.text.toString()
+            s.n8nAuthHeaderPrefix = if (prefix.isBlank() && name == "Authorization") "Bearer " else prefix
             s.n8nEnabled = enabled.isChecked
             s.acceptRemoteConfig = acceptRemote.isChecked
             com.noti.sender.SmsSyncWorker.baselineIfNeeded(this) // mark before the first new SMS

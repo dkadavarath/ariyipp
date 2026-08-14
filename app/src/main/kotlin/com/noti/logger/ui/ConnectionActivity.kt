@@ -29,16 +29,21 @@ class ConnectionActivity : ScreenActivity() {
 
         url.setText(s.webhookUrl)
         token.setText(s.bearerToken)
-        headerName.setText(s.authHeaderName)
-        headerPrefix.setText(s.authHeaderPrefix)
+        // Leave header name/prefix blank at their defaults, so the greyed hint shows rather than a
+        // solid value that reads like help text. Defaults are re-applied on save.
+        if (s.authHeaderName != "Authorization") headerName.setText(s.authHeaderName)
+        if (s.authHeaderPrefix != "Bearer ") headerPrefix.setText(s.authHeaderPrefix)
         gzip.isChecked = s.gzipEnabled
 
         fun persist() {
             s.webhookUrl = url.text.toString().trim()
             s.bearerToken = token.text.toString().trim()
-            s.authHeaderName = headerName.text.toString().trim().ifBlank { "Authorization" }
-            // Prefix is NOT trimmed: the default "Bearer " needs its trailing space.
-            s.authHeaderPrefix = headerPrefix.text.toString()
+            val name = headerName.text.toString().trim().ifBlank { "Authorization" }
+            s.authHeaderName = name
+            // Blank prefix means "Bearer " for the standard Authorization header, or a raw token for
+            // a custom header. NOT trimmed — the default "Bearer " needs its trailing space.
+            val prefix = headerPrefix.text.toString()
+            s.authHeaderPrefix = if (prefix.isBlank() && name == "Authorization") "Bearer " else prefix
             s.gzipEnabled = gzip.isChecked
             UploadScheduler.applyFromSettings(this)
         }

@@ -278,9 +278,9 @@
 
     <!-- EditText hints -->
     <string name="hint_webhook_url">Webhook URL</string>
-    <string name="hint_bearer_token">Auth token (tap the eye to show)</string>
-    <string name="hint_auth_header_name">Auth header name — e.g. Authorization, or a custom header like \"key\"</string>
-    <string name="hint_auth_header_prefix">Token prefix — \"Bearer \" or leave EMPTY for a raw token</string>
+    <string name="hint_bearer_token">Auth token</string>
+    <string name="hint_auth_header_name">Auth header name</string>
+    <string name="hint_auth_header_prefix">Token prefix</string>
     <string name="hint_interval_minutes">Interval (minutes, ≥15)</string>
     <string name="hint_threshold_count">Threshold count</string>
     <string name="hint_excluded_packages">com.example.app</string>

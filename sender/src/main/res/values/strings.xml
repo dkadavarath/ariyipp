@@ -141,9 +141,10 @@
     <!-- Webhook -->
     <string name="webhook_intro">Optionally also POST each SMS to your webhook (plaintext, using the shared payload schema).</string>
     <string name="hint_n8n_url">Webhook URL</string>
-    <string name="hint_auth_header_name">Auth header name — e.g. Authorization, or a custom header like \"key\"</string>
-    <string name="hint_auth_header_prefix">Token prefix — \"Bearer \" or leave EMPTY for a raw token</string>
+    <string name="hint_auth_header_name">Auth header name</string>
+    <string name="hint_auth_header_prefix">Token prefix</string>
     <string name="hint_auth_token">Auth token</string>
+    <string name="webhook_auth_tip">Sends the header \"[name]: [prefix][token]\". For a custom Header Auth credential, set the name to your header (e.g. \"key\") and clear the prefix so the raw token is sent.</string>
     <string name="sw_n8n_enabled">Also forward to a webhook</string>
     <string name="sw_accept_remote_config">Accept webhook config from main</string>
 
