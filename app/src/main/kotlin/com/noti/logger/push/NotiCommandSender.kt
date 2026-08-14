@@ -39,7 +39,7 @@ object NotiCommandSender {
             val res = FcmSender(s.serviceAccountJson).send(s.sndiFcmToken, mapOf("payload" to payload))
             Diag.log(
                 when {
-                    res.ok -> "compose → HTTP 200 ✓ command sent to the companion"
+                    res.ok -> "compose → HTTP 200 — command sent to the companion"
                     res.httpCode == 401 || res.httpCode == 403 -> "compose → HTTP ${res.httpCode}: service-account key rejected"
                     res.httpCode == 404 -> "compose → HTTP 404: companion token stale — re-pair"
                     else -> "compose → HTTP ${res.httpCode} (${res.detail.take(60)})"

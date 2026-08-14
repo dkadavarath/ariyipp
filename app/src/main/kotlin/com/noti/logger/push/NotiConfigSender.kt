@@ -32,7 +32,7 @@ object NotiConfigSender {
         val payload = MessageCrypto.encrypt(Wire.encode(cfg), s.relayKey)
         return try {
             val res = FcmSender(s.serviceAccountJson).send(s.sndiFcmToken, mapOf("payload" to payload))
-            Diag.log(if (res.ok) "webhook config pushed to companion ✓" else "push webhook → HTTP ${res.httpCode} (${res.detail.take(50)})")
+            Diag.log(if (res.ok) "webhook config pushed to companion" else "push webhook → HTTP ${res.httpCode} (${res.detail.take(50)})")
             res.ok
         } catch (e: Exception) {
             Diag.log("push webhook → ERROR: ${e.message}")

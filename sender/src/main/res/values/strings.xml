@@ -5,38 +5,38 @@
 
     <!-- Status -->
     <string name="section_status">Status</string>
-    <string name="sms_status_granted">SMS access: GRANTED — incoming SMS will be relayed, and Main can send via this phone.</string>
-    <string name="sms_status_send_denied">SMS access: receive only — relaying works, but Main can\'t send from this phone yet. Tap below to grant Send SMS.</string>
-    <string name="sms_status_denied">SMS access: NOT GRANTED — nothing will be relayed.</string>
+    <string name="sms_status_granted">SMS access: granted</string>
+    <string name="sms_status_send_denied">SMS access: receive only</string>
+    <string name="sms_status_denied">SMS access: not granted</string>
     <string name="btn_grant_sms">Grant SMS access</string>
-    <string name="battery_optimized">Battery optimization: ON — the system may sleep this app and miss SMS. Exempt it for reliable relaying.</string>
-    <string name="battery_exempt">Battery optimization: exempt ✓ — the relay can run in the background.</string>
+    <string name="battery_optimized">Battery optimization: not exempt</string>
+    <string name="battery_exempt">Battery optimization: exempt</string>
     <string name="btn_ignore_battery">Ignore battery optimization</string>
     <string name="status_permissions">Permissions</string>
     <string name="status_sync">Sync</string>
-    <string name="status_sync_hint">Catch SMS missed while the app was asleep, or rebuild Main\'s history from scratch.</string>
+    <string name="status_sync_hint">Catch SMS missed while the app was asleep, or rebuild main\'s history from scratch.</string>
     <string name="btn_sync_missed">Sync missed SMS now</string>
     <string name="sync_started">Syncing missed SMS…</string>
 
-    <!-- Full repush: push the whole inbox so Main can rebuild after a gap -->
-    <string name="btn_repush">Repush entire inbox to Main…</string>
+    <!-- Full repush: push the whole inbox so main can rebuild after a gap -->
+    <string name="btn_repush">Repush entire inbox</string>
     <string name="repush_confirm_title">Repush entire inbox?</string>
-    <string name="repush_confirm_msg">This sends every SMS in this phone\'s inbox to Main so it can fill any gaps. Main ignores messages it already has, so it\'s safe — but a large inbox can take a while and use data. Make sure you\'ve cleared Main\'s received messages first if you want a clean rebuild.</string>
+    <string name="repush_confirm_msg">This sends every SMS in this phone\'s inbox to main so it can fill any gaps. Main ignores messages it already has, so it\'s safe — but a large inbox can take a while and use data. Make sure you\'ve cleared main\'s received messages first if you want a clean rebuild.</string>
     <string name="repush_confirm_yes">Repush</string>
     <string name="repush_started">Repush started — see the notification for progress.</string>
     <string name="repush_need_read">Grant SMS access first (Status screen).</string>
-    <string name="repush_need_pairing">Pair with Main first (Pairing screen).</string>
+    <string name="repush_need_pairing">Pair with main first (Pairing screen).</string>
     <string name="repush_channel">Inbox repush</string>
-    <string name="repush_note_title">Repushing inbox to Main</string>
+    <string name="repush_note_title">Repushing inbox to main</string>
     <string name="repush_note_progress">Sent %1$d of %2$d</string>
     <string name="repush_note_paused">Paused at %1$d of %2$d — waiting for network</string>
     <string name="repush_note_done">Repush complete — %1$d sent</string>
     <string name="repush_note_failed_suffix"> (%1$d failed)</string>
     <string name="repush_note_no_read">Repush needs SMS read access.</string>
-    <string name="repush_note_not_paired">Repush needs pairing with Main.</string>
-    <string name="repush_note_rejected">Repush stopped — Main rejected messages. Check the shared key and Main token.</string>
+    <string name="repush_note_not_paired">Repush needs pairing with main.</string>
+    <string name="repush_note_rejected">Repush stopped — main rejected messages. Check the shared key and main token.</string>
 
-    <string name="keepalive_title">Relaying SMS to Main</string>
+    <string name="keepalive_title">Relaying SMS to main</string>
     <string name="keepalive_text">Keeping the SMS relay active in the background.</string>
 
     <!-- Bottom navigation -->
@@ -46,7 +46,7 @@
 
     <!-- Settings menu -->
     <string name="menu_pairing_title">Pairing</string>
-    <string name="menu_pairing_sub">Service-account key, Main token, shared key</string>
+    <string name="menu_pairing_sub">Service-account key, main token, shared key</string>
     <string name="menu_sim_names_title">SIM names</string>
     <string name="menu_sim_names_sub">Label each SIM (e.g. e&amp;, du)</string>
     <string name="menu_webhook_title">Webhook</string>
@@ -80,7 +80,7 @@
     <!-- About -->
     <string name="about_title">About</string>
     <string name="about_version">Version %1$s</string>
-    <string name="about_description">In Companion mode, ariyipp relays incoming SMS from this phone to your Main device over end-to-end encrypted FCM, and sends SMS from this SIM on command from Main. It can also forward each SMS to a webhook.</string>
+    <string name="about_description">ariyipp links two phones over end-to-end encrypted FCM to relay SMS between them: a companion phone (with the SIM) forwards its incoming SMS to your main device, where you read and reply to them as a chat, and the main device can send SMS back through the companion. Notification capture and webhook posting are optional extras. This device\'s role is shown below, and can be switched anytime.</string>
     <string name="about_device_id">Device ID: %1$s</string>
     <string name="about_project_url">https://github.com/dkadavarath/noti</string>
     <string name="about_whats_new">What\'s new</string>
@@ -91,16 +91,16 @@
     <string name="help_title">Help</string>
     <string name="help_start_title">Getting started</string>
     <string name="help_start_body">On the Status screen, grant SMS access and exempt the app from battery optimization. Without SMS access nothing is relayed; without the battery exemption the system may sleep the app and miss messages.</string>
-    <string name="help_pairing_title">Pairing with Main</string>
-    <string name="help_pairing_body">Open Settings → Pairing. Scan Main\'s code to fill in Main\'s device token and the shared key in one step, or paste them by hand. The shared key is generated on Main — the companion only receives it, so both ends always match.</string>
+    <string name="help_pairing_title">Pairing with main</string>
+    <string name="help_pairing_body">Open Settings → Pairing. Scan main device\'s code to fill in main\'s device token and the shared key in one step, or paste them by hand. The shared key is generated on main — the companion only receives it, so both ends always match.</string>
     <string name="help_reverse_title">Sending SMS on command</string>
-    <string name="help_reverse_body">To let Main compose messages this phone sends from its SIM: import the FCM service-account key, turn on \"Send SMS on command from Main\", and grant SEND_SMS. The first time you send to a short code, Android may ask you to allow it — choose \"Always allow\".</string>
+    <string name="help_reverse_body">To let main compose messages this phone sends from its SIM: import the FCM service-account key, turn on \"Send SMS on command from main\", and grant SEND_SMS. The first time you send to a short code, Android may ask you to allow it — choose \"Always allow\".</string>
     <string name="help_webhook_title">Webhook (n8n)</string>
     <string name="help_webhook_body">Optionally forward every SMS to a webhook as well. In Settings → Webhook, enable it and enter the URL and auth header. Each message is sent once; duplicates from the missed-SMS sync are suppressed.</string>
     <string name="help_sync_title">Missed SMS &amp; repush</string>
-    <string name="help_sync_body">\"Sync missed SMS now\" (Status) catches messages that arrived while the app was asleep. \"Repush entire inbox to Main\" re-sends every SMS so Main can rebuild its history after a gap — Main ignores anything it already has.</string>
+    <string name="help_sync_body">\"Sync missed SMS now\" (Status) catches messages that arrived while the app was asleep. \"Repush entire inbox to main\" re-sends every SMS so main can rebuild its history after a gap — main ignores anything it already has.</string>
     <string name="help_trouble_title">Troubleshooting</string>
-    <string name="help_trouble_body">Settings → Diagnostics logs each relay with the reason when it fails. If Main isn\'t receiving: check the shared key matches and Main\'s token is current (re-scan if Main was reinstalled), and keep this app battery-unrestricted.</string>
+    <string name="help_trouble_body">Settings → Diagnostics logs each relay with the reason when it fails. If main isn\'t receiving: check the shared key matches and main\'s token is current (re-scan if main was reinstalled), and keep this app battery-unrestricted.</string>
 
     <!-- Sub-screen titles -->
     <string name="title_pairing">Pairing</string>
@@ -113,30 +113,30 @@
     <string name="hint_sim2_name">SIM 2 name (slot 2)</string>
 
     <!-- Pairing -->
-    <string name="pairing_intro">Pair this phone with your Main device so SMS relay there, encrypted end-to-end. Scan Main\'s code to exchange device tokens and the shared key, or enter them by hand.</string>
+    <string name="pairing_intro">Pair this phone with your main device so SMS relay there, encrypted end-to-end. Scan main device\'s code to exchange device tokens and the shared key, or enter them by hand.</string>
 
-    <!-- Section headers, kept identical to Main's Pairing screen -->
+    <!-- Section headers, kept identical to main's Pairing screen -->
     <string name="pair_hdr_key">Shared key</string>
     <string name="pair_hdr_this">This device\'s code</string>
-    <string name="pair_hdr_other">The other device</string>
+    <string name="pair_hdr_other">The main device</string>
     <string name="pair_hdr_sa">Service-account key</string>
     <string name="pair_hdr_options">Options</string>
     <string name="key_status_none">No service-account key imported.</string>
-    <string name="key_status_imported">Service-account key imported ✓ (project %1$s)</string>
+    <string name="key_status_imported">Service-account key imported (project %1$s)</string>
     <string name="key_status_invalid">That file isn\'t a service-account key.</string>
     <string name="btn_import_key">Import service-account key</string>
-    <string name="btn_scan_qr">Scan Main\'s code</string>
-    <string name="scan_prompt">Point at the QR on Main\'s Pairing screen</string>
-    <string name="scan_bad">That QR isn\'t a Main pairing code.</string>
+    <string name="btn_scan_qr">Scan main device\'s code</string>
+    <string name="scan_prompt">Point at the QR on main\'s Pairing screen</string>
+    <string name="scan_bad">That QR isn\'t a main pairing code.</string>
     <string name="scan_ok">Paired — token and key filled in.</string>
     <string name="hint_noti_token">Main device token</string>
     <string name="hint_relay_key">Shared key (base64)</string>
     <string name="btn_generate_key">Generate a new shared key</string>
-    <string name="sw_fcm_enabled">Relay to Main via FCM</string>
-    <string name="reverse_intro">Reverse direction — let Main compose messages that this phone sends via its SIM:</string>
-    <string name="sw_accept_commands">Send SMS on command from Main</string>
+    <string name="sw_fcm_enabled">Relay to main via FCM</string>
+    <string name="reverse_intro">Reverse direction — let main compose messages that this phone sends via its SIM:</string>
+    <string name="sw_accept_commands">Send SMS on command from main</string>
     <string name="label_my_token">This device\'s token</string>
-    <string name="my_token_qr_hint">Scan this on Main to pair</string>
+    <string name="my_token_qr_hint">Scan this on main to pair</string>
 
     <!-- Webhook -->
     <string name="webhook_intro">Optionally also POST each SMS to your webhook (plaintext, using the shared payload schema).</string>
@@ -145,15 +145,15 @@
     <string name="hint_auth_header_prefix">Token prefix — \"Bearer \" or leave EMPTY for a raw token</string>
     <string name="hint_auth_token">Auth token</string>
     <string name="sw_n8n_enabled">Also forward to a webhook</string>
-    <string name="sw_accept_remote_config">Accept webhook config from Main</string>
+    <string name="sw_accept_remote_config">Accept webhook config from main</string>
 
     <!-- Shared -->
     <string name="btn_save">Save</string>
     <string name="saved">Saved</string>
-    <string name="key_generated">New shared key generated — copy it into Main too.</string>
+    <string name="key_generated">New shared key generated — copy it into main too.</string>
 
     <!-- Heartbeat / connection health -->
     <string name="hb_banner_title">Main app disconnected</string>
-    <string name="hb_banner_body">No heartbeat from the hub in a while — relayed SMS may not be arriving.</string>
+    <string name="hb_banner_body">No heartbeat from the main app in a while — relayed SMS may not be arriving.</string>
     <string name="hb_retry_now">Retry now</string>
 </resources>

@@ -26,10 +26,11 @@ class SettingsFragment : Fragment(R.layout.cmp_fragment_settings) {
             container.addView(row)
         }
 
+        // Order: Pairing, Webhook, Appearance first; SIM names; Diagnostics last.
         addRow(R.string.menu_pairing_title, R.string.menu_pairing_sub, R.drawable.ic_qr_code, PairingActivity::class.java)
-        addRow(R.string.menu_sim_names_title, R.string.menu_sim_names_sub, R.drawable.ic_sim, SimNamesActivity::class.java)
         addRow(R.string.menu_webhook_title, R.string.menu_webhook_sub, R.drawable.ic_connection, WebhookActivity::class.java)
         addRow(R.string.menu_appearance_title, R.string.menu_appearance_sub, R.drawable.ic_palette, AppearanceActivity::class.java)
+        addRow(R.string.menu_sim_names_title, R.string.menu_sim_names_sub, R.drawable.ic_sim, SimNamesActivity::class.java)
         addRow(R.string.menu_diag_title, R.string.menu_diag_sub, R.drawable.ic_status_warning, DiagnosticsActivity::class.java)
     }
 }

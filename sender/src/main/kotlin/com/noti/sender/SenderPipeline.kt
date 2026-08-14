@@ -96,7 +96,7 @@ object SenderPipeline {
             val payload = MessageCrypto.encrypt(Wire.encode(WireMessage.Token(s.myFcmToken)), s.relayKey)
             val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload))
             when {
-                res.ok -> { Diag.log("endpoint announced to Main ✓"); SendOutcome.DELIVERED }
+                res.ok -> { Diag.log("endpoint announced to main"); SendOutcome.DELIVERED }
                 res.httpCode == -1 || res.httpCode == 429 || res.httpCode in 500..599 -> SendOutcome.TRANSIENT
                 else -> { Diag.log(fcmDiag(res.httpCode, res.detail)); SendOutcome.PERMANENT }
             }
@@ -149,7 +149,7 @@ object SenderPipeline {
 
     private fun fcmDiag(code: Int, detail: String): String = when {
         code == 401 || code == 403 -> "FCM → HTTP $code: service-account key rejected (regenerate/import the key; enable Cloud Messaging API)"
-        code == 404 -> "FCM → HTTP 404: Main token is stale/UNREGISTERED — re-pair (Main reinstalled or data cleared)"
+        code == 404 -> "FCM → HTTP 404: main token is stale/UNREGISTERED — re-pair (main reinstalled or data cleared)"
         code == 400 -> "FCM → HTTP 400: bad request ($detail)"
         code == -1 -> "FCM → no network / connection failed"
         else -> "FCM → HTTP $code ($detail)"

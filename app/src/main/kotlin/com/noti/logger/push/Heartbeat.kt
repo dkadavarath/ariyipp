@@ -111,7 +111,7 @@ object Heartbeat {
         )
         val peer = peerLabel(context)
         val note = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.hb_disconnected_title, peer))
             .setContentText(context.getString(R.string.hb_disconnected_body, HeartbeatPolicy.retryEtaMinutes))
             .setContentIntent(open)

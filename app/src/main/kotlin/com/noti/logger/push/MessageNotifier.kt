@@ -46,7 +46,7 @@ object MessageNotifier {
         val settings = Settings.get(context)
         val id = nextId.getAndIncrement()
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_notify_chat)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
@@ -81,7 +81,7 @@ object MessageNotifier {
     fun showReplyFailed(context: Context, sender: String, id: Int, replyText: String) {
         ensureChannel(context)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_notify_error)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.notif_reply_failed_title, sender))
             .setContentText(context.getString(R.string.notif_reply_failed_body))
             .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(R.string.notif_reply_failed_body)))

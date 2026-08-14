@@ -37,7 +37,7 @@ class KeepAliveService : Service() {
         val n: Notification = Notification.Builder(this, CHANNEL)
             .setContentTitle(getString(R.string.keepalive_title))
             .setContentText(getString(R.string.keepalive_text))
-            .setSmallIcon(R.drawable.ic_status_active)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(open)
             .setOngoing(true)
             .build()
