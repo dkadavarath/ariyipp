@@ -91,8 +91,8 @@
     <string name="compose_need_to_and_body">Enter a number and a message.</string>
 
     <!-- Settings menu -->
-    <string name="menu_connection_title">Connection</string>
-    <string name="menu_connection_sub">Webhook URL, auth, gzip</string>
+    <string name="menu_connection_title">Webhook</string>
+    <string name="menu_connection_sub">Shared webhook — used here and pushed to the companion</string>
     <string name="menu_sync_title">Sync</string>
     <string name="menu_sync_sub">Triggers and network</string>
     <string name="menu_apps_title">Apps</string>
@@ -160,19 +160,11 @@
     <string name="menu_appearance_sub">Theme mode and color</string>
     <string name="menu_backup_title">Backup &amp; restore</string>
     <string name="menu_backup_sub">Encrypted backup to any storage</string>
-    <string name="menu_cmp_webhook_title">Companion webhook</string>
-    <string name="menu_cmp_webhook_sub">Set and push the companion\'s webhook</string>
-
-    <!-- Companion webhook (Main pushes it to the companion) -->
-    <string name="cmp_webhook_intro">Configure the companion\'s SMS-forwarding webhook from here and push it over the encrypted channel — handy when the companion device is hard to reach. The companion keeps posting to the webhook directly.</string>
-    <string name="cmp_webhook_enabled">Forward SMS to this webhook</string>
-    <string name="cmp_webhook_url">Webhook URL</string>
-    <string name="cmp_webhook_header">Auth header name</string>
-    <string name="cmp_webhook_prefix">Auth value prefix</string>
-    <string name="cmp_webhook_token">Auth token</string>
+    <!-- Webhook push (Main → companion) -->
     <string name="cmp_webhook_push">Push to companion</string>
     <string name="cmp_webhook_pushed">Pushed to the companion.</string>
     <string name="cmp_webhook_push_failed">Push failed — is the companion paired and reachable?</string>
+    <string name="webhook_push_hint">This device forwards its own notifications here; Push sends the same webhook to the companion so its SMS go there too. The companion can override it locally.</string>
 
     <!-- Backup & restore -->
     <string name="backup_intro">Save an encrypted backup of your settings and message history to any location — Drive, OneDrive, or local storage — through the system file picker. Restore it on this or a new device.</string>
@@ -200,7 +192,7 @@
     <string name="menu_purge_sub">Delete uploaded records now</string>
 
     <!-- Sub-screen titles -->
-    <string name="title_connection">Connection</string>
+    <string name="title_connection">Webhook</string>
     <string name="title_sync">Sync</string>
     <string name="title_app_rules">Keywords &amp; notes</string>
     <string name="title_privacy">Privacy</string>

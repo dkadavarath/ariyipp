@@ -21,12 +21,13 @@ object NotiConfigSender {
             Diag.log("push webhook FAILED — not paired with a companion yet")
             return false
         }
+        // The one shared webhook: Main's own webhook, pushed to the companion so its SMS go there too.
         val cfg = WireMessage.WebhookConfig(
-            enabled = s.companionN8nEnabled,
-            url = s.companionN8nUrl,
-            authHeaderName = s.companionN8nHeaderName,
-            authHeaderPrefix = s.companionN8nHeaderPrefix,
-            authToken = s.companionN8nToken,
+            enabled = s.webhookUrl.isNotBlank(),
+            url = s.webhookUrl,
+            authHeaderName = s.authHeaderName,
+            authHeaderPrefix = s.authHeaderPrefix,
+            authToken = s.bearerToken,
         )
         val payload = MessageCrypto.encrypt(Wire.encode(cfg), s.relayKey)
         return try {

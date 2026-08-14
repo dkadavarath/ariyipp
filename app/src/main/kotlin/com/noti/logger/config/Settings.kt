@@ -231,28 +231,6 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putString(KEY_SNDI_TOKEN, value.trim()).apply()
         }
 
-    // ---- Companion webhook (pushed to the companion on demand; Main-authored) ----
-
-    var companionN8nEnabled: Boolean
-        get() = prefs.getBoolean(KEY_CMP_N8N_ENABLED, false)
-        set(value) { prefs.edit().putBoolean(KEY_CMP_N8N_ENABLED, value).apply() }
-
-    var companionN8nUrl: String
-        get() = prefs.getString(KEY_CMP_N8N_URL, "") ?: ""
-        set(value) { prefs.edit().putString(KEY_CMP_N8N_URL, value.trim()).apply() }
-
-    var companionN8nHeaderName: String
-        get() = prefs.getString(KEY_CMP_N8N_HEADER, "Authorization") ?: "Authorization"
-        set(value) { prefs.edit().putString(KEY_CMP_N8N_HEADER, value).apply() }
-
-    var companionN8nHeaderPrefix: String
-        get() = prefs.getString(KEY_CMP_N8N_PREFIX, "Bearer ") ?: "Bearer "
-        set(value) { prefs.edit().putString(KEY_CMP_N8N_PREFIX, value).apply() }
-
-    var companionN8nToken: String
-        get() = prefs.getString(KEY_CMP_N8N_TOKEN, "") ?: ""
-        set(value) { prefs.edit().putString(KEY_CMP_N8N_TOKEN, value).apply() }
-
     // ---- Status ----
 
     var lastUploadAtMs: Long
@@ -358,11 +336,6 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_FCM_TOKEN = "fcm_token"
         private const val KEY_SA_JSON = "sa_json"
         private const val KEY_SNDI_TOKEN = "sndi_token"
-        private const val KEY_CMP_N8N_ENABLED = "cmp_n8n_enabled"
-        private const val KEY_CMP_N8N_URL = "cmp_n8n_url"
-        private const val KEY_CMP_N8N_HEADER = "cmp_n8n_header"
-        private const val KEY_CMP_N8N_PREFIX = "cmp_n8n_prefix"
-        private const val KEY_CMP_N8N_TOKEN = "cmp_n8n_token"
         private const val KEY_LAST_UPLOAD_AT_MS = "last_upload_at_ms"
         private const val KEY_LAST_UPLOAD_RESULT = "last_upload_result"
         private const val KEY_THEME_MODE = "theme_mode"

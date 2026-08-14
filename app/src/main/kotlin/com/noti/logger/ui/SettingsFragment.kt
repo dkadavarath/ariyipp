@@ -41,7 +41,6 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         addRow(R.string.menu_apps_title, R.string.menu_apps_sub, R.drawable.ic_apps) { openApps() }
         addRow(R.string.menu_app_rules_title, R.string.menu_app_rules_sub, R.drawable.ic_keywords) { open(AppRulesActivity::class.java) }
         addRow(R.string.menu_relay_title, R.string.menu_relay_sub, R.drawable.ic_relay) { open(RelayReceiveActivity::class.java) }
-        addRow(R.string.menu_cmp_webhook_title, R.string.menu_cmp_webhook_sub, R.drawable.ic_connection) { open(CompanionWebhookActivity::class.java) }
         addRow(R.string.menu_privacy_title, R.string.menu_privacy_sub, R.drawable.ic_privacy) { open(PrivacyActivity::class.java) }
         addRow(R.string.menu_appearance_title, R.string.menu_appearance_sub, R.drawable.ic_palette) { open(AppearanceActivity::class.java) }
         addRow(R.string.menu_backup_title, R.string.menu_backup_sub, R.drawable.ic_relay) { open(BackupActivity::class.java) }

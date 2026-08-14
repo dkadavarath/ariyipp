@@ -127,6 +127,23 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/btn_save" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_push"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/cmp_webhook_push" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:alpha="0.7"
+                android:lineSpacingExtra="2dp"
+                android:text="@string/webhook_push_hint"
+                android:textAppearance="?attr/textAppearanceBodySmall" />
         </LinearLayout>
     </ScrollView>
 </LinearLayout>
