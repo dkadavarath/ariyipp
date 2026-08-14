@@ -11,6 +11,17 @@
         <item name="colorOnSecondary">@color/brand_on_secondary</item>
         <item name="colorSecondaryContainer">@color/brand_secondary_container</item>
         <item name="colorOnSecondaryContainer">@color/brand_on_secondary_container</item>
+        <!-- Slide + fade for opening/closing screens (settings sub-screens, chat, compose). -->
+        <item name="android:windowAnimationStyle">@style/Noti.WindowAnimation</item>
+    </style>
+
+    <!-- Shared-axis-X activity transitions with emphasized easing. Only the activity open/close pairs
+         are set, so the launcher/splash launch keeps the system default. -->
+    <style name="Noti.WindowAnimation" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/screen_open_enter</item>
+        <item name="android:activityOpenExitAnimation">@anim/screen_open_exit</item>
+        <item name="android:activityCloseEnterAnimation">@anim/screen_close_enter</item>
+        <item name="android:activityCloseExitAnimation">@anim/screen_close_exit</item>
     </style>
 
     <!-- AMOLED overlay: applied at runtime over the dark theme to push ALL chrome/background/card

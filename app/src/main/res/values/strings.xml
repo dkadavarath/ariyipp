@@ -38,14 +38,14 @@
 
     <!-- Messages / chat -->
     <string name="messages_search_hint">Search messages</string>
-    <string name="messages_empty">No messages yet.\n\nMessages relayed from ariy appear here.</string>
+    <string name="messages_empty">No messages yet.\n\nMessages relayed from the companion appear here.</string>
     <string name="messages_count">%1$d</string>
     <string name="chat_delete">Delete conversation</string>
     <string name="chat_delete_confirm">Delete this conversation? This can\'t be undone.</string>
     <string name="chat_compose_hint">Message</string>
     <string name="chat_send">Send</string>
     <string name="chat_send_not_configured">Set up sending in Settings → Relay first.</string>
-    <string name="chat_send_failed">Couldn\'t reach ariy — will not retry.</string>
+    <string name="chat_send_failed">Couldn\'t reach the companion — will not retry.</string>
     <string name="chat_close">Close</string>
     <string name="date_today">Today</string>
     <string name="date_yesterday">Yesterday</string>
@@ -100,11 +100,11 @@
     <string name="menu_app_rules_title">Keywords &amp; notes</string>
     <string name="menu_app_rules_sub">Per-app keyword filters and notes</string>
     <string name="menu_relay_title">Pairing</string>
-    <string name="menu_relay_sub">Pair with ariy to relay messages</string>
+    <string name="menu_relay_sub">Pair with the companion to relay messages</string>
 
     <!-- Relay receive / pairing -->
     <string name="title_relay">Pairing</string>
-    <string name="relay_intro">Pair this phone with the ariy app so its SMS relay here, encrypted end-to-end. Scan ariy\'s code to exchange device tokens and the shared key, or enter them by hand.</string>
+    <string name="relay_intro">Pair this phone with your companion so its SMS relay here, encrypted end-to-end. Scan the companion\'s code to exchange device tokens and the shared key, or enter them by hand.</string>
     <string name="sw_inbound_enabled">Receive relayed messages</string>
     <string name="label_relay_key">Shared key (base64)</string>
     <string name="btn_generate_key">Generate a new shared key</string>
@@ -113,10 +113,10 @@
     <string name="regen_key_msg">This creates a brand-new key. Every paired companion will stop working until you re-pair it (re-scan this device\'s code). Only do this if you want to reset pairing.</string>
     <string name="regen_key_yes">Regenerate</string>
     <string name="label_token">This device\'s token</string>
-    <string name="relay_qr_hint">Scan this on ariy to pair</string>
-    <string name="relay_reverse_intro">Reverse direction — compose messages here that ariy sends via its SIM. Import the same FCM service-account key and paste ariy\'s token (shown on ariy\'s Pairing screen).</string>
+    <string name="relay_qr_hint">Scan this on the companion to pair</string>
+    <string name="relay_reverse_intro">Reverse direction — compose messages here that the companion sends via its SIM. Import the same FCM service-account key and paste the companion\'s token (shown on its Pairing screen).</string>
 
-    <!-- Section headers, kept identical to ariy's Pairing screen -->
+    <!-- Section headers, kept identical to the companion's Pairing screen -->
     <string name="pair_hdr_key">Shared key</string>
     <string name="pair_hdr_this">This device\'s code</string>
     <string name="pair_hdr_other">The other device</string>
@@ -126,11 +126,11 @@
     <string name="relay_sa_imported">Service-account key imported ✓ (project %1$s)</string>
     <string name="relay_sa_invalid">That file isn\'t a service-account key.</string>
     <string name="btn_import_sa">Import service-account key</string>
-    <string name="btn_scan_ariy">Scan ariy\'s code</string>
-    <string name="relay_scan_ariy_prompt">Point at the QR on ariy\'s Pairing screen</string>
-    <string name="relay_scan_ariy_bad">That QR isn\'t an ariy token code.</string>
-    <string name="relay_scan_ariy_ok">Paired — ariy\'s token filled in.</string>
-    <string name="hint_sndi_token">ariy device token</string>
+    <string name="btn_scan_ariy">Scan the companion\'s code</string>
+    <string name="relay_scan_ariy_prompt">Point at the QR on the companion\'s Pairing screen</string>
+    <string name="relay_scan_ariy_bad">That QR isn\'t a companion token code.</string>
+    <string name="relay_scan_ariy_ok">Paired — the companion\'s token filled in.</string>
+    <string name="hint_sndi_token">Companion device token</string>
 
     <string name="sw_otp_copy">Copy button for one-time codes</string>
     <string name="sw_suppress_system">Hide Android\'s own suggested actions</string>
@@ -146,11 +146,11 @@
     <string name="notif_reply_failed_title">Reply not sent to %1$s</string>
     <string name="notif_reply_failed_body">Tap to open the conversation and try again.</string>
 
-    <!-- Clear received messages (before a full repush from ariy) — temporary, removed next version -->
-    <string name="clear_inbound_intro">Before rebuilding history with a full repush from ariy, clear the received messages here so they aren\'t duplicated. Messages you composed on this device are kept.</string>
+    <!-- Clear received messages (before a full repush from the companion) — temporary, removed next version -->
+    <string name="clear_inbound_intro">Before rebuilding history with a full repush from the companion, clear the received messages here so they aren\'t duplicated. Messages you composed on this device are kept.</string>
     <string name="btn_clear_inbound">Clear received messages…</string>
     <string name="clear_inbound_title">Clear received messages?</string>
-    <string name="clear_inbound_msg">This permanently deletes every received message stored on this device (messages you composed here are kept). Use it right before repushing the whole inbox from ariy. This can\'t be undone.</string>
+    <string name="clear_inbound_msg">This permanently deletes every received message stored on this device (messages you composed here are kept). Use it right before repushing the whole inbox from the companion. This can\'t be undone.</string>
     <string name="clear_inbound_yes">Clear</string>
     <string name="clear_inbound_done">Cleared %1$d received message(s).</string>
 
@@ -223,7 +223,7 @@
     <!-- About screen -->
     <string name="about_title">About</string>
     <string name="about_version">Version %1$s</string>
-    <string name="about_description">ippu captures your device notifications to a local database and forwards them, in batches, to a webhook you configure. It is built to be lightweight and battery-friendly: notifications are captured event-driven (no background polling), and uploads are deferred and batched.</string>
+    <string name="about_description">In Main mode, ariyipp captures your device notifications to a local database and forwards them, in batches, to a webhook you configure, and receives SMS relayed from the companion. It is built to be lightweight and battery-friendly: notifications are captured event-driven (no background polling), and uploads are deferred and batched.</string>
     <string name="about_project_url">https://github.com/dkadavarath/noti</string>
     <string name="about_device_id">Device ID: %1$s</string>
     <string name="about_whats_new">What\'s new</string>
@@ -232,7 +232,7 @@
     <!-- Help screen -->
     <string name="help_title">Help</string>
     <string name="help_start_title">Getting started</string>
-    <string name="help_start_body">1. Tap “Grant notification access” and enable ippu in the system list — this lets the app see notifications.\n2. Tap “Ignore battery optimization” so uploads run reliably.\nWithout notification access, nothing is captured.</string>
+    <string name="help_start_body">1. Tap “Grant notification access” and enable ariyipp in the system list — this lets the app see notifications.\n2. Tap “Ignore battery optimization” so uploads run reliably.\nWithout notification access, nothing is captured.</string>
     <string name="help_webhook_title">Setting up the webhook</string>
     <string name="help_webhook_body">Enter your Webhook URL and the auth token. The token is sent as a header: by default “Authorization: Bearer &lt;token&gt;”. For a custom Header Auth credential, set the Auth header name to “key” and clear the prefix so the raw token is sent. Tap the eye icon to reveal the token. Use an https URL — content is sensitive.</string>
     <string name="help_apps_title">Choosing which apps to capture</string>

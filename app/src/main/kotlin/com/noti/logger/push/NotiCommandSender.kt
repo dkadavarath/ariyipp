@@ -28,7 +28,7 @@ object NotiCommandSender {
         if (!isConfigured(s)) {
             val missing = buildList {
                 if (s.serviceAccountJson.isBlank()) add("service-account key")
-                if (s.sndiFcmToken.isBlank()) add("ariy token")
+                if (s.sndiFcmToken.isBlank()) add("companion token")
                 if (s.relayKey.isBlank()) add("shared key")
             }.joinToString(", ")
             Diag.log("compose FAILED — not configured: missing $missing (Settings → Relay)")
@@ -39,9 +39,9 @@ object NotiCommandSender {
             val res = FcmSender(s.serviceAccountJson).send(s.sndiFcmToken, mapOf("payload" to payload))
             Diag.log(
                 when {
-                    res.ok -> "compose → HTTP 200 ✓ command sent to ariy"
+                    res.ok -> "compose → HTTP 200 ✓ command sent to the companion"
                     res.httpCode == 401 || res.httpCode == 403 -> "compose → HTTP ${res.httpCode}: service-account key rejected"
-                    res.httpCode == 404 -> "compose → HTTP 404: ariy token stale — re-pair"
+                    res.httpCode == 404 -> "compose → HTTP 404: companion token stale — re-pair"
                     else -> "compose → HTTP ${res.httpCode} (${res.detail.take(60)})"
                 }
             )

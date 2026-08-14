@@ -13,6 +13,7 @@ import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.CollapsingToolbarLayout
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.color.MaterialColors
+import com.google.android.material.transition.MaterialSharedAxis
 import com.noti.logger.R
 import com.noti.logger.config.Settings
 import com.noti.logger.data.NotiDatabase
@@ -72,11 +73,13 @@ class MainActivity : AppCompatActivity() {
         bottomNav.inflateMenu(if (companion) R.menu.bottom_nav_menu_companion else R.menu.bottom_nav_menu)
         bottomNav.setOnItemSelectedListener { item ->
             if (navHapticsReady) Haptics.tabSelect(bottomNav)
+            val forward = NAV_ORDER.indexOf(item.itemId) >= NAV_ORDER.indexOf(currentNavId)
+            currentNavId = item.itemId
             when (item.itemId) {
-                R.id.nav_status -> show(if (companion) CompanionStatusFragment() else StatusFragment(), R.string.nav_status)
-                R.id.nav_messages -> show(MessagesFragment(), R.string.nav_messages)
-                R.id.nav_settings -> show(if (companion) CompanionSettingsFragment() else SettingsFragment(), R.string.nav_settings)
-                R.id.nav_about -> show(AboutFragment(), R.string.nav_about)
+                R.id.nav_status -> show(if (companion) CompanionStatusFragment() else StatusFragment(), R.string.nav_status, forward)
+                R.id.nav_messages -> show(MessagesFragment(), R.string.nav_messages, forward)
+                R.id.nav_settings -> show(if (companion) CompanionSettingsFragment() else SettingsFragment(), R.string.nav_settings, forward)
+                R.id.nav_about -> show(AboutFragment(), R.string.nav_about, forward)
                 else -> return@setOnItemSelectedListener false
             }
             true
@@ -96,6 +99,10 @@ class MainActivity : AppCompatActivity() {
 
     /** Gates tab-select haptics so the launch-time programmatic selection doesn't buzz. */
     private var navHapticsReady = false
+
+    /** Left-to-right tab order, so a tab change knows which way to slide (shared-axis X). */
+    private val NAV_ORDER = listOf(R.id.nav_status, R.id.nav_messages, R.id.nav_settings, R.id.nav_about)
+    private var currentNavId = R.id.nav_status
 
     override fun onResume() {
         super.onResume()
@@ -128,10 +135,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun show(fragment: Fragment, titleRes: Int) {
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.nav_container, fragment)
-            .commitNow()
+    private fun show(fragment: Fragment, titleRes: Int, forward: Boolean = true) {
+        if (navHapticsReady) {
+            // A user-initiated tab change: slide the outgoing and incoming content along X.
+            supportFragmentManager.findFragmentById(R.id.nav_container)?.exitTransition =
+                MaterialSharedAxis(MaterialSharedAxis.X, forward)
+            fragment.enterTransition = MaterialSharedAxis(MaterialSharedAxis.X, forward)
+            supportFragmentManager.beginTransaction()
+                .setReorderingAllowed(true)
+                .replace(R.id.nav_container, fragment)
+                .commit()
+        } else {
+            // Initial (programmatic) selection at launch: no animation.
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.nav_container, fragment)
+                .commitNow()
+        }
         // The large collapsing header owns the title; start each tab fully expanded.
         findViewById<CollapsingToolbarLayout>(R.id.collapsing_toolbar).title = getString(titleRes)
         findViewById<AppBarLayout>(R.id.appbar).setExpanded(true, false)

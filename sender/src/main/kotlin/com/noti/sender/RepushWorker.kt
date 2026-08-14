@@ -24,8 +24,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /**
- * One-shot "push my whole SMS inbox to ippu" so ippu can rebuild its history after a gap. Walks the
- * inbox oldest-first (FCM leg only — no n8n) and relies on ippu's content-hash dedup to drop anything
+ * One-shot "push my whole SMS inbox to Main" so Main can rebuild its history after a gap. Walks the
+ * inbox oldest-first (FCM leg only — no n8n) and relies on Main's content-hash dedup to drop anything
  * it already holds. Resumable: a cursor is advanced per message, so a transient network failure just
  * retries and picks up where it left off. Re-pressing the button starts a fresh full pass (cursor 0).
  */
@@ -41,7 +41,7 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
             return@withContext Result.success()
         }
         if (!SenderPipeline.isConfigured(s)) {
-            Diag.log("repush: can't run — not paired with ippu")
+            Diag.log("repush: can't run — not paired with Main")
             RepushNotice.done(ctx, ctx.getString(R.string.repush_note_not_paired))
             return@withContext Result.success()
         }
@@ -52,7 +52,7 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
         val total = s.repushTotal.coerceAtLeast(1)
         val base = (total - batch.size).coerceAtLeast(0) // already handled on prior (retried) runs
 
-        Diag.log("repush: pushing ${batch.size} SMS to ippu (of $total)")
+        Diag.log("repush: pushing ${batch.size} SMS to Main (of $total)")
         RepushNotice.progress(ctx, base, total, paused = false)
 
         var delivered = 0
@@ -69,7 +69,7 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                     failed++; consecutivePermanent++
                     if (delivered == 0 && consecutivePermanent >= 5) {
                         s.repushCursorId = localCursor
-                        Diag.log("repush: aborted — ippu/FCM rejected every message (check the shared key & ippu token)")
+                        Diag.log("repush: aborted — Main/FCM rejected every message (check the shared key & Main token)")
                         RepushNotice.done(ctx, ctx.getString(R.string.repush_note_rejected))
                         return@withContext Result.success()
                     }

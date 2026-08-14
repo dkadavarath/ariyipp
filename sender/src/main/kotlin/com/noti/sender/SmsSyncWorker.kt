@@ -50,10 +50,10 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         if (SenderPipeline.isConfigured(s)) {
             if (s.lastRelayedSmsId == -1L) {
                 s.lastRelayedSmsId = SmsInbox.newestId(ctx)
-                Diag.log("relay: baseline at id ${s.lastRelayedSmsId} — new SMS will relay to ippu")
+                Diag.log("relay: baseline at id ${s.lastRelayedSmsId} — new SMS will relay to Main")
             } else {
                 val rows = SmsInbox.since(ctx, s.lastRelayedSmsId)
-                if (rows.isNotEmpty()) Diag.log("relay: ${rows.size} new SMS → ippu")
+                if (rows.isNotEmpty()) Diag.log("relay: ${rows.size} new SMS → Main")
                 for (sms in rows) {
                     when (SenderPipeline.pushToIppu(ctx, sms)) {
                         SenderPipeline.SendOutcome.DELIVERED,

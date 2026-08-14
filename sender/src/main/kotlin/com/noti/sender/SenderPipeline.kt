@@ -149,7 +149,7 @@ object SenderPipeline {
 
     private fun fcmDiag(code: Int, detail: String): String = when {
         code == 401 || code == 403 -> "FCM → HTTP $code: service-account key rejected (regenerate/import the key; enable Cloud Messaging API)"
-        code == 404 -> "FCM → HTTP 404: ippu token is stale/UNREGISTERED — re-pair (ippu reinstalled or data cleared)"
+        code == 404 -> "FCM → HTTP 404: Main token is stale/UNREGISTERED — re-pair (Main reinstalled or data cleared)"
         code == 400 -> "FCM → HTTP 400: bad request ($detail)"
         code == -1 -> "FCM → no network / connection failed"
         else -> "FCM → HTTP $code ($detail)"
