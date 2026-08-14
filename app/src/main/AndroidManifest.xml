@@ -93,6 +93,14 @@
             android:name=".push.NotificationActionReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".push.HeartbeatRetryReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.noti.logger.action.HEARTBEAT_RETRY" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

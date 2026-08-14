@@ -2,7 +2,9 @@ package com.noti.logger
 
 import android.app.Application
 import com.noti.logger.config.Settings
+import com.noti.logger.push.Heartbeat
 import com.noti.logger.util.Theming
+import com.noti.logger.work.HeartbeatWorker
 import com.noti.logger.work.UploadScheduler
 import com.noti.sender.SmsSyncWorker
 import com.noti.shared.Role
@@ -25,6 +27,13 @@ class NotiApp : Application() {
             }
             // MAIN (or not-yet-chosen): the hub's notification-upload backstop.
             else -> UploadScheduler.applyFromSettings(this)
+        }
+
+        // Liveness heartbeat (both roles). Baseline the clock so a fresh pair doesn't false-alarm,
+        // then keep the periodic beat/check scheduled. No-op until paired.
+        if (Settings.get(this).role != null) {
+            Heartbeat.baselineIfNeeded(this)
+            HeartbeatWorker.schedulePeriodic(this)
         }
     }
 }

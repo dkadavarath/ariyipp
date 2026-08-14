@@ -4,6 +4,7 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.noti.logger.config.Settings
 import com.noti.sender.config.SenderSettings
+import com.noti.sender.sms.HeartbeatHandler
 import com.noti.sender.sms.SmsCommandHandler
 import com.noti.sender.sms.SmsSender
 import com.noti.sender.sms.WebhookConfigHandler
@@ -43,6 +44,11 @@ class NotiMessagingService : FirebaseMessagingService() {
         WebhookConfigHandler.parse(applicationContext, message.data)?.let { cfg ->
             WebhookConfigHandler.apply(applicationContext, cfg)
             Diag.log("webhook config applied from Main (${if (cfg.enabled) "enabled" else "disabled"})")
+            return
+        }
+        // A liveness heartbeat from Main?
+        HeartbeatHandler.parse(applicationContext, message.data)?.let { hb ->
+            Heartbeat.onBeatReceived(applicationContext, hb.request)
             return
         }
         Diag.log("push from Main DROPPED (not accepted, wrong shared key, or unknown type)")

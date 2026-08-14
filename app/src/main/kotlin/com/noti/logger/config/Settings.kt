@@ -245,6 +245,17 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putString(KEY_LAST_UPLOAD_RESULT, value).apply()
         }
 
+    /** When we last heard a heartbeat from the peer (companion). 0 = not baselined / not paired. */
+    var lastPeerBeatAtMs: Long
+        get() = prefs.getLong(KEY_LAST_PEER_BEAT_MS, 0L)
+        set(value) {
+            prefs.edit().putLong(KEY_LAST_PEER_BEAT_MS, value).apply()
+        }
+
+    /** Main is paired with a companion it can reach (endpoint + key + FCM key all present). */
+    fun peerPaired(): Boolean =
+        sndiFcmToken.isNotBlank() && relayKey.isNotBlank() && serviceAccountJson.isNotBlank()
+
     // ---- Appearance ----
 
     var themeMode: ThemeMode
@@ -338,6 +349,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_SNDI_TOKEN = "sndi_token"
         private const val KEY_LAST_UPLOAD_AT_MS = "last_upload_at_ms"
         private const val KEY_LAST_UPLOAD_RESULT = "last_upload_result"
+        private const val KEY_LAST_PEER_BEAT_MS = "last_peer_beat_ms"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_DYNAMIC_COLOR = "dynamic_color"
         private const val KEY_AMOLED = "amoled"

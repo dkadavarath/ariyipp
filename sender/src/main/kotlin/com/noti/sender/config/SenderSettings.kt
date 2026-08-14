@@ -137,6 +137,17 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         get() = prefs.getInt(KEY_REPUSH_TOTAL, 0)
         set(value) { prefs.edit().putInt(KEY_REPUSH_TOTAL, value).apply() }
 
+    // ---- Heartbeat ----
+
+    /** When we last heard a heartbeat from the peer (Main). 0 = not baselined / not paired. */
+    var lastPeerBeatAtMs: Long
+        get() = prefs.getLong(KEY_LAST_PEER_BEAT_MS, 0L)
+        set(value) { prefs.edit().putLong(KEY_LAST_PEER_BEAT_MS, value).apply() }
+
+    /** Companion is paired with a Main it can reach (endpoint + key + FCM key all present). */
+    fun peerPaired(): Boolean =
+        notiFcmToken.isNotBlank() && relayKey.isNotBlank() && serviceAccountJson.isNotBlank()
+
     /** Generated once, stable for the install; identifies this device in the n8n payload. */
     @Volatile private var cachedDeviceId: String? = null
     val deviceId: String
@@ -177,6 +188,7 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_LAST_WEBHOOK_ID = "last_webhook_sms_id"
         private const val KEY_REPUSH_CURSOR = "repush_cursor_id"
         private const val KEY_REPUSH_TOTAL = "repush_total"
+        private const val KEY_LAST_PEER_BEAT_MS = "last_peer_beat_ms"
 
         @Volatile private var INSTANCE: SenderSettings? = null
 

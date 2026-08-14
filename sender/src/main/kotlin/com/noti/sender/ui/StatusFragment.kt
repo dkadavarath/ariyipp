@@ -21,6 +21,8 @@ import com.noti.sender.RepushWorker
 import com.noti.sender.SenderPipeline
 import com.noti.sender.SmsSyncWorker
 import com.noti.sender.config.SenderSettings
+import androidx.core.app.NotificationManagerCompat
+import com.noti.shared.HeartbeatPolicy
 
 /** Status tab: SMS-access state, battery-optimization exemption, keep-alive, and a missed-SMS sync. */
 class StatusFragment : Fragment(R.layout.cmp_fragment_status) {
@@ -47,6 +49,24 @@ class StatusFragment : Fragment(R.layout.cmp_fragment_status) {
             Toast.makeText(requireContext(), R.string.sync_started, Toast.LENGTH_SHORT).show()
         }
         view.findViewById<MaterialButton>(R.id.btn_repush).setOnClickListener { confirmRepush() }
+        view.findViewById<MaterialButton>(R.id.btn_hb_retry).setOnClickListener { retryHeartbeat() }
+    }
+
+    /** Ask the (app) heartbeat engine to force a check, and clear the warning notification now. */
+    private fun retryHeartbeat() {
+        val ctx = requireContext()
+        ctx.sendBroadcast(Intent(HeartbeatPolicy.ACTION_RETRY).setPackage(ctx.packageName))
+        NotificationManagerCompat.from(ctx).cancel(HeartbeatPolicy.NOTIFICATION_ID)
+        Toast.makeText(ctx, R.string.hb_retry_now, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun refreshHeartbeatBanner() {
+        val v = view ?: return
+        val s = SenderSettings.get(requireContext())
+        val disconnected = s.peerPaired() &&
+            HeartbeatPolicy.isStale(s.lastPeerBeatAtMs, System.currentTimeMillis())
+        v.findViewById<View>(R.id.card_hb_banner).visibility =
+            if (disconnected) View.VISIBLE else View.GONE
     }
 
     private fun confirmRepush() {
@@ -72,6 +92,7 @@ class StatusFragment : Fragment(R.layout.cmp_fragment_status) {
     override fun onResume() {
         super.onResume()
         updateStatus()
+        refreshHeartbeatBanner()
         // Keep the relay warm and the backstop scheduled whenever the app is opened.
         KeepAliveService.ensureRunning(requireContext())
         SmsSyncWorker.baselineIfNeeded(requireContext())

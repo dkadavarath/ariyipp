@@ -14,6 +14,8 @@ import androidx.lifecycle.lifecycleScope
 import com.noti.logger.R
 import com.noti.logger.config.Settings
 import com.noti.logger.data.NotiDatabase
+import com.noti.logger.push.Heartbeat
+import com.noti.logger.work.HeartbeatWorker
 import com.noti.logger.work.UploadScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -44,12 +46,28 @@ class StatusFragment : Fragment(R.layout.fragment_status) {
             UploadScheduler.enqueueOneShot(requireContext())
             Toast.makeText(requireContext(), R.string.sync_enqueued, Toast.LENGTH_SHORT).show()
         }
+        view.findViewById<View>(R.id.btn_hb_retry).setOnClickListener {
+            HeartbeatWorker.retryNow(requireContext())
+            Toast.makeText(requireContext(), R.string.hb_retry_now, Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onResume() {
         super.onResume()
         refreshPermissions()
         refreshStatus()
+        refreshHeartbeatBanner()
+    }
+
+    private fun refreshHeartbeatBanner() {
+        val v = view ?: return
+        val ctx = requireContext().applicationContext
+        val show = Heartbeat.isDisconnected(ctx)
+        v.findViewById<View>(R.id.card_hb_banner).visibility = if (show) View.VISIBLE else View.GONE
+        if (show) {
+            v.findViewById<TextView>(R.id.tv_hb_title).text =
+                getString(R.string.hb_banner_title, Heartbeat.peerLabel(ctx))
+        }
     }
 
     private fun refreshPermissions() {

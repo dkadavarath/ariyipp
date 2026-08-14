@@ -151,4 +151,9 @@
     <string name="btn_save">Save</string>
     <string name="saved">Saved</string>
     <string name="key_generated">New shared key generated — copy it into ippu too.</string>
+
+    <!-- Heartbeat / connection health -->
+    <string name="hb_banner_title">Main app disconnected</string>
+    <string name="hb_banner_body">No heartbeat from the hub in a while — relayed SMS may not be arriving.</string>
+    <string name="hb_retry_now">Retry now</string>
 </resources>

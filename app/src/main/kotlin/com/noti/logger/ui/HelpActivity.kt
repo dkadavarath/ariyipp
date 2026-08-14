@@ -21,7 +21,8 @@ class HelpActivity : AppCompatActivity() {
         R.string.help_dupes_title to R.string.help_dupes_body,
         R.string.help_triggers_title to R.string.help_triggers_body,
         R.string.help_privacy_title to R.string.help_privacy_body,
-        R.string.help_trouble_title to R.string.help_trouble_body
+        R.string.help_trouble_title to R.string.help_trouble_body,
+        R.string.help_playprotect_title to R.string.help_playprotect_body
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {

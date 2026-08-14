@@ -51,6 +51,10 @@ object PushMessageHandler {
                 true
             }
             is WireMessage.Relay -> showRelay(context, settings, wire)
+            is WireMessage.Heartbeat -> {
+                Heartbeat.onBeatReceived(context, wire.request)
+                true
+            }
             else -> false
         }
     }
