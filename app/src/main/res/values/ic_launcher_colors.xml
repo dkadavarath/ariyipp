@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launcher-icon palette. Light values here; dark overrides in values-night. -->
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <color name="ic_launcher_ink">#15181C</color>
+</resources>

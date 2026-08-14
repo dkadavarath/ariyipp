@@ -35,7 +35,7 @@ class AppearanceActivity : ScreenActivity() {
             }
             if (mode != s.themeMode) {
                 s.themeMode = mode
-                Theming.applyNightMode(s) // triggers recreate for the new night mode
+                Theming.applyNightMode(this) // triggers recreate for the new night mode
             }
         }
 

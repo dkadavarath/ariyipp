@@ -2,6 +2,10 @@
 <resources>
     <color name="splash_bg">#FF15181C</color>
 
+    <!-- Launcher-icon palette (dark): dark tile, light glyph. -->
+    <color name="ic_launcher_background">#15181C</color>
+    <color name="ic_launcher_ink">#FFFFFF</color>
+
     <!-- Brand blue scheme (dark). Lighter primary so it stays legible on dark surfaces. -->
     <color name="brand_primary">#A7C8FF</color>
     <color name="brand_on_primary">#00325B</color>

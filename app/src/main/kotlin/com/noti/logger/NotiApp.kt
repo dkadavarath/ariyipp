@@ -12,7 +12,7 @@ class NotiApp : Application() {
         super.onCreate()
         // Apply the user's light/dark/system choice. Color (Default blue vs Material You) is applied
         // per-activity via Theming.applyDynamicColorIfEnabled().
-        Theming.applyNightMode(Settings.get(this))
+        Theming.applyNightMode(this)
 
         when (Settings.get(this).role) {
             Role.COMPANION -> {
