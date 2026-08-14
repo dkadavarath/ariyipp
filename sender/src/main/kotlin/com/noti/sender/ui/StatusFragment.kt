@@ -23,7 +23,7 @@ import com.noti.sender.SmsSyncWorker
 import com.noti.sender.config.SenderSettings
 
 /** Status tab: SMS-access state, battery-optimization exemption, keep-alive, and a missed-SMS sync. */
-class StatusFragment : Fragment(R.layout.fragment_status) {
+class StatusFragment : Fragment(R.layout.cmp_fragment_status) {
 
     private val requestSms = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()

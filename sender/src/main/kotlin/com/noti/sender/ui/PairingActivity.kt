@@ -44,21 +44,10 @@ class PairingActivity : ScreenActivity() {
         accept.isChecked = s.acceptCommands
         updateKeyStatus()
 
-        // This device's own FCM token, so ippu can push send-SMS commands here. Shown as text and as
-        // a QR (token + the shared key it holds) for ippu to scan on its Relay screen.
+        // Cache this device's own FCM token so it can be announced to Main after pairing (Main can't
+        // be scanned; the companion pushes its endpoint over the encrypted channel instead).
         com.google.firebase.messaging.FirebaseMessaging.getInstance().token
-            .addOnSuccessListener { t ->
-                s.myFcmToken = t
-                findViewById<android.widget.TextView>(R.id.txt_my_token).text = t
-                refreshMyTokenQr(t, relayKey.text?.toString().orEmpty())
-            }
-        relayKey.addTextChangedListener(object : android.text.TextWatcher {
-            override fun beforeTextChanged(cs: CharSequence?, a: Int, b: Int, c: Int) {}
-            override fun onTextChanged(cs: CharSequence?, a: Int, b: Int, c: Int) {}
-            override fun afterTextChanged(e: android.text.Editable?) {
-                refreshMyTokenQr(s.myFcmToken, e?.toString().orEmpty())
-            }
-        })
+            .addOnSuccessListener { t -> s.myFcmToken = t }
 
         findViewById<MaterialButton>(R.id.btn_import_key).setOnClickListener {
             // Some providers mislabel .json; accept anything and validate the contents ourselves.
@@ -79,15 +68,10 @@ class PairingActivity : ScreenActivity() {
             s.fcmEnabled = fcmEnabled.isChecked
             s.acceptCommands = accept.isChecked
             com.noti.sender.SmsSyncWorker.baselineIfNeeded(this) // mark before the first new SMS
+            com.noti.sender.TokenAnnounceWorker.enqueue(this) // tell Main our endpoint (no copy-back)
             Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
             finish()
         }
-    }
-
-    private fun refreshMyTokenQr(token: String, keyBase64: String) {
-        if (token.isBlank()) return
-        val qr = findViewById<android.widget.ImageView>(R.id.img_my_token_qr)
-        qr.setImageBitmap(QrCodes.encode(PairingPayload.formatReverse(token, keyBase64), 560))
     }
 
     private fun onScanned(text: String) {

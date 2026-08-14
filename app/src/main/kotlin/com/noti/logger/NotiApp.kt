@@ -4,6 +4,8 @@ import android.app.Application
 import com.noti.logger.config.Settings
 import com.noti.logger.util.Theming
 import com.noti.logger.work.UploadScheduler
+import com.noti.sender.SmsSyncWorker
+import com.noti.shared.Role
 
 class NotiApp : Application() {
     override fun onCreate() {
@@ -11,6 +13,15 @@ class NotiApp : Application() {
         // Apply the user's light/dark/system choice. Color (Default blue vs Material You) is applied
         // per-activity via Theming.applyDynamicColorIfEnabled().
         Theming.applyNightMode(Settings.get(this))
-        UploadScheduler.applyFromSettings(this)
+
+        when (Settings.get(this).role) {
+            Role.COMPANION -> {
+                // Keep the relay backstop scheduled and the high-water mark set from any process start.
+                SmsSyncWorker.baselineIfNeeded(this)
+                SmsSyncWorker.schedulePeriodic(this)
+            }
+            // MAIN (or not-yet-chosen): the hub's notification-upload backstop.
+            else -> UploadScheduler.applyFromSettings(this)
+        }
     }
 }

@@ -11,14 +11,14 @@ import androidx.fragment.app.Fragment
 import com.noti.sender.R
 
 /** Settings tab: a menu of focused sub-screens. */
-class SettingsFragment : Fragment(R.layout.fragment_settings) {
+class SettingsFragment : Fragment(R.layout.cmp_fragment_settings) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val container = view.findViewById<LinearLayout>(R.id.settings_container)
         val inflater = LayoutInflater.from(requireContext())
 
         fun addRow(titleRes: Int, subRes: Int, iconRes: Int, cls: Class<*>) {
-            val row = inflater.inflate(R.layout.item_settings_row, container, false)
+            val row = inflater.inflate(R.layout.cmp_item_settings_row, container, false)
             row.findViewById<TextView>(R.id.row_title).setText(titleRes)
             row.findViewById<TextView>(R.id.row_sub).setText(subRes)
             row.findViewById<ImageView>(R.id.row_icon).setImageResource(iconRes)

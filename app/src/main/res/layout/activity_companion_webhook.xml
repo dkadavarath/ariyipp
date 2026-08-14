@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/screen_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -27,104 +26,90 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Intro -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:alpha="0.85"
                 android:lineSpacingExtra="3dp"
-                android:text="@string/pairing_intro"
+                android:text="@string/cmp_webhook_intro"
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
 
-            <!-- 1. Shared key (received from ippu — no generator here) -->
-            <TextView
-                style="@style/PairSectionHeader"
-                android:text="@string/pair_hdr_key" />
-
-            <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/sw_cmp_n8n_enabled"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="@string/hint_relay_key">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/et_relay_key"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="textNoSuggestions"
-                    android:maxLines="2" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <!-- 2. The other device -->
-            <TextView
-                style="@style/PairSectionHeader"
-                android:text="@string/pair_hdr_other" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_scan_qr"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/btn_scan_qr"
-                app:icon="@drawable/ic_qr_code" />
+                android:layout_marginTop="12dp"
+                android:text="@string/cmp_webhook_enabled" />
 
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:hint="@string/hint_noti_token">
+                android:hint="@string/cmp_webhook_url">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/et_noti_token"
+                    android:id="@+id/et_cmp_url"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textNoSuggestions"
-                    android:maxLines="3" />
+                    android:inputType="textUri" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- 4. Service-account key -->
-            <TextView
-                style="@style/PairSectionHeader"
-                android:text="@string/pair_hdr_sa" />
-
-            <TextView
-                android:id="@+id/txt_key_status"
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textAppearance="?attr/textAppearanceBodyMedium" />
+                android:layout_marginTop="8dp"
+                android:hint="@string/cmp_webhook_header">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_cmp_header"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/cmp_webhook_prefix">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_cmp_prefix"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/cmp_webhook_token">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_cmp_token"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textNoSuggestions" />
+            </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_import_key"
+                android:id="@+id/btn_push"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/cmp_webhook_push" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_save"
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="@string/btn_import_key" />
-
-            <!-- 5. Options -->
-            <TextView
-                style="@style/PairSectionHeader"
-                android:text="@string/pair_hdr_options" />
-
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/sw_fcm_enabled"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/sw_fcm_enabled" />
-
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/sw_accept_commands"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/sw_accept_commands" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_save"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
                 android:text="@string/btn_save" />
         </LinearLayout>
     </ScrollView>

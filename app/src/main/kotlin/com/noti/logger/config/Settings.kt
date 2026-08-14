@@ -170,6 +170,15 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putInt(KEY_DEDUPE_WINDOW_SECONDS, value.coerceAtLeast(0)).apply()
         }
 
+    // ---- Role (ariyipp: hub vs SMS companion) ----
+
+    /** Which role this device plays. null until the user picks one at onboarding. */
+    var role: com.noti.shared.Role?
+        get() = prefs.getString(KEY_ROLE, null)?.let { runCatching { com.noti.shared.Role.valueOf(it) }.getOrNull() }
+        set(value) {
+            prefs.edit().putString(KEY_ROLE, value?.name).apply()
+        }
+
     // ---- Inbound push (FCM relay receiver) ----
 
     /** Opt-in: show notifications pushed from the sender app. Default off. */
@@ -221,6 +230,28 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         set(value) {
             prefs.edit().putString(KEY_SNDI_TOKEN, value.trim()).apply()
         }
+
+    // ---- Companion webhook (pushed to the companion on demand; Main-authored) ----
+
+    var companionN8nEnabled: Boolean
+        get() = prefs.getBoolean(KEY_CMP_N8N_ENABLED, false)
+        set(value) { prefs.edit().putBoolean(KEY_CMP_N8N_ENABLED, value).apply() }
+
+    var companionN8nUrl: String
+        get() = prefs.getString(KEY_CMP_N8N_URL, "") ?: ""
+        set(value) { prefs.edit().putString(KEY_CMP_N8N_URL, value.trim()).apply() }
+
+    var companionN8nHeaderName: String
+        get() = prefs.getString(KEY_CMP_N8N_HEADER, "Authorization") ?: "Authorization"
+        set(value) { prefs.edit().putString(KEY_CMP_N8N_HEADER, value).apply() }
+
+    var companionN8nHeaderPrefix: String
+        get() = prefs.getString(KEY_CMP_N8N_PREFIX, "Bearer ") ?: "Bearer "
+        set(value) { prefs.edit().putString(KEY_CMP_N8N_PREFIX, value).apply() }
+
+    var companionN8nToken: String
+        get() = prefs.getString(KEY_CMP_N8N_TOKEN, "") ?: ""
+        set(value) { prefs.edit().putString(KEY_CMP_N8N_TOKEN, value).apply() }
 
     // ---- Status ----
 
@@ -319,6 +350,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_CAPTURE_BODY = "capture_body"
         private const val KEY_RETENTION_DAYS = "retention_days"
         private const val KEY_DEDUPE_WINDOW_SECONDS = "dedupe_window_seconds"
+        private const val KEY_ROLE = "role"
         private const val KEY_PUSH_INBOUND_ENABLED = "push_inbound_enabled"
         private const val KEY_OTP_COPY = "otp_copy_enabled"
         private const val KEY_SUPPRESS_SYS_ACTIONS = "suppress_system_notif_actions"
@@ -326,6 +358,11 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_FCM_TOKEN = "fcm_token"
         private const val KEY_SA_JSON = "sa_json"
         private const val KEY_SNDI_TOKEN = "sndi_token"
+        private const val KEY_CMP_N8N_ENABLED = "cmp_n8n_enabled"
+        private const val KEY_CMP_N8N_URL = "cmp_n8n_url"
+        private const val KEY_CMP_N8N_HEADER = "cmp_n8n_header"
+        private const val KEY_CMP_N8N_PREFIX = "cmp_n8n_prefix"
+        private const val KEY_CMP_N8N_TOKEN = "cmp_n8n_token"
         private const val KEY_LAST_UPLOAD_AT_MS = "last_upload_at_ms"
         private const val KEY_LAST_UPLOAD_RESULT = "last_upload_result"
         private const val KEY_THEME_MODE = "theme_mode"

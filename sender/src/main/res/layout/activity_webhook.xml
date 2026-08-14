@@ -118,6 +118,13 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
                         android:text="@string/sw_n8n_enabled" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/sw_accept_remote_config"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/sw_accept_remote_config" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

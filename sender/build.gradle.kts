@@ -1,47 +1,24 @@
-import java.util.Properties
-
 plugins {
-    alias(libs.plugins.android.application)
+    // No version: AGP is already on the classpath from :app's application plugin.
+    id("com.android.library")
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.google.services)
 }
 
-// Release signing reuses noti's gitignored keystore.properties, when present.
-val keystorePropsFile = rootProject.file("keystore.properties")
-val keystoreProps = Properties().apply {
-    if (keystorePropsFile.exists()) keystorePropsFile.inputStream().use { load(it) }
-}
-
+// Companion (SMS-source) role of ariyipp, packaged as a library the app module includes. Its
+// manifest components + permissions merge into the app; the app owns Firebase, signing, and the
+// single launcher.
 android {
     namespace = "com.noti.sender"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.noti.sender"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 21
-        versionName = "1.20"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    signingConfigs {
-        if (keystoreProps.isNotEmpty()) {
-            create("release") {
-                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
-                storePassword = keystoreProps.getProperty("storePassword")
-                keyAlias = keystoreProps.getProperty("keyAlias")
-                keyPassword = keystoreProps.getProperty("keyPassword")
-            }
-        }
-    }
-
     buildTypes {
-        release {
-            isMinifyEnabled = false
-            if (keystoreProps.isNotEmpty()) signingConfig = signingConfigs.getByName("release")
-        }
+        release { isMinifyEnabled = false }
         debug { isMinifyEnabled = false }
     }
 
@@ -70,7 +47,7 @@ dependencies {
     implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.work.runtime.ktx)
 
-    // Firebase Cloud Messaging — sndi now also *receives* (send-SMS commands from noti)
+    // Firebase Cloud Messaging (the app module supplies the google-services config at runtime).
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
 

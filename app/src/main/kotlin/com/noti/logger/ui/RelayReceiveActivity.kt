@@ -7,11 +7,10 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.messaging.FirebaseMessaging
-import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanOptions
 import com.noti.logger.R
 import com.noti.logger.config.Settings
 import com.noti.logger.push.QrCodes
@@ -22,10 +21,9 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Configure the relay with sndi, both directions:
- *  - Receive: enable inbound, hold the shared AES key, show this device's token + a pairing QR.
- *  - Send (reverse): import the same service-account key and hold sndi's token, so noti can push
- *    send-SMS commands.
+ * Main-side pairing. This device owns the shared key (read-only, with Regenerate) and shows one QR
+ * (its token + the key) for the companion to scan. The companion then announces its own endpoint
+ * over the encrypted channel, so there is nothing to scan or paste back here.
  */
 class RelayReceiveActivity : ScreenActivity() {
 
@@ -38,10 +36,6 @@ class RelayReceiveActivity : ScreenActivity() {
         uri?.let { onSaPicked(it) }
     }
 
-    private val scanAriy = registerForActivityResult(ScanContract()) { result ->
-        result.contents?.let { onAriyScanned(it) }
-    }
-
     override fun onScreenCreated() {
         val s = Settings.get(this)
         val enabled = findViewById<MaterialSwitch>(R.id.sw_inbound_enabled)
@@ -50,14 +44,13 @@ class RelayReceiveActivity : ScreenActivity() {
         val keyField = findViewById<TextInputEditText>(R.id.et_relay_key)
         val tokenView = findViewById<TextView>(R.id.txt_token)
         val qr = findViewById<ImageView>(R.id.img_qr)
-        val sndiToken = findViewById<TextInputEditText>(R.id.et_sndi_token)
 
         enabled.isChecked = s.pushInboundEnabled
         otpCopy.isChecked = s.otpCopyEnabled
         suppressSystem.isChecked = s.suppressSystemNotifActions
         if (s.relayKey.isBlank()) s.relayKey = MessageCrypto.generateKeyBase64()
         keyField.setText(s.relayKey)
-        sndiToken.setText(s.sndiFcmToken)
+        keyField.keyListener = null // read-only (still selectable/copyable) — Main owns the key
         updateSaStatus()
 
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
@@ -68,22 +61,19 @@ class RelayReceiveActivity : ScreenActivity() {
         }
 
         findViewById<MaterialButton>(R.id.btn_generate_key).setOnClickListener {
-            keyField.setText(MessageCrypto.generateKeyBase64())
-            refreshQr(qr, keyField.text.toString())
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.regen_key_title)
+                .setMessage(R.string.regen_key_msg)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.regen_key_yes) { _, _ ->
+                    keyField.setText(MessageCrypto.generateKeyBase64())
+                    refreshQr(qr, keyField.text.toString())
+                }
+                .show()
         }
 
         findViewById<MaterialButton>(R.id.btn_import_sa).setOnClickListener {
             importSa.launch(arrayOf("application/json", "text/*", "*/*"))
-        }
-
-        findViewById<MaterialButton>(R.id.btn_scan_ariy).setOnClickListener {
-            scanAriy.launch(
-                ScanOptions()
-                    .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                    .setPrompt(getString(R.string.relay_scan_ariy_prompt))
-                    .setBeepEnabled(false)
-                    .setOrientationLocked(false)
-            )
         }
 
         findViewById<View>(R.id.btn_save).setOnClickListener {
@@ -91,28 +81,10 @@ class RelayReceiveActivity : ScreenActivity() {
             s.otpCopyEnabled = otpCopy.isChecked
             s.suppressSystemNotifActions = suppressSystem.isChecked
             s.relayKey = keyField.text.toString()
-            s.sndiFcmToken = sndiToken.text.toString()
+            // Don't touch sndiFcmToken — it's set automatically when the companion announces itself.
             Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show()
             finish()
         }
-    }
-
-    private fun onAriyScanned(text: String) {
-        val root = findViewById<View>(R.id.screen_root)
-        val parsed = PairingPayload.parseReverse(text)
-        if (parsed == null) {
-            com.noti.logger.util.Haptics.reject(root)
-            Toast.makeText(this, R.string.relay_scan_ariy_bad, Toast.LENGTH_SHORT).show()
-            return
-        }
-        val (token, key) = parsed
-        findViewById<TextInputEditText>(R.id.et_sndi_token).setText(token)
-        // If ariy also carried the shared key and we don't have one yet, adopt it so a single scan
-        // fully sets up the reverse direction.
-        val keyField = findViewById<TextInputEditText>(R.id.et_relay_key)
-        if (key.isNotBlank() && keyField.text.isNullOrBlank()) keyField.setText(key)
-        com.noti.logger.util.Haptics.confirm(root)
-        Toast.makeText(this, R.string.relay_scan_ariy_ok, Toast.LENGTH_SHORT).show()
     }
 
     private fun refreshQr(qr: ImageView, key: String) {

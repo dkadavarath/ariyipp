@@ -22,7 +22,7 @@ import kotlinx.coroutines.withContext
 /**
  * Compose a new message (or forward one): pick a contact or type a number, choose which SIM sndi
  * should send from, and send. The message is recorded locally under the recipient and pushed to sndi
- * as a [com.noti.shared.SendCommand]; we then open that recipient's chat.
+ * as a WireMessage.Command; we then open that recipient's chat.
  */
 class ComposeActivity : ScreenActivity() {
 

@@ -48,6 +48,11 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean(KEY_N8N_ENABLED, false)
         set(value) { prefs.edit().putBoolean(KEY_N8N_ENABLED, value).apply() }
 
+    /** Kill-switch for accepting webhook config pushed from Main. Default on; off = fully local. */
+    var acceptRemoteConfig: Boolean
+        get() = prefs.getBoolean(KEY_ACCEPT_REMOTE_CONFIG, true)
+        set(value) { prefs.edit().putBoolean(KEY_ACCEPT_REMOTE_CONFIG, value).apply() }
+
     var n8nUrl: String
         get() = prefs.getString(KEY_N8N_URL, "") ?: ""
         set(value) { prefs.edit().putString(KEY_N8N_URL, value.trim()).apply() }
@@ -156,6 +161,7 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_ACCEPT_COMMANDS = "accept_commands"
         private const val KEY_FCM_ENABLED = "fcm_enabled"
         private const val KEY_N8N_ENABLED = "n8n_enabled"
+        private const val KEY_ACCEPT_REMOTE_CONFIG = "accept_remote_config"
         private const val KEY_N8N_URL = "n8n_url"
         private const val KEY_N8N_HEADER_NAME = "n8n_header_name"
         private const val KEY_N8N_HEADER_PREFIX = "n8n_header_prefix"

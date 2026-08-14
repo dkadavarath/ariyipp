@@ -24,7 +24,7 @@ class HelpActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_help)
+        setContentView(R.layout.cmp_activity_help)
 
         val root = findViewById<View>(R.id.help_root)
         ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
@@ -42,7 +42,7 @@ class HelpActivity : AppCompatActivity() {
         val container = findViewById<LinearLayout>(R.id.help_container)
         val inflater = LayoutInflater.from(this)
         for ((titleRes, bodyRes) in topics) {
-            val card = inflater.inflate(R.layout.item_help_topic, container, false)
+            val card = inflater.inflate(R.layout.cmp_item_help_topic, container, false)
             card.findViewById<TextView>(R.id.tv_topic_title).setText(titleRes)
             card.findViewById<TextView>(R.id.tv_topic_body).setText(bodyRes)
             container.addView(card)

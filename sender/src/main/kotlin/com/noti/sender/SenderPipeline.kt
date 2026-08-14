@@ -7,24 +7,21 @@ import com.noti.shared.FcmSender
 import com.noti.sender.net.WebhookPoster
 import com.noti.sender.sms.CapturedSms
 import com.noti.shared.MessageCrypto
-import com.noti.shared.RelayMessage
+import com.noti.shared.Wire
+import com.noti.shared.WireMessage
 import com.noti.shared.UploadBatch
 import com.noti.shared.UploadItem
 import com.noti.shared.epochMillisToIso
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
 /**
  * Builds and sends a captured SMS to its two destinations, each an independent leg:
- *  - ippu, over encrypted FCM: a [RelayMessage] (sender → title, body → text) that ippu shows.
+ *  - ippu, over encrypted FCM: a WireMessage.Relay (sender → title, body → text) that ippu shows.
  *  - the n8n webhook, plaintext: noti's schema with a structured From/Message/Sent/Received block.
  *
  * Each leg is its own idempotent call so the relay scan can advance a separate high-water mark per
  * leg. Logs only metadata (sender, length, HTTP codes) — never the body, which may be an OTP.
  */
 object SenderPipeline {
-
-    private val json = Json { encodeDefaults = true }
 
     // Reuse one FcmSender so its cached OAuth token (valid ~1h) is kept, instead of re-parsing the
     // key, re-signing a JWT, and re-doing the token exchange on every SMS. Rebuilt only when the
@@ -41,13 +38,13 @@ object SenderPipeline {
         }
     }
 
-    /** The encrypted FCM data payload for ippu: AES-GCM over the serialized RelayMessage. */
-    fun encryptForFcm(message: RelayMessage, keyBase64: String): String =
-        MessageCrypto.encrypt(json.encodeToString(message), keyBase64)
+    /** The encrypted FCM data payload for ippu: AES-GCM over the serialized wire message. */
+    fun encryptForFcm(message: WireMessage, keyBase64: String): String =
+        MessageCrypto.encrypt(Wire.encode(message), keyBase64)
 
     /** What ippu shows: sender "on <sim>" as the title (e.g. "+971500000000 on e&"), body verbatim. */
-    fun fcmMessage(sms: CapturedSms): RelayMessage =
-        RelayMessage(
+    fun fcmMessage(sms: CapturedSms): WireMessage.Relay =
+        WireMessage.Relay(
             title = if (sms.sim.isNotBlank()) "${sms.from} on ${sms.sim}" else sms.from,
             body = sms.body,
             dedupe = dedupeKey(sms),
@@ -83,6 +80,28 @@ object SenderPipeline {
             }
         } catch (e: Exception) {
             Diag.log("FCM → ERROR: ${e.message}"); SendOutcome.TRANSIENT
+        }
+    }
+
+    /**
+     * Companion → Main: announce this device's push endpoint (its FCM token) so Main can reach it
+     * for reverse-send, with nothing copied back by hand. Sent after pairing and on token refresh.
+     */
+    fun announceToken(context: Context): SendOutcome {
+        val s = SenderSettings.get(context)
+        if (s.serviceAccountJson.isBlank() || s.notiFcmToken.isBlank() || s.relayKey.isBlank() || s.myFcmToken.isBlank()) {
+            return SendOutcome.NOT_CONFIGURED
+        }
+        return try {
+            val payload = MessageCrypto.encrypt(Wire.encode(WireMessage.Token(s.myFcmToken)), s.relayKey)
+            val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload))
+            when {
+                res.ok -> { Diag.log("endpoint announced to Main ✓"); SendOutcome.DELIVERED }
+                res.httpCode == -1 || res.httpCode == 429 || res.httpCode in 500..599 -> SendOutcome.TRANSIENT
+                else -> { Diag.log(fcmDiag(res.httpCode, res.detail)); SendOutcome.PERMANENT }
+            }
+        } catch (e: Exception) {
+            SendOutcome.TRANSIENT
         }
     }
 

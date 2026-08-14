@@ -2,8 +2,8 @@ package com.noti.sender
 
 import com.noti.sender.sms.CapturedSms
 import com.noti.shared.MessageCrypto
-import com.noti.shared.RelayMessage
-import kotlinx.serialization.json.Json
+import com.noti.shared.Wire
+import com.noti.shared.WireMessage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -13,11 +13,11 @@ class SenderPipelineTest {
     @Test
     fun `encryptForFcm produces a payload noti can decrypt back to the message`() {
         val key = MessageCrypto.generateKeyBase64()
-        val msg = RelayMessage("Bank", "Your OTP is 4567")
+        val msg = WireMessage.Relay(title = "Bank", body = "Your OTP is 4567")
 
         val payload = SenderPipeline.encryptForFcm(msg, key)
         val plain = MessageCrypto.decrypt(payload, key)
-        val decoded = Json { ignoreUnknownKeys = true }.decodeFromString<RelayMessage>(plain)
+        val decoded = Wire.decode(plain)
 
         assertEquals(msg, decoded)
     }
