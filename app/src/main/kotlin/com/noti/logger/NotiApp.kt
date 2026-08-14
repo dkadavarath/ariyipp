@@ -19,6 +19,9 @@ class NotiApp : Application() {
                 // Keep the relay backstop scheduled and the high-water mark set from any process start.
                 SmsSyncWorker.baselineIfNeeded(this)
                 SmsSyncWorker.schedulePeriodic(this)
+                // Re-announce our endpoint so Main always has a live token (self-heals a stale one,
+                // e.g. an in-place hub update that kept the old ariy token). No-op if not paired.
+                com.noti.sender.TokenAnnounceWorker.enqueue(this)
             }
             // MAIN (or not-yet-chosen): the hub's notification-upload backstop.
             else -> UploadScheduler.applyFromSettings(this)
