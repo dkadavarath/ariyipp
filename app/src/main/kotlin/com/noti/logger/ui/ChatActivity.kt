@@ -144,9 +144,9 @@ class ChatActivity : AppCompatActivity() {
                 }
                 highlightId = -1L // only once
             } else if (scrollToEnd && adapter.itemCount > 0) {
-                // Keep a just-sent message visible above the keyboard (stackFromEnd only helps the
-                // initial layout, not an append into an already-scrolled list).
-                recycler.post { recycler.scrollToPosition(adapter.itemCount - 1) }
+                // Ease the just-sent bubble into view above the keyboard (stackFromEnd only helps the
+                // initial layout). Smooth-scroll pairs with the item-add animation for a chat feel.
+                recycler.post { recycler.smoothScrollToPosition(adapter.itemCount - 1) }
             }
         }
     }
@@ -231,12 +231,30 @@ class ChatActivity : AppCompatActivity() {
 
     /** A chat row is either a centered time separator or a message bubble (with its group position). */
     private sealed interface Row {
-        data class Separator(val label: String) : Row
+        // key = id of the message that opens this cluster, so two same-day clusters (labelled alike)
+        // still read as distinct items to DiffUtil.
+        data class Separator(val label: String, val key: Long) : Row
         data class Msg(
             val message: RelayedMessageEntity,
             val firstInGroup: Boolean,
             val lastInGroup: Boolean,
         ) : Row
+    }
+
+    /** Minimal-change diff so a new bubble animates in (and its neighbour's corners reflow) instead
+     *  of the whole list repainting. */
+    private class RowDiff(val old: List<Row>, val new: List<Row>) : androidx.recyclerview.widget.DiffUtil.Callback() {
+        override fun getOldListSize() = old.size
+        override fun getNewListSize() = new.size
+        override fun areItemsTheSame(o: Int, n: Int): Boolean {
+            val a = old[o]; val b = new[n]
+            return when {
+                a is Row.Separator && b is Row.Separator -> a.key == b.key
+                a is Row.Msg && b is Row.Msg -> a.message.id == b.message.id
+                else -> false
+            }
+        }
+        override fun areContentsTheSame(o: Int, n: Int) = old[o] == new[n]
     }
 
     private inner class MessageAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -251,17 +269,26 @@ class ChatActivity : AppCompatActivity() {
          * "group" whose bubbles share connected corners.
          */
         fun submit(messages: List<RelayedMessageEntity>) {
-            rows.clear()
+            val newRows = ArrayList<Row>()
             messages.forEachIndexed { i, m ->
                 val prev = messages.getOrNull(i - 1)
                 val next = messages.getOrNull(i + 1)
                 val newCluster = prev == null || startsNewCluster(prev, m)
-                if (newCluster) rows.add(Row.Separator(ChatTime.clusterHeader(this@ChatActivity, m.receivedAt)))
+                if (newCluster) newRows.add(Row.Separator(ChatTime.clusterHeader(this@ChatActivity, m.receivedAt), m.id))
                 val firstInGroup = newCluster || prev!!.outgoing != m.outgoing
                 val lastInGroup = next == null || startsNewCluster(m, next) || next.outgoing != m.outgoing
-                rows.add(Row.Msg(m, firstInGroup, lastInGroup))
+                newRows.add(Row.Msg(m, firstInGroup, lastInGroup))
             }
-            notifyDataSetChanged()
+            if (rows.isEmpty()) {
+                // First population: show it settled, don't animate the whole history in.
+                rows.addAll(newRows)
+                notifyDataSetChanged()
+            } else {
+                val diff = androidx.recyclerview.widget.DiffUtil.calculateDiff(RowDiff(rows, newRows))
+                rows.clear()
+                rows.addAll(newRows)
+                diff.dispatchUpdatesTo(this)
+            }
         }
 
         private fun startsNewCluster(prev: RelayedMessageEntity, m: RelayedMessageEntity): Boolean =
