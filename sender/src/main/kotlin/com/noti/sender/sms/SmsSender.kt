@@ -13,7 +13,7 @@ object SmsSender {
 
     /**
      * Sends [body] to [to]. [sim] is a SIM slot index (0/1); -1 uses the device's default SIM.
-     * Selecting a specific slot needs READ_PHONE_STATE to resolve the subscription — without it (or
+     * Selecting a specific slot needs READ_PHONE_STATE to resolve the subscription - without it (or
      * if the slot is empty) we fall back to the default SIM rather than fail.
      */
     fun send(context: Context, to: String, body: String, sim: Int = -1) {

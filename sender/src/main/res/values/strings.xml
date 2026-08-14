@@ -14,27 +14,27 @@
     <string name="btn_ignore_battery">Ignore battery optimization</string>
     <string name="status_permissions">Permissions</string>
     <string name="status_sync">Sync</string>
-    <string name="status_sync_hint">Catch SMS missed while the app was asleep, or rebuild main\'s history from scratch.</string>
+    <string name="status_sync_hint">Catch SMS missed while the app was asleep, or rebuild main device\'s history from scratch.</string>
     <string name="btn_sync_missed">Sync missed SMS now</string>
     <string name="sync_started">Syncing missed SMS…</string>
 
     <!-- Full repush: push the whole inbox so main can rebuild after a gap -->
     <string name="btn_repush">Repush entire inbox</string>
     <string name="repush_confirm_title">Repush entire inbox?</string>
-    <string name="repush_confirm_msg">This sends every SMS in this phone\'s inbox to main so it can fill any gaps. Main ignores messages it already has, so it\'s safe — but a large inbox can take a while and use data. Make sure you\'ve cleared main\'s received messages first if you want a clean rebuild.</string>
+    <string name="repush_confirm_msg">This sends every SMS in this phone\'s inbox to main so it can fill any gaps. Main ignores messages it already has, so it\'s safe - but a large inbox can take a while and use data. Make sure you\'ve cleared main device\'s received messages first if you want a clean rebuild.</string>
     <string name="repush_confirm_yes">Repush</string>
-    <string name="repush_started">Repush started — see the notification for progress.</string>
+    <string name="repush_started">Repush started - see the notification for progress.</string>
     <string name="repush_need_read">Grant SMS access first (Status screen).</string>
     <string name="repush_need_pairing">Pair with main first (Pairing screen).</string>
     <string name="repush_channel">Inbox repush</string>
     <string name="repush_note_title">Repushing inbox to main</string>
     <string name="repush_note_progress">Sent %1$d of %2$d</string>
-    <string name="repush_note_paused">Paused at %1$d of %2$d — waiting for network</string>
-    <string name="repush_note_done">Repush complete — %1$d sent</string>
+    <string name="repush_note_paused">Paused at %1$d of %2$d - waiting for network</string>
+    <string name="repush_note_done">Repush complete - %1$d sent</string>
     <string name="repush_note_failed_suffix"> (%1$d failed)</string>
     <string name="repush_note_no_read">Repush needs SMS read access.</string>
     <string name="repush_note_not_paired">Repush needs pairing with main.</string>
-    <string name="repush_note_rejected">Repush stopped — main rejected messages. Check the shared key and main token.</string>
+    <string name="repush_note_rejected">Repush stopped - main rejected messages. Check the shared key and main token.</string>
 
     <string name="keepalive_title">Relaying SMS to main</string>
     <string name="keepalive_text">Keeping the SMS relay active in the background.</string>
@@ -58,7 +58,7 @@
 
     <!-- Diagnostics -->
     <string name="title_diagnostics">Diagnostics</string>
-    <string name="diag_intro">What happened on each incoming SMS, relay, and command — with the reason when something fails.</string>
+    <string name="diag_intro">What happened on each incoming SMS, relay, and command - with the reason when something fails.</string>
     <string name="diag_empty">No activity yet.\n\nSend an SMS to this phone (or tap “Sync missed SMS”), then check back here.</string>
     <string name="diag_clear">Clear</string>
     <string name="diag_copy">Copy</string>
@@ -84,7 +84,7 @@
     <string name="about_device_id">Device ID: %1$s</string>
     <string name="about_project_url">https://github.com/dkadavarath/noti</string>
     <string name="about_whats_new">What\'s new</string>
-    <string name="about_changelog">v1.20 — Relaying now works off the SMS database (like a normal messaging app) instead of the raw broadcast, keyed on each message\'s stable row id. This makes duplicate posts structurally impossible — no matter how many times a phone fires the incoming-SMS broadcast, each message is relayed exactly once. The content-hash dedup is gone; live and missed-SMS handling are now one path.\n\nv1.19 — Fixed duplicate posts to the webhook: a duplicate SMS broadcast (some phones fire it twice) no longer queues a second relay, and the send-dedup now uses a timestamp-free content key so the missed-SMS sync can\'t slip a copy past either.\n\nv1.18 — Haptic feedback: switches, tab/back navigation, and pairing scans now give a gentle tap or confirm/error buzz (respecting your system \"Touch feedback\" setting).\n\nv1.17 — Internal: replaced a deprecated telephony API used to label which SIM a synced message arrived on.\n\nv1.16 — Performance: the relay\'s duplicate index is kept in memory and the inbox repush batches its progress writes — fewer disk writes and decrypts on the relay path.\n\nv1.15 — Status, About and the bottom tabs now match ippu\'s design: card sections with icon headers, a hero About with changelog and Help, and labels that appear only on the selected tab.\n\nv1.14 — n8n no longer gets duplicate posts: each relay destination dedups per message, so the missed-SMS sync stops re-sending what the live relay already delivered.\n\nv1.13 — The Pairing screen now matches ippu\'s — same layout, order and wording. Generating the shared key lives on ippu, where it belongs.\n\nv1.12 — \"Repush entire inbox to ippu\" (Status) re-sends every SMS so ippu can rebuild its history after a gap; ippu drops duplicates by content hash.\n\nv1.11 — Relayed messages carry the SMS\'s real time, so a delayed or synced message lands in the right place in ippu\'s conversation.\n\nv1.10 — Keep-alive service, battery-optimization exemption, and a missed-SMS sync to catch messages received while the app was asleep. New Diagnostics screen makes failures visible.\n\nv1.9 — Large collapsing header on every tab: the title starts big and shrinks into the toolbar as you scroll.\n\nv1.8 — Appearance settings (theme mode, colour, pure-black AMOLED) and a bottom-tab interface.\n\nv1.7 — Material 3 Expressive visual refresh.\n\nv1.6 — Fixed: SEND_SMS could never be granted, which broke sending on command from ippu.\n\nv1.5 — Reverse pairing by QR: ariy shows a QR of its own token for ippu to scan.\n\nv1.4 — Renamed to ariy, with new wordmark icons.\n\nv1.3 — Bidirectional relay: ippu can compose a message that this phone sends from its SIM.\n\nv1.2 — Groundwork for ippu\'s chat history; icon and keyboard fixes.\n\nv1.1 — SIM names and which SIM a message arrived on; delivery-priority fix; wordmark icon.\n\nv1.0 — Initial release: relay incoming SMS to ippu over end-to-end encrypted FCM, and to an n8n webhook.</string>
+    <string name="about_changelog">v1.20 - Relaying now works off the SMS database (like a normal messaging app) instead of the raw broadcast, keyed on each message\'s stable row id. This makes duplicate posts structurally impossible - no matter how many times a phone fires the incoming-SMS broadcast, each message is relayed exactly once. The content-hash dedup is gone; live and missed-SMS handling are now one path.\n\nv1.19 - Fixed duplicate posts to the webhook: a duplicate SMS broadcast (some phones fire it twice) no longer queues a second relay, and the send-dedup now uses a timestamp-free content key so the missed-SMS sync can\'t slip a copy past either.\n\nv1.18 - Haptic feedback: switches, tab/back navigation, and pairing scans now give a gentle tap or confirm/error buzz (respecting your system \"Touch feedback\" setting).\n\nv1.17 - Internal: replaced a deprecated telephony API used to label which SIM a synced message arrived on.\n\nv1.16 - Performance: the relay\'s duplicate index is kept in memory and the inbox repush batches its progress writes - fewer disk writes and decrypts on the relay path.\n\nv1.15 - Status, About and the bottom tabs now match ippu\'s design: card sections with icon headers, a hero About with changelog and Help, and labels that appear only on the selected tab.\n\nv1.14 - n8n no longer gets duplicate posts: each relay destination dedups per message, so the missed-SMS sync stops re-sending what the live relay already delivered.\n\nv1.13 - The Pairing screen now matches ippu\'s - same layout, order and wording. Generating the shared key lives on ippu, where it belongs.\n\nv1.12 - \"Repush entire inbox to ippu\" (Status) re-sends every SMS so ippu can rebuild its history after a gap; ippu drops duplicates by content hash.\n\nv1.11 - Relayed messages carry the SMS\'s real time, so a delayed or synced message lands in the right place in ippu\'s conversation.\n\nv1.10 - Keep-alive service, battery-optimization exemption, and a missed-SMS sync to catch messages received while the app was asleep. New Diagnostics screen makes failures visible.\n\nv1.9 - Large collapsing header on every tab: the title starts big and shrinks into the toolbar as you scroll.\n\nv1.8 - Appearance settings (theme mode, colour, pure-black AMOLED) and a bottom-tab interface.\n\nv1.7 - Material 3 Expressive visual refresh.\n\nv1.6 - Fixed: SEND_SMS could never be granted, which broke sending on command from ippu.\n\nv1.5 - Reverse pairing by QR: ariy shows a QR of its own token for ippu to scan.\n\nv1.4 - Renamed to ariy, with new wordmark icons.\n\nv1.3 - Bidirectional relay: ippu can compose a message that this phone sends from its SIM.\n\nv1.2 - Groundwork for ippu\'s chat history; icon and keyboard fixes.\n\nv1.1 - SIM names and which SIM a message arrived on; delivery-priority fix; wordmark icon.\n\nv1.0 - Initial release: relay incoming SMS to ippu over end-to-end encrypted FCM, and to an n8n webhook.</string>
 
     <!-- Help screen -->
     <string name="btn_help">Help</string>
@@ -92,15 +92,15 @@
     <string name="help_start_title">Getting started</string>
     <string name="help_start_body">On the Status screen, grant SMS access and exempt the app from battery optimization. Without SMS access nothing is relayed; without the battery exemption the system may sleep the app and miss messages.</string>
     <string name="help_pairing_title">Pairing with main</string>
-    <string name="help_pairing_body">Open Settings → Pairing. Scan main device\'s code to fill in main\'s device token and the shared key in one step, or paste them by hand. The shared key is generated on main — the companion only receives it, so both ends always match.</string>
+    <string name="help_pairing_body">Open Settings → Pairing. Scan main device\'s code to fill in the main device\'s token and the shared key in one step, or paste them by hand. The shared key is generated on main - the companion only receives it, so both ends always match.</string>
     <string name="help_reverse_title">Sending SMS on command</string>
-    <string name="help_reverse_body">To let main compose messages this phone sends from its SIM: import the FCM service-account key, turn on \"Send SMS on command from main\", and grant SEND_SMS. The first time you send to a short code, Android may ask you to allow it — choose \"Always allow\".</string>
+    <string name="help_reverse_body">To let main compose messages this phone sends from its SIM: import the FCM service-account key, turn on \"Send SMS on command from main\", and grant SEND_SMS. The first time you send to a short code, Android may ask you to allow it - choose \"Always allow\".</string>
     <string name="help_webhook_title">Webhook (n8n)</string>
     <string name="help_webhook_body">Optionally forward every SMS to a webhook as well. In Settings → Webhook, enable it and enter the URL and auth header. Each message is sent once; duplicates from the missed-SMS sync are suppressed.</string>
     <string name="help_sync_title">Missed SMS &amp; repush</string>
-    <string name="help_sync_body">\"Sync missed SMS now\" (Status) catches messages that arrived while the app was asleep. \"Repush entire inbox to main\" re-sends every SMS so main can rebuild its history after a gap — main ignores anything it already has.</string>
+    <string name="help_sync_body">\"Sync missed SMS now\" (Status) catches messages that arrived while the app was asleep. \"Repush entire inbox to main\" re-sends every SMS so main can rebuild its history after a gap - main ignores anything it already has.</string>
     <string name="help_trouble_title">Troubleshooting</string>
-    <string name="help_trouble_body">Settings → Diagnostics logs each relay with the reason when it fails. If main isn\'t receiving: check the shared key matches and main\'s token is current (re-scan if main was reinstalled), and keep this app battery-unrestricted.</string>
+    <string name="help_trouble_body">Settings → Diagnostics logs each relay with the reason when it fails. If main isn\'t receiving: check the shared key matches and main device\'s token is current (re-scan if main was reinstalled), and keep this app battery-unrestricted.</string>
 
     <!-- Sub-screen titles -->
     <string name="title_pairing">Pairing</string>
@@ -108,7 +108,7 @@
     <string name="title_webhook">Webhook</string>
 
     <!-- SIM names -->
-    <string name="sim_names_intro">Name each SIM so relayed messages show the carrier (e.g. \"+9715… on e&amp;\") without needing phone-state access. Leave blank to use \"SIM 1\" / \"SIM 2\".</string>
+    <string name="sim_names_intro">Name each SIM so relayed messages show the carrier without needing phone-state access. Leave blank to use \"SIM 1\" / \"SIM 2\".</string>
     <string name="hint_sim1_name">SIM 1 name (slot 1)</string>
     <string name="hint_sim2_name">SIM 2 name (slot 2)</string>
 
@@ -126,14 +126,14 @@
     <string name="key_status_invalid">That file isn\'t a service-account key.</string>
     <string name="btn_import_key">Import service-account key</string>
     <string name="btn_scan_qr">Scan main device\'s code</string>
-    <string name="scan_prompt">Point at the QR on main\'s Pairing screen</string>
+    <string name="scan_prompt">Point at the QR on the main device\'s Pairing screen</string>
     <string name="scan_bad">That QR isn\'t a main pairing code.</string>
-    <string name="scan_ok">Paired — token and key filled in.</string>
+    <string name="scan_ok">Paired - token and key filled in.</string>
     <string name="hint_noti_token">Main device token</string>
     <string name="hint_relay_key">Shared key (base64)</string>
     <string name="btn_generate_key">Generate a new shared key</string>
     <string name="sw_fcm_enabled">Relay to main via FCM</string>
-    <string name="reverse_intro">Reverse direction — let main compose messages that this phone sends via its SIM:</string>
+    <string name="reverse_intro">Reverse direction - let main compose messages that this phone sends via its SIM:</string>
     <string name="sw_accept_commands">Send SMS on command from main</string>
     <string name="label_my_token">This device\'s token</string>
     <string name="my_token_qr_hint">Scan this on main to pair</string>
@@ -151,10 +151,10 @@
     <!-- Shared -->
     <string name="btn_save">Save</string>
     <string name="saved">Saved</string>
-    <string name="key_generated">New shared key generated — copy it into main too.</string>
+    <string name="key_generated">New shared key generated - copy it into main too.</string>
 
     <!-- Heartbeat / connection health -->
     <string name="hb_banner_title">Main app disconnected</string>
-    <string name="hb_banner_body">No heartbeat from the main app in a while — relayed SMS may not be arriving.</string>
+    <string name="hb_banner_body">No heartbeat from the main app in a while - relayed SMS may not be arriving.</string>
     <string name="hb_retry_now">Retry now</string>
 </resources>

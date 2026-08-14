@@ -17,9 +17,9 @@ sealed interface UploadOutcome {
      * other uid in the batch is retried. [failures] are the raw error messages (for the user).
      */
     data class Parsed(val successUids: Set<String>, val failures: List<String>) : UploadOutcome
-    /** Transient (408/425/429, 5xx, network/timeout, unparseable 2xx) — retry silently. */
+    /** Transient (408/425/429, 5xx, network/timeout, unparseable 2xx) - retry silently. */
     object Retry : UploadOutcome
-    /** 4xx transport rejection (auth/URL) — alert the user in-app, then retry. */
+    /** 4xx transport rejection (auth/URL) - alert the user in-app, then retry. */
     data class ClientError(val code: Int) : UploadOutcome
 }
 
@@ -55,7 +55,7 @@ class Uploader(
                 conn.setRequestProperty(authHeaderName, authHeaderValue)
             }
             conn.setRequestProperty("Content-Type", "application/json")
-            // Only advertise gzip when we actually gzip — many receivers (e.g. n8n)
+            // Only advertise gzip when we actually gzip - many receivers (e.g. n8n)
             // don't decompress request bodies, so plain JSON is the safe default.
             if (gzip) conn.setRequestProperty("Content-Encoding", "gzip")
 
@@ -84,7 +84,7 @@ class Uploader(
 
     /**
      * Parse `[{"success":[...],"failure":[...]}]`, merging all entries. Returns [UploadOutcome.Retry]
-     * when the body can't be parsed — we must not delete records we can't confirm succeeded.
+     * when the body can't be parsed - we must not delete records we can't confirm succeeded.
      */
     private fun parseResponse(body: String): UploadOutcome {
         return try {

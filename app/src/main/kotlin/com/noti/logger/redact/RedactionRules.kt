@@ -14,7 +14,7 @@ data class AppRule(
     val keywords: List<String> = emptyList(),
     val notes: String = ""
 ) {
-    /** A rule that would change nothing — not worth persisting. */
+    /** A rule that would change nothing - not worth persisting. */
     val isEmpty: Boolean get() = keywords.isEmpty() && notes.isBlank()
 }
 

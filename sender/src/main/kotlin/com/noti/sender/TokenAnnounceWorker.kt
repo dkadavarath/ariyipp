@@ -12,7 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Sends the companion's push endpoint to Main (durably — retries if offline). Enqueued after pairing
+ * Sends the companion's push endpoint to Main (durably - retries if offline). Enqueued after pairing
  * and whenever the FCM token rotates, so Main always has a live endpoint for reverse-send without the
  * user ever copying a token back by hand.
  */

@@ -23,7 +23,7 @@ object AppRules {
 
     fun encode(rules: Map<String, AppRule>): String = json.encodeToString(mapSerializer, rules)
 
-    /** Blank or corrupt input yields an empty map — the capture path must never throw here. */
+    /** Blank or corrupt input yields an empty map - the capture path must never throw here. */
     fun decode(raw: String): Map<String, AppRule> =
         if (raw.isBlank()) emptyMap()
         else try {

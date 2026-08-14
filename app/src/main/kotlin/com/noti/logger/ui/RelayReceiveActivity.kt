@@ -50,7 +50,7 @@ class RelayReceiveActivity : ScreenActivity() {
         suppressSystem.isChecked = s.suppressSystemNotifActions
         if (s.relayKey.isBlank()) s.relayKey = MessageCrypto.generateKeyBase64()
         keyField.setText(s.relayKey)
-        keyField.keyListener = null // read-only (still selectable/copyable) — Main owns the key
+        keyField.keyListener = null // read-only (still selectable/copyable) - Main owns the key
         updateSaStatus()
 
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
@@ -81,7 +81,7 @@ class RelayReceiveActivity : ScreenActivity() {
             s.otpCopyEnabled = otpCopy.isChecked
             s.suppressSystemNotifActions = suppressSystem.isChecked
             s.relayKey = keyField.text.toString()
-            // Don't touch sndiFcmToken — it's set automatically when the companion announces itself.
+            // Don't touch sndiFcmToken - it's set automatically when the companion announces itself.
             Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show()
             finish()
         }

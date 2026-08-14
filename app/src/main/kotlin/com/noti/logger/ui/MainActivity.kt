@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity() {
         val settings = Settings.get(this)
         var chosen = settings.role
         // An existing hub (ippu) install updating to the merged app has no role yet but clearly has
-        // hub data — default it to MAIN silently instead of showing onboarding.
+        // hub data - default it to MAIN silently instead of showing onboarding.
         if (chosen == null && (settings.webhookUrl.isNotBlank() || settings.pushInboundEnabled || settings.relayKey.isNotBlank())) {
             chosen = Role.MAIN
             settings.role = Role.MAIN

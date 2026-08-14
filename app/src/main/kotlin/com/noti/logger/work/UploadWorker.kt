@@ -74,7 +74,7 @@ class UploadWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                     is UploadOutcome.ClientError -> {
                         // Transport-level rejection (auth/URL). Nothing deleted. Alert + retry.
                         Alerter.alertUploadRejected(applicationContext, outcome.code, page.size)
-                        settings.lastUploadResult = "http ${outcome.code} — alerted, retrying"
+                        settings.lastUploadResult = "http ${outcome.code} - alerted, retrying"
                         settings.lastUploadAtMs = System.currentTimeMillis()
                         return@withContext Result.retry()
                     }
@@ -89,7 +89,7 @@ class UploadWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
             if (totalFailed > 0) {
                 // Some records were rejected by the endpoint. Inform the user and retry them.
                 Alerter.alertUploadFailures(applicationContext, totalFailed, failureMessages)
-                settings.lastUploadResult = "$totalFailed failed — retrying"
+                settings.lastUploadResult = "$totalFailed failed - retrying"
                 return@withContext Result.retry()
             }
 

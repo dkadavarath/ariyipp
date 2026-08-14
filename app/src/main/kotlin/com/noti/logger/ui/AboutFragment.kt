@@ -29,6 +29,14 @@ class AboutFragment : Fragment(R.layout.fragment_about) {
         view.findViewById<View>(R.id.btn_help).setOnClickListener {
             startActivity(Intent(requireContext(), HelpActivity::class.java))
         }
+
+        view.findViewById<View>(R.id.btn_donate).setOnClickListener {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(getString(R.string.about_donate_url))))
+            } catch (_: Exception) {
+                // No browser available; nothing to do.
+            }
+        }
     }
 
     private fun bindRole(view: View) {

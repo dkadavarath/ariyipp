@@ -62,9 +62,9 @@ class NotiMessagingService : FirebaseMessagingService() {
         SenderSettings.get(applicationContext).myFcmToken = token
         if (s.role == Role.COMPANION) {
             com.noti.sender.TokenAnnounceWorker.enqueue(applicationContext)
-            Diag.log("FCM token refreshed — re-announcing endpoint to main")
+            Diag.log("FCM token refreshed - re-announcing endpoint to main")
         } else {
-            Diag.log("FCM token refreshed — re-pair if the companion needs the new hub token")
+            Diag.log("FCM token refreshed - re-pair if the companion needs the new hub token")
         }
     }
 }

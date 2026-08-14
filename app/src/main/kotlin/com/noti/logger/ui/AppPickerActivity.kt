@@ -20,6 +20,7 @@ import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.android.material.textfield.TextInputEditText
 import com.noti.logger.R
+import com.noti.logger.util.Theming
 import com.noti.logger.util.AppIconLoader
 import com.noti.logger.util.AppInfo
 import com.noti.logger.util.InstalledApps
@@ -41,7 +42,9 @@ class AppPickerActivity : AppCompatActivity() {
     private val iconLoader: AppIconLoader by lazy { AppIconLoader(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Theming.applyDynamicColorIfEnabled(this)
         super.onCreate(savedInstanceState)
+        Theming.applyAmoledIfEnabled(this) // after super so AppCompat doesn't reset the overlay
         setContentView(R.layout.activity_app_picker)
 
         val root = findViewById<View>(R.id.picker_root)

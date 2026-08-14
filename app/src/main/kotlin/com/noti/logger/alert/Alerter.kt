@@ -69,7 +69,7 @@ object Alerter {
             ALERT_UPLOAD_ERROR_ID,
             "noti: upload rejected (HTTP $httpCode)",
             "The webhook rejected $recordCount record(s) with HTTP $httpCode. " +
-                "Retrying automatically — check the webhook URL, auth, or payload settings."
+                "Retrying automatically - check the webhook URL, auth, or payload settings."
         )
     }
 

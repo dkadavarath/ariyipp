@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit
 /**
  * The single relay path: scans the SMS provider for rows past a per-leg high-water `_id` and relays
  * them. Triggered by an incoming-SMS broadcast, by boot, by the manual button, and periodically as a
- * backstop — all the same scan. Keying off the provider's stable, monotonic `_id` means a duplicate
+ * backstop - all the same scan. Keying off the provider's stable, monotonic `_id` means a duplicate
  * SMS_RECEIVED broadcast (a Samsung / dual-SIM quirk) can't double-relay: the provider has one row,
  * and the mark only ever moves forward. Each leg (ippu / webhook) has its own mark, so one leg
  * failing and retrying never re-sends the other.
@@ -50,7 +50,7 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         if (SenderPipeline.isConfigured(s)) {
             if (s.lastRelayedSmsId == -1L) {
                 s.lastRelayedSmsId = SmsInbox.newestId(ctx)
-                Diag.log("relay: baseline at id ${s.lastRelayedSmsId} — new SMS will relay to main")
+                Diag.log("relay: baseline at id ${s.lastRelayedSmsId} - new SMS will relay to main")
             } else {
                 val rows = SmsInbox.since(ctx, s.lastRelayedSmsId)
                 if (rows.isNotEmpty()) Diag.log("relay: ${rows.size} new SMS → main")
@@ -65,7 +65,7 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
             }
         }
 
-        // ---- webhook (n8n) leg — independent high-water mark ----
+        // ---- webhook (n8n) leg - independent high-water mark ----
         if (s.n8nEnabled && s.n8nUrl.isNotBlank()) {
             if (s.lastWebhookSmsId == -1L) {
                 s.lastWebhookSmsId = SmsInbox.newestId(ctx)
@@ -96,7 +96,7 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
 
         /**
          * Sets each active leg's high-water mark to the newest row now, so we don't backfill the
-         * pre-existing inbox — and, crucially, so the mark is in place *before* the first new SMS,
+         * pre-existing inbox - and, crucially, so the mark is in place *before* the first new SMS,
          * so that message isn't skipped. Safe to call often; no-ops once a mark is set. Runs on the
          * caller's thread (a single-row provider query); needs READ_SMS.
          */

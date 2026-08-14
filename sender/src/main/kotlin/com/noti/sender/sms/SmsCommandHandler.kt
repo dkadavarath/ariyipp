@@ -8,7 +8,7 @@ import com.noti.shared.WireMessage
 
 /**
  * Decrypts and validates a "send this SMS" command pushed from the hub. Returns the command only when
- * commands are enabled, the shared key matches, and the payload is a well-formed command — otherwise
+ * commands are enabled, the shared key matches, and the payload is a well-formed command - otherwise
  * null, so a disabled/misconfigured device or a hostile/other-typed message is a no-op. Free of
  * Android telephony so it's testable; the actual send is [SmsSender].
  */

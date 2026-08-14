@@ -11,14 +11,14 @@ import com.noti.shared.WireMessage
 /**
  * Pushes the Main-authored companion webhook config to the companion over the encrypted channel. The
  * companion overwrites its local webhook with it (unless it's set to ignore remote config). Blocking
- * network — call off the main thread.
+ * network - call off the main thread.
  */
 object NotiConfigSender {
 
     fun pushWebhook(context: Context): Boolean {
         val s = Settings.get(context)
         if (s.serviceAccountJson.isBlank() || s.sndiFcmToken.isBlank() || s.relayKey.isBlank()) {
-            Diag.log("push webhook FAILED — not paired with a companion yet")
+            Diag.log("push webhook FAILED - not paired with a companion yet")
             return false
         }
         // The one shared webhook: Main's own webhook, pushed to the companion so its SMS go there too.

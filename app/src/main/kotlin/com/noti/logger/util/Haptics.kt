@@ -8,7 +8,7 @@ import android.widget.CompoundButton
 
 /**
  * Small, tasteful haptics for control interactions. Every call goes through [View.performHapticFeedback],
- * which honors the system "Touch feedback" setting — so if the user has haptics off, these are no-ops.
+ * which honors the system "Touch feedback" setting - so if the user has haptics off, these are no-ops.
  * Constants added in newer APIs fall back to a sensible older one (minSdk is 26).
  */
 object Haptics {
@@ -16,7 +16,7 @@ object Haptics {
     /** Tab / selection tap. */
     fun tabSelect(v: View) = v.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
 
-    /** Up / back navigation — a light tick. */
+    /** Up / back navigation - a light tick. */
     fun navUp(v: View) = v.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
 
     /** Long-press that opens a context menu. */

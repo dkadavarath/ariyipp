@@ -25,14 +25,14 @@ object PushMessageHandler {
         val settings = Settings.get(context)
         val key = settings.relayKey.takeIf { it.isNotBlank() }
         if (key == null) {
-            Diag.log("inbound push DROPPED — no shared key set (Settings → Relay)")
+            Diag.log("inbound push DROPPED - no shared key set (Settings → Relay)")
             return false
         }
 
         val plaintext = try {
             MessageCrypto.decrypt(ciphertext, key)
         } catch (e: Exception) {
-            Diag.log("inbound push: DECRYPT FAILED — shared key doesn't match the companion's (re-pair)")
+            Diag.log("inbound push: DECRYPT FAILED - shared key doesn't match the companion's (re-pair)")
             return false
         }
 
@@ -45,9 +45,9 @@ object PushMessageHandler {
 
         return when (wire) {
             is WireMessage.Token -> {
-                // The companion announced its push endpoint — store it so reverse-send can reach it.
+                // The companion announced its push endpoint - store it so reverse-send can reach it.
                 settings.sndiFcmToken = wire.endpoint
-                Diag.log("companion endpoint received — reverse-send ready")
+                Diag.log("companion endpoint received - reverse-send ready")
                 true
             }
             is WireMessage.Relay -> showRelay(context, settings, wire)
@@ -61,7 +61,7 @@ object PushMessageHandler {
 
     private fun showRelay(context: Context, settings: Settings, msg: WireMessage.Relay): Boolean {
         if (!settings.pushInboundEnabled) {
-            Diag.log("inbound push DROPPED — \"Receive relayed messages\" is OFF (Settings → Relay)")
+            Diag.log("inbound push DROPPED - \"Receive relayed messages\" is OFF (Settings → Relay)")
             return false
         }
 
@@ -74,7 +74,7 @@ object PushMessageHandler {
             if (dup) { Diag.log("inbound: duplicate ignored"); return true }
         }
 
-        // Persist to the chat history (best-effort — a storage error must not block the notification).
+        // Persist to the chat history (best-effort - a storage error must not block the notification).
         // Order by the SMS's real time (from the sender) so a delayed/synced message lands correctly
         // in the timeline; fall back to arrival time for older senders that don't send it.
         val (sender, sim) = RelayTitle.parse(title)
@@ -96,9 +96,9 @@ object PushMessageHandler {
         // it just doesn't raise a notification.
         if (!settings.isMuted(sender)) {
             MessageNotifier.show(context, title, msg.body, sender, messageId)
-            Diag.log("inbound: shown — from $sender (${msg.body.length} chars)")
+            Diag.log("inbound: shown - from $sender (${msg.body.length} chars)")
         } else {
-            Diag.log("inbound: stored (muted) — from $sender")
+            Diag.log("inbound: stored (muted) - from $sender")
         }
         return true
     }

@@ -41,7 +41,7 @@ class ConnectionActivity : ScreenActivity() {
             val name = headerName.text.toString().trim().ifBlank { "Authorization" }
             s.authHeaderName = name
             // Blank prefix means "Bearer " for the standard Authorization header, or a raw token for
-            // a custom header. NOT trimmed — the default "Bearer " needs its trailing space.
+            // a custom header. NOT trimmed - the default "Bearer " needs its trailing space.
             val prefix = headerPrefix.text.toString()
             s.authHeaderPrefix = if (prefix.isBlank() && name == "Authorization") "Bearer " else prefix
             s.gzipEnabled = gzip.isChecked

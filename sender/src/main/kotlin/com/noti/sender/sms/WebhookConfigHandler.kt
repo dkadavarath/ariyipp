@@ -7,7 +7,7 @@ import com.noti.shared.Wire
 import com.noti.shared.WireMessage
 
 /**
- * Decrypts a webhook-config push from Main and returns it — but only when the companion is set to
+ * Decrypts a webhook-config push from Main and returns it - but only when the companion is set to
  * accept remote config (the kill-switch), the shared key matches, and the payload is actually a
  * config message. Otherwise null (no-op). [apply] overwrites the local webhook settings; the fields
  * stay editable, so a later local edit or a later push both win last.

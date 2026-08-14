@@ -122,7 +122,7 @@ object Heartbeat {
         try {
             NotificationManagerCompat.from(context).notify(HeartbeatPolicy.NOTIFICATION_ID, note)
         } catch (e: SecurityException) {
-            // POST_NOTIFICATIONS not granted — the Status banner still surfaces it.
+            // POST_NOTIFICATIONS not granted - the Status banner still surfaces it.
         }
     }
 

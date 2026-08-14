@@ -37,7 +37,7 @@ class WebhookActivity : ScreenActivity() {
             val name = headerName.text.toString().trim().ifBlank { "Authorization" }
             s.n8nAuthHeaderName = name
             // Blank prefix means "Bearer " for the standard Authorization header, or a raw token for
-            // a custom header (e.g. "key"). Not trimmed — the default "Bearer " needs its space.
+            // a custom header (e.g. "key"). Not trimmed - the default "Bearer " needs its space.
             val prefix = headerPrefix.text.toString()
             s.n8nAuthHeaderPrefix = if (prefix.isBlank() && name == "Authorization") "Bearer " else prefix
             s.n8nEnabled = enabled.isChecked

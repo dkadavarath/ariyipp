@@ -20,14 +20,14 @@ import java.util.concurrent.atomic.AtomicInteger
 /**
  * Displays a relayed message (e.g. an SMS/OTP pushed from the sender app via FCM, decrypted on
  * arrival) as a local notification. Like [com.noti.logger.alert.Alerter], these originate from our
- * own package, so [com.noti.logger.capture.NotiListenerService] ignores them — no capture loop.
+ * own package, so [com.noti.logger.capture.NotiListenerService] ignores them - no capture loop.
  */
 object MessageNotifier {
 
     private const val CHANNEL_ID = "noti_relayed"
 
     // Distinct from Alerter's 100x ids, and unique per message so notifications stack rather than
-    // replace one another. Resets per process, which is fine — already-shown ones keep their ids.
+    // replace one another. Resets per process, which is fine - already-shown ones keep their ids.
     private val nextId = AtomicInteger(2000)
 
     /**
@@ -58,7 +58,7 @@ object MessageNotifier {
         if (settings.suppressSystemNotifActions) {
             builder.setAllowSystemGeneratedContextualActions(false)
         }
-        // Offer Copy code for an OTP (if enabled), or Reply otherwise — not both — plus Mark as read.
+        // Offer Copy code for an OTP (if enabled), or Reply otherwise - not both - plus Mark as read.
         val code = OtpExtractor.extract(body)
         when {
             code != null && settings.otpCopyEnabled -> builder.addAction(copyCodeAction(context, code, id))

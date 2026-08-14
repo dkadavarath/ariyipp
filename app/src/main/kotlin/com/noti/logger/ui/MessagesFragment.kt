@@ -74,7 +74,7 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
         searchBack.isEnabled = search.hasFocus() || !search.text.isNullOrEmpty()
     }
 
-    /** Clears the query, drops focus, and hides the keyboard — the search's "close" action. */
+    /** Clears the query, drops focus, and hides the keyboard - the search's "close" action. */
     private fun closeSearch() {
         search.setText("")
         search.clearFocus()

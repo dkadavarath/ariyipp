@@ -23,7 +23,7 @@ import java.util.Locale
 
 /**
  * Encrypted backup & restore. The backup is a single passphrase-encrypted file written through the
- * system file picker, so it can land in Drive, OneDrive, local storage — any provider. Restore reads
+ * system file picker, so it can land in Drive, OneDrive, local storage - any provider. Restore reads
  * one back and replaces settings + message history. Lose the passphrase and the file is unrecoverable.
  */
 class BackupActivity : ScreenActivity() {

@@ -54,7 +54,7 @@ class NotiListenerService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val flags = sbn.notification.flags
-        // Skip ongoing events and group summaries — transient/redundant noise
+        // Skip ongoing events and group summaries - transient/redundant noise
         if ((flags and Notification.FLAG_ONGOING_EVENT) != 0) return
         if ((flags and Notification.FLAG_GROUP_SUMMARY) != 0) return
         // Skip notifications from our own app

@@ -6,7 +6,7 @@ import kotlinx.serialization.json.Json
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** POSTs an [UploadBatch] to the n8n webhook using noti's schema. Blocking — call off the main thread. */
+/** POSTs an [UploadBatch] to the n8n webhook using noti's schema. Blocking - call off the main thread. */
 object WebhookPoster {
 
     private val json = Json { encodeDefaults = true }

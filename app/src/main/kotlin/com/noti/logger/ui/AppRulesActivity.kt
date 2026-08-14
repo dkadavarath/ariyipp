@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 /**
  * Per-app capture rules: a keyword include-filter and a note to append, for each app in the
  * included-apps selection. Rows are inflated into a ScrollView (not a RecyclerView) so the
- * editors keep their text — recycling live EditTexts would shuffle input between apps.
+ * editors keep their text - recycling live EditTexts would shuffle input between apps.
  */
 class AppRulesActivity : ScreenActivity() {
 

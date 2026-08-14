@@ -27,7 +27,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val app = context.applicationContext
 
-        // Copy an OTP to the clipboard — no sender needed, and quick enough for the main thread.
+        // Copy an OTP to the clipboard - no sender needed, and quick enough for the main thread.
         if (intent.action == ACTION_COPY_CODE) {
             val code = intent.getStringExtra(EXTRA_CODE).orEmpty()
             if (code.isNotBlank()) copyCode(app, code)

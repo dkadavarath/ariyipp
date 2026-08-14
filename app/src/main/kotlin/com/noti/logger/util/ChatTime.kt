@@ -54,7 +54,7 @@ object ChatTime {
         return ca.get(Calendar.YEAR) == cb.get(Calendar.YEAR)
     }
 
-    /** The local calendar-day index for an instant — cheap (no Calendar allocation), so the
+    /** The local calendar-day index for an instant - cheap (no Calendar allocation), so the
      *  per-row day checks below don't churn objects while binding a list. */
     private fun localDay(millis: Long): Long {
         val offset = java.util.TimeZone.getDefault().getOffset(millis)

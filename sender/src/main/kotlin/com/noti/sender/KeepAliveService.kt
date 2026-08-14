@@ -18,7 +18,7 @@ import com.noti.sender.config.SenderSettings
 /**
  * A persistent foreground service whose only job is to keep ariy's process warm so the SMS receiver
  * fires and relays run, resisting Doze and OEM app-standup that would otherwise deep-sleep or
- * force-stop the app. Does no work itself — the missed-SMS sync is the backstop for anything that
+ * force-stop the app. Does no work itself - the missed-SMS sync is the backstop for anything that
  * still slips through.
  */
 class KeepAliveService : Service() {
@@ -27,7 +27,7 @@ class KeepAliveService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         ensureChannel()
-        // Open the app's launcher (this is a library — it can't name the app's Activity directly).
+        // Open the app's launcher (this is a library - it can't name the app's Activity directly).
         val launch = packageManager.getLaunchIntentForPackage(packageName)
             ?: Intent().setPackage(packageName)
         val open = PendingIntent.getActivity(

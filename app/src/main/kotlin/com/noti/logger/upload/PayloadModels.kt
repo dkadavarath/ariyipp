@@ -30,7 +30,7 @@ fun List<String>.alreadyExistsUids(): Set<String> =
         .filter { it.isNotBlank() }
         .toSet()
 
-/** Failure messages that are NOT "already exists" — genuine errors to retry and surface. */
+/** Failure messages that are NOT "already exists" - genuine errors to retry and surface. */
 fun List<String>.genuineFailures(): List<String> =
     filter { !it.contains("already exists", ignoreCase = true) }
 

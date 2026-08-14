@@ -14,7 +14,7 @@ import kotlinx.serialization.json.Json
 /**
  * The full contents of a backup: the meaningful settings (including the pairing secrets, so a
  * restore is turnkey) plus the entire message history. Device-specific/status values (this device's
- * own FCM token, last-upload status) are intentionally omitted — they're re-derived on the device.
+ * own FCM token, last-upload status) are intentionally omitted - they're re-derived on the device.
  * The whole thing is JSON, then passphrase-encrypted by [com.noti.shared.BackupCrypto] before it
  * ever leaves the app.
  */

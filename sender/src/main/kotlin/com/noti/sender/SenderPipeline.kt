@@ -19,7 +19,7 @@ import com.noti.shared.epochMillisToIso
  *  - the n8n webhook, plaintext: noti's schema with a structured From/Message/Sent/Received block.
  *
  * Each leg is its own idempotent call so the relay scan can advance a separate high-water mark per
- * leg. Logs only metadata (sender, length, HTTP codes) — never the body, which may be an OTP.
+ * leg. Logs only metadata (sender, length, HTTP codes) - never the body, which may be an OTP.
  */
 object SenderPipeline {
 
@@ -149,7 +149,7 @@ object SenderPipeline {
 
     private fun fcmDiag(code: Int, detail: String): String = when {
         code == 401 || code == 403 -> "FCM → HTTP $code: service-account key rejected (regenerate/import the key; enable Cloud Messaging API)"
-        code == 404 -> "FCM → HTTP 404: main token is stale/UNREGISTERED — re-pair (main reinstalled or data cleared)"
+        code == 404 -> "FCM → HTTP 404: main token is stale/UNREGISTERED - re-pair (main reinstalled or data cleared)"
         code == 400 -> "FCM → HTTP 400: bad request ($detail)"
         code == -1 -> "FCM → no network / connection failed"
         else -> "FCM → HTTP $code ($detail)"

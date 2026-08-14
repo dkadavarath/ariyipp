@@ -26,7 +26,7 @@ interface NotificationDao {
     @Query("SELECT COUNT(*) FROM notifications WHERE uploaded = 0")
     suspend fun pendingCount(): Int
 
-    /** Count rows with the same content captured at/after [since] (epoch ms) — for dedup. */
+    /** Count rows with the same content captured at/after [since] (epoch ms) - for dedup. */
     @Query("SELECT COUNT(*) FROM notifications WHERE contentHash = :hash AND createdAt >= :since")
     suspend fun countRecentByHash(hash: String, since: Long): Int
 }

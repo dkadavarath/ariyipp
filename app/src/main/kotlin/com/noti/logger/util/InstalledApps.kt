@@ -19,7 +19,7 @@ object InstalledApps {
 
     /**
      * Launchable apps (those with a MAIN/LAUNCHER activity), deduped by package, our own package
-     * removed, sorted by label. Visibility comes from the manifest <queries> entry — no
+     * removed, sorted by label. Visibility comes from the manifest <queries> entry - no
      * QUERY_ALL_PACKAGES needed. Runs off the main thread.
      *
      * Deliberately does NOT load icons: decoding one per installed app dominates the cost of this

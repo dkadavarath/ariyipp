@@ -12,7 +12,7 @@ import com.noti.sender.util.Haptics
 import com.noti.sender.util.Theming
 
 /**
- * Base for sndi's config sub-screens — standard up-navigation and edge-to-edge insets, matching
+ * Base for sndi's config sub-screens - standard up-navigation and edge-to-edge insets, matching
  * noti's ScreenActivity. Subclasses provide a layout with `@id/screen_root` and `@id/toolbar`.
  */
 abstract class ScreenActivity : AppCompatActivity() {

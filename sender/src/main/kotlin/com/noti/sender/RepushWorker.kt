@@ -25,7 +25,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * One-shot "push my whole SMS inbox to main" so main can rebuild its history after a gap. Walks the
- * inbox oldest-first (FCM leg only — no n8n) and relies on Main's content-hash dedup to drop anything
+ * inbox oldest-first (FCM leg only - no n8n) and relies on Main's content-hash dedup to drop anything
  * it already holds. Resumable: a cursor is advanced per message, so a transient network failure just
  * retries and picks up where it left off. Re-pressing the button starts a fresh full pass (cursor 0).
  */
@@ -36,12 +36,12 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
         val s = SenderSettings.get(ctx)
 
         if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
-            Diag.log("repush: can't run — SMS read access not granted")
+            Diag.log("repush: can't run - SMS read access not granted")
             RepushNotice.done(ctx, ctx.getString(R.string.repush_note_no_read))
             return@withContext Result.success()
         }
         if (!SenderPipeline.isConfigured(s)) {
-            Diag.log("repush: can't run — not paired with main")
+            Diag.log("repush: can't run - not paired with main")
             RepushNotice.done(ctx, ctx.getString(R.string.repush_note_not_paired))
             return@withContext Result.success()
         }
@@ -60,7 +60,7 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
         var consecutivePermanent = 0
         // Track the resume point in memory and only persist it every 25 messages (plus on
         // pause/finish), instead of an encrypted-prefs write per message across a big inbox. On an
-        // unclean kill we re-push at most the last 25 — harmless, ippu dedups them.
+        // unclean kill we re-push at most the last 25 - harmless, ippu dedups them.
         var localCursor = cursor
         for (sms in batch) {
             when (SenderPipeline.pushToIppu(ctx, sms)) {
@@ -69,7 +69,7 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                     failed++; consecutivePermanent++
                     if (delivered == 0 && consecutivePermanent >= 5) {
                         s.repushCursorId = localCursor
-                        Diag.log("repush: aborted — main/FCM rejected every message (check the shared key & main token)")
+                        Diag.log("repush: aborted - main/FCM rejected every message (check the shared key & main token)")
                         RepushNotice.done(ctx, ctx.getString(R.string.repush_note_rejected))
                         return@withContext Result.success()
                     }
@@ -77,7 +77,7 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                 SenderPipeline.SendOutcome.TRANSIENT -> {
                     s.repushCursorId = localCursor
                     val at = base + delivered + failed
-                    Diag.log("repush: paused at $at/$total (no network) — resumes automatically")
+                    Diag.log("repush: paused at $at/$total (no network) - resumes automatically")
                     RepushNotice.progress(ctx, at, total, paused = true)
                     return@withContext Result.retry()
                 }
@@ -92,8 +92,8 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
             delay(40) // gentle pacing so a big inbox doesn't hammer FCM
         }
 
-        s.repushCursorId = 0L // full pass complete — next press starts fresh
-        Diag.log("repush: complete — $delivered pushed" + if (failed > 0) ", $failed rejected" else "")
+        s.repushCursorId = 0L // full pass complete - next press starts fresh
+        Diag.log("repush: complete - $delivered pushed" + if (failed > 0) ", $failed rejected" else "")
         RepushNotice.done(
             ctx,
             ctx.getString(R.string.repush_note_done, base + delivered) +

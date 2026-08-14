@@ -46,7 +46,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
     /** Full auth header value actually sent on the wire: prefix + token. */
     fun authHeaderValue(): String = authHeaderPrefix + bearerToken
 
-    /** Gzip the upload body. Default OFF — many webhook receivers don't decompress request bodies. */
+    /** Gzip the upload body. Default OFF - many webhook receivers don't decompress request bodies. */
     var gzipEnabled: Boolean
         get() = prefs.getBoolean(KEY_GZIP_ENABLED, false)
         set(value) {
@@ -196,7 +196,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         }
 
     /** Ask the OS not to add its own auto-generated actions (e.g. its OTP-copy chip) to our
-     *  notifications — leaving only the app's own actions. Default off. */
+     *  notifications - leaving only the app's own actions. Default off. */
     var suppressSystemNotifActions: Boolean
         get() = prefs.getBoolean(KEY_SUPPRESS_SYS_ACTIONS, false)
         set(value) {
@@ -224,7 +224,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putString(KEY_SA_JSON, value).apply()
         }
 
-    /** sndi's FCM registration token — the target for send-SMS commands. */
+    /** sndi's FCM registration token - the target for send-SMS commands. */
     var sndiFcmToken: String
         get() = prefs.getString(KEY_SNDI_TOKEN, "") ?: ""
         set(value) {
@@ -368,7 +368,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             return try {
                 buildEncryptedPrefs(appContext)
             } catch (e: Exception) {
-                // Corrupt or missing keyset — wipe and recreate.
+                // Corrupt or missing keyset - wipe and recreate.
                 deletePrefsFile(appContext)
                 buildEncryptedPrefs(appContext)
             }

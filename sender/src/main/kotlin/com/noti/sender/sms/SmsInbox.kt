@@ -6,7 +6,7 @@ import android.telephony.SubscriptionManager
 import com.noti.sender.config.SenderSettings
 
 /**
- * Reads the SMS inbox from the content provider — the single source of truth. Relaying keys off the
+ * Reads the SMS inbox from the content provider - the single source of truth. Relaying keys off the
  * provider's stable, monotonic row [Telephony.Sms._ID], so a duplicate SMS_RECEIVED broadcast (a
  * known Samsung / dual-SIM quirk) can't cause a double-relay: the provider still has one row.
  */
@@ -49,7 +49,7 @@ object SmsInbox {
         return out
     }
 
-    /** Newest inbox `_id` (0 if empty) — used to baseline the relay marks without backfilling. */
+    /** Newest inbox `_id` (0 if empty) - used to baseline the relay marks without backfilling. */
     fun newestId(context: Context): Long {
         val c = context.contentResolver.query(
             Telephony.Sms.Inbox.CONTENT_URI, arrayOf(Telephony.Sms._ID),

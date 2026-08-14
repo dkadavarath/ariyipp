@@ -200,7 +200,7 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         private fun openPrefs(appContext: Context): SharedPreferences = try {
             buildEncryptedPrefs(appContext)
         } catch (e: Exception) {
-            // Corrupt or missing keyset — wipe and recreate.
+            // Corrupt or missing keyset - wipe and recreate.
             File(appContext.filesDir.parent ?: "", "shared_prefs/$PREFS_NAME.xml").delete()
             buildEncryptedPrefs(appContext)
         }

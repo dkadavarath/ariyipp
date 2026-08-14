@@ -15,7 +15,7 @@ import com.noti.shared.Role
 /**
  * Central application of the user's theme choices (mode + Default/Material color + AMOLED). The
  * companion role stores its appearance in [SenderSettings] (its Appearance screen comes from the
- * companion library), so in that role we read the effective theme from there — keeping the app shell
+ * companion library), so in that role we read the effective theme from there - keeping the app shell
  * in sync with the companion's own screens.
  */
 object Theming {
