@@ -252,10 +252,10 @@
     <string name="never">Never</string>
 
     <!-- Permission status labels -->
-    <string name="granted">GRANTED</string>
-    <string name="not_granted">NOT GRANTED</string>
-    <string name="exempt">EXEMPT</string>
-    <string name="not_exempt">NOT EXEMPT</string>
+    <string name="granted">granted</string>
+    <string name="not_granted">not granted</string>
+    <string name="exempt">exempt</string>
+    <string name="not_exempt">not exempt</string>
 
     <!-- Permission status messages -->
     <string name="notification_access_status">Notification access: %1$s</string>

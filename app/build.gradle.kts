@@ -22,8 +22,8 @@ android {
         applicationId = "com.noti.logger"
         minSdk = 26
         targetSdk = 35
-        versionCode = 47
-        versionName = "2.0.9"
+        versionCode = 48
+        versionName = "2.0.10"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
