@@ -114,7 +114,7 @@ class ChatActivity : AppCompatActivity() {
                     RelayedMessageEntity(sender = sender, sim = "", body = text, receivedAt = System.currentTimeMillis(), outgoing = 1)
                 )
             }
-            load()
+            load(scrollToEnd = true)
             val ok = withContext(Dispatchers.IO) { NotiCommandSender.send(applicationContext, sender, text) }
             if (!ok) {
                 android.widget.Toast.makeText(this@ChatActivity, R.string.chat_send_failed, android.widget.Toast.LENGTH_SHORT).show()
@@ -127,7 +127,7 @@ class ChatActivity : AppCompatActivity() {
         load()
     }
 
-    private fun load() {
+    private fun load(scrollToEnd: Boolean = false) {
         lifecycleScope.launch {
             val messages = withContext(Dispatchers.IO) {
                 val dao = NotiDatabase.get(this@ChatActivity).relayedMessageDao()
@@ -143,6 +143,10 @@ class ChatActivity : AppCompatActivity() {
                     recycler.post { recycler.scrollToPosition(index); adapter.notifyItemChanged(index) }
                 }
                 highlightId = -1L // only once
+            } else if (scrollToEnd && adapter.itemCount > 0) {
+                // Keep a just-sent message visible above the keyboard (stackFromEnd only helps the
+                // initial layout, not an append into an already-scrolled list).
+                recycler.post { recycler.scrollToPosition(adapter.itemCount - 1) }
             }
         }
     }
