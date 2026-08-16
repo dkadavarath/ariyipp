@@ -19,8 +19,11 @@ captures/
 keystore.properties
 release-keystore.jks
 
-# Local GitHub token — never commit
+# Local GitHub tokens — never commit
 githubpat
+ariyipp_pat.txt
+*_pat.txt
+*pat*.txt
 
 # Firebase / FCM — never commit (google-services.json is config; the
 # service-account key is a live secret). Supply these locally, like keystore.properties.

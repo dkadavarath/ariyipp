@@ -1,210 +1,107 @@
-# ippu
+# ariyipp
 
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84)
 ![minSdk](https://img.shields.io/badge/minSdk-26-1565c0)
 ![targetSdk](https://img.shields.io/badge/targetSdk-35-1565c0)
-![Release](https://img.shields.io/badge/release-v1.16-1565c0)
+![Release](https://img.shields.io/badge/release-v1.0-1565c0)
 ![Language](https://img.shields.io/badge/kotlin-100%25-7f52ff)
 
-A deliberately **lightweight**, native-Kotlin Android app that logs your device notifications to
-a local database and forwards them, in batches, to a **webhook** you configure (e.g. an
-[n8n](https://n8n.io) webhook node). Built to sip battery, CPU, and memory — and to keep
-capturing under Doze / aggressive battery optimization.
+A lightweight, native-Kotlin Android app that **relays SMS between two of your phones** over an
+**end-to-end encrypted** channel. One phone holds the SIM; the other is the one you carry. Incoming
+SMS on the SIM phone show up as a chat on your main phone, and you can reply — the SIM phone sends it.
+
+It's **one app with two roles**. Install it on both phones and pick a role on first run (switchable
+later): **Main** (the hub you read and reply on) or **Companion** (the SMS phone with the SIM).
 
 ## Screens
 
-| Status | Settings | Appearance |
-|:---:|:---:|:---:|
-| <img src="docs/screenshots/status.png" width="240"> | <img src="docs/screenshots/settings.png" width="240"> | <img src="docs/screenshots/appearance.png" width="240"> |
-
-*(Bottom-nav layout — Status / Settings / About. Material 3 with a blue brand theme by default; an
-in-app Appearance section toggles Light/Dark/System and Default/Material You color.)*
+| Status | Chat | Settings |
+| --- | --- | --- |
+| <img src="docs/screenshots/status.png" width="240"> | <img src="docs/screenshots/chat.png" width="240"> | <img src="docs/screenshots/settings.png" width="240"> |
 
 ## Features
 
-- **Captures every notification** via a system-bound `NotificationListenerService` — event-driven,
-  no polling, no foreground service, no wakelocks. Survives Doze (verified: notifications posted
-  during deep Doze are still captured).
-- **Local outbox** — Room/SQLite stores notifications durably so nothing is lost while offline.
-- **Batched webhook upload** via WorkManager — deferrable, gzip-optional, with per-record
-  success/failure handling and automatic retry.
-- **Included-apps allowlist** — pick exactly which apps to capture from a searchable list of
-  installed apps (empty = capture all).
-- **Per-app keywords & notes** — for each selected app, log only the notifications containing one
-  of your keywords (empty = log all of that app's notifications), and optionally append a free-text
-  note to the logged text.
-- **Receive relayed messages** (Settings → *Relay*) — a companion app, **ariy**, can push you
-  notifications (e.g. forwarded SMS) over **end-to-end encrypted** FCM; pair by scanning a QR. ippu
-  decrypts and shows them locally, as a searchable chat history. You can also compose from ippu and
-  have ariy send the SMS from its SIM. Optional and off by default.
-- **Duplicate suppression** — apps that re-post the same notification are collapsed by content
-  hash within a configurable time window (default 1 day).
-- **Privacy controls** — metadata-only mode (drop notification bodies), keyword exclusions
-  (e.g. skip anything containing “OTP”), and time-based retention/purge.
-- **Flexible triggers** — periodic, threshold (after N pending), or manual; optionally Wi-Fi-only
-  and/or charging-only.
-- **Configurable auth** — send the token in any header (`Authorization: Bearer …`, or a custom
-  header like `key` for n8n Header Auth).
-
-## Companion app — ariy
-
-<img src="docs/icons/ippu.png" width="72" align="left" hspace="8"> <img src="docs/icons/ariy.png" width="72" align="left" hspace="8">
-
-**ariy** is a companion app (in this repo, `:sender` module) for a *second* phone — the one with the
-SIM. It observes incoming **SMS** (via `RECEIVE_SMS`, not as the default SMS app) and relays each one
-to ippu as an **AES-256-GCM encrypted** FCM push, so Google never sees the plaintext. It can also
-POST each SMS to your webhook. ippu decrypts and shows it, labelled with the sender and SIM
-(e.g. *"+9715… on e&"*). The relay is bidirectional: compose in ippu and ariy sends it from the SIM
-you choose. Pair the two by **QR in either direction** — ippu shows a QR for ariy to scan, and ariy
-shows one for ippu to scan (or copy the tokens + key across) — and label each SIM under **SIM names**.
-Both apps ship as adaptive icons that adapt to light/dark and Material You.
-
-<br clear="left"/>
-
-*(App screenshots for ariy to follow.)*
+- **SMS relay, both directions** — incoming SMS on the companion appear as a searchable chat on the
+  main device; compose on the main device and the companion sends it from its SIM.
+- **End-to-end encrypted** — messages are AES-256-GCM encrypted with a pre-shared key; the transport
+  (FCM) only ever carries ciphertext.
+- **One-way pairing by QR** — the main device owns and shows the shared key; the companion scans it
+  and announces itself back automatically. No copying tokens by hand.
+- **Duplicate-proof** — the relay works off the SMS provider's stable row ids, so a phone that fires
+  the incoming-SMS broadcast twice can't double-send.
+- **Liveness heartbeat** — each device periodically checks the other is reachable and warns (with a
+  Retry action) if it goes offline. Toggle it off if you don't want it.
+- **Per-conversation mute**, unread badges, one-time-code copy, and inline reply from the notification.
+- **Encrypted backup & restore** through the system file picker, passphrase-protected.
+- **Optional extras:** capture this phone's notifications and forward them to a webhook (e.g. an
+  [n8n](https://n8n.io) node), and push the webhook config to the companion.
+- **Theming:** light/dark/system, Material You, and a true-black AMOLED mode.
 
 ## How it works
 
-```
-[System] --onNotificationPosted--> NotiListenerService --redact/dedupe--> Room DB (outbox)
-                                                                              |
-                                          WorkManager (deferrable job) -------+--> JSON POST
-                                                                                     |
-                                                            <auth-header>: <token>   |
-                                                                                     v
-                                                                          Your webhook (n8n)
-```
-
-- **Capture** — `NotificationListenerService` is bound and kept alive **by the system**, so it
-  works without a foreground service or wakelock. This is the single biggest battery win.
-- **Storage** — a Room table acts as an outbox (`uploaded` flag); a content-hash column powers
-  time-windowed duplicate detection.
-- **Upload** — a `CoroutineWorker` pulls pending rows, POSTs them in batches, and reconciles the
-  response per-record. Deferred into Doze maintenance windows and constraint-aware.
-
-**Why push to a webhook instead of hosting an on-device API?** A phone behind carrier/NAT isn’t
-reliably reachable, and holding an inbound socket open fights Doze and drains battery. Outbound
-batched pushes are the battery-optimal topology.
-
-## Install
-
-Grab the latest signed APK from **[Releases](https://github.com/dkadavarath/noti/releases/latest)**
-(`ippu-vX.Y.apk`) and sideload it:
+Both phones run the same app. The **main** device receives relayed messages and shows them as chat;
+the **companion** device (with the SIM) observes incoming SMS, encrypts each one, and pushes it to
+the main device. Everything travels as ciphertext over Firebase Cloud Messaging (data messages,
+high priority so they arrive under Doze).
 
 ```
-adb install ippu-v1.15.apk
+ Companion (SIM)                         Main (hub)
+ ──────────────                          ──────────
+ incoming SMS  ──encrypt──▶  FCM  ──▶  decrypt ▶ chat + notification
+ send from SIM ◀──decrypt──  FCM  ◀──  encrypt ◀ compose / reply
 ```
 
-Google Play Protect may warn on a sideloaded app that reads notifications — choose *Install anyway*
-/ *Install without scanning*. Updates install in place (same signing key), preserving your data.
+Pairing is one-way: the main device generates the shared AES key and shows it (plus its push token)
+as a QR; the companion scans it, then announces its own push token back over the encrypted channel,
+so reverse-send works with nothing copied by hand.
+
+## Bring your own Firebase (BYO-FCM)
+
+The app ships **without** any Firebase credentials. You supply your own so the relay runs entirely on
+your own project:
+
+1. Create a Firebase project and add an Android app with the id `com.noti.logger`.
+2. Enable **Cloud Messaging** and download `google-services.json` into `app/`.
+3. Generate a **service-account key** (JSON) with the *Firebase Cloud Messaging API* enabled, and
+   import it on-device (Pairing → Import service-account key) on both phones.
+
+`google-services.json`, service-account keys, and signing keys are all gitignored — they never land
+in the repo.
 
 ## Configure on device
 
-The app has three tabs: **Status**, **Settings**, and **About**.
-
-1. **Grant access** (Status tab) — tap *Grant notification access* and enable ippu in the system
-   list. Tap *Ignore battery optimization* so uploads run reliably. *Sync now* and the captured/pending
-   counts also live here.
-2. **Webhook** (Settings → Connection) — enter your **Webhook URL** and **auth token**. By default the
-   token is sent as `Authorization: Bearer <token>`. For an **n8n Header Auth** credential, set
-   *Auth header name* to `key` and clear the *Token prefix* so the raw token is sent as `key: <token>`.
-   Tap the eye icon to reveal the token. Prefer an **https** URL — content is sensitive.
-3. **Choose apps** (Settings → Apps) — pick which apps to capture; leave empty to capture all.
-4. **Keywords & notes** (Settings → Keywords & notes) — lists the apps you selected in step 3.
-   Per app, set comma-separated **keywords** so only matching notifications are logged (leave empty
-   to log all of that app's notifications), and an optional **note** appended to the logged text.
-5. **Tune** — Settings → *Sync* (triggers, Wi-Fi/charging), *Privacy* (metadata-only, keywords,
-   duplicate window, retention), and *Appearance* (theme mode + Default/Material color).
-
-## Webhook contract
-
-```
-POST <webhook_url>
-<auth-header>: <auth-value>          # e.g. "Authorization: Bearer <token>" or "key: <token>"
-Content-Type: application/json
-Content-Encoding: gzip               # only when gzip is enabled in Settings
-
-{ "batch": [ { "device_id","uid","package","app_label","post_time","title","text",
-               "big_text","sub_text","category" } ] }
-```
-
-`post_time` is an ISO-8601 UTC string; `uid` is stable and unique (ideal as a primary key for
-idempotent inserts). The endpoint should reply **HTTP 200** with per-uid results:
-
-```
-[ { "success": ["<uid>", ...], "failure": ["<error message containing the uid>", ...] } ]
-```
-
-The app **deletes only uids listed in `success`**; anything else in the batch stays pending and is
-retried, with the user alerted about genuine failures. A `… already exists` failure is treated as
-success (the record is already stored). Non-2xx: 5xx/network → silent retry; 4xx → alert + retry
-(usually an auth/URL problem).
+1. Install on both phones; pick **Main** on one and **Companion** on the other.
+2. On the companion, grant SMS access and exempt it from battery optimization (Status screen).
+3. Import the service-account key on both, then pair: scan the main device's QR from the companion.
+4. On the main device, turn on **Receive relayed messages**.
 
 ## Build from source
 
-Requires JDK 17 and the Android SDK (compileSdk 35).
-
-```
-./gradlew assembleDebug            # debug APK
-./gradlew assembleRelease          # R8 full-mode + resource shrinking (needs keystore.properties)
+```bash
+./gradlew :app:assembleDebug          # debug APK
+./gradlew :app:assembleRelease        # signed release (needs keystore.properties)
 ```
 
 Release signing reads a gitignored `keystore.properties` (`storeFile`, `storePassword`, `keyAlias`,
-`keyPassword`); without it, `assembleDebug` still works.
+`keyPassword`).
 
 ## Testing
 
-```
-./gradlew testDebugUnitTest          # JVM: redaction, payload, uploader, content-hash, dedup logic
-./gradlew connectedDebugAndroidTest  # instrumented: Room DAO, upload pipeline, migration, dedup, …
-```
-
-There is also an opt-in live test against a real webhook (skipped unless a URL is supplied, so it
-never leaks secrets):
-
-```
-KEYB64=$(printf %s '<token>' | base64 -w0)
-./gradlew connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=com.noti.logger.LiveWebhookTest \
-  -Pandroid.testInstrumentationRunnerArguments.webhookUrl='https://host/webhook/<id>' \
-  -Pandroid.testInstrumentationRunnerArguments.authHeaderName=key \
-  -Pandroid.testInstrumentationRunnerArguments.authKeyB64="$KEYB64"
+```bash
+./gradlew :shared:test                 # pure-JVM unit tests (crypto, wire, policy)
+./gradlew :app:testDebugUnitTest
+./gradlew :app:connectedDebugAndroidTest :sender:connectedDebugAndroidTest
 ```
 
 ## Security
 
-- **TLS by default** — `network_security_config.xml` requires https for webhooks; cleartext is
-  permitted only for loopback/emulator (local testing). To use a plain-http LAN webhook, add its
-  host to that file.
-- **No backup exfiltration** — `allowBackup=false` + data-extraction rules keep the notification DB
-  and the auth token off cloud backup / device transfer.
-- **Secrets at rest** — webhook URL and token live in `EncryptedSharedPreferences`.
-- **Minimize sensitive capture** — use metadata-only mode and keyword exclusions to avoid storing
-  OTPs / banking messages; the webhook response body read is size-capped to guard against a hostile
-  endpoint.
-
-> ⚠️ This app reads and forwards notification content. Only install it on a device whose owner has
-> given informed consent. Capturing another person’s notifications without their knowledge is
-> illegal in most jurisdictions.
+- Message bodies are AES-256-GCM encrypted end-to-end; FCM carries ciphertext only.
+- Settings that hold secrets (the shared key, service-account JSON) use `EncryptedSharedPreferences`.
+- The app is not the default SMS handler and requests only the permissions it needs.
 
 ## Tech stack
 
-Kotlin · Material 3 (Views) · Room · WorkManager · Kotlin Coroutines · kotlinx.serialization ·
-`HttpURLConnection` · EncryptedSharedPreferences · AndroidX SplashScreen. No Compose, OkHttp, or
-DI framework — kept intentionally small (~2.5 MB release APK).
+Kotlin, Material 3, Room, WorkManager, Firebase Cloud Messaging (HTTP v1), kotlinx.serialization.
 
-### Project layout (`app/src/main/kotlin/com/noti/logger/`)
-
-| Package | Responsibility |
-|---|---|
-| `capture/` | `NotiListenerService` — capture, redact, dedupe, insert |
-| `data/` | Room `NotificationEntity` / `Dao` / `NotiDatabase` (+ migrations) |
-| `redact/` | `RedactionRules` — allowlist, keyword drop, per-app keyword filter + notes, metadata-only |
-| `upload/` | `PayloadModels`, `Uploader` (HttpURLConnection + gzip), response parsing |
-| `work/` | `UploadWorker`, `UploadScheduler` (triggers + constraints) |
-| `config/` | `Settings` (EncryptedSharedPreferences), `AppRules` (per-app rule storage/parsing) |
-| `util/` | `AppLabelCache`, `AppIconLoader` (lazy per-row icons), `InstalledApps`, `ContentHash` |
-| `alert/` | `Alerter` — in-app upload-failure notifications |
-| `ui/` | `MainActivity` (bottom-nav host) + Status/Settings/About fragments; Connection/Sync/AppRules/Privacy/Appearance/AppPicker/Help screens |
-| `boot/` | `BootReceiver` — re-arm periodic work after reboot |
-```
+Multi-module: `:app` (the merged application), `:sender` (the companion role, an Android library), and
+`:shared` (pure-JVM crypto, the typed wire format, and the FCM sender).
