@@ -68,6 +68,19 @@ class StatusFragment : Fragment(R.layout.fragment_status) {
             v.findViewById<TextView>(R.id.tv_hb_title).text =
                 getString(R.string.hb_banner_title, Heartbeat.peerLabel(ctx))
         }
+
+        val tv = v.findViewById<TextView>(R.id.tv_heartbeat_status)
+        val stateRes = when (Heartbeat.status(ctx)) {
+            Heartbeat.Status.OK -> R.string.hb_state_ok
+            Heartbeat.Status.DISABLED -> R.string.hb_state_disabled
+            Heartbeat.Status.FAILED -> R.string.hb_state_failed
+            Heartbeat.Status.UNPAIRED -> R.string.hb_state_unpaired
+        }
+        tv.text = getString(R.string.hb_status, getString(stateRes))
+        val attr = if (Heartbeat.status(ctx) == Heartbeat.Status.FAILED)
+            com.google.android.material.R.attr.colorError
+        else com.google.android.material.R.attr.colorOnSurfaceVariant
+        tv.setTextColor(com.google.android.material.color.MaterialColors.getColor(tv, attr))
     }
 
     private fun refreshPermissions() {

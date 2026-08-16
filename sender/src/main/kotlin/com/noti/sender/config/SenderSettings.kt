@@ -148,6 +148,11 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
     fun peerPaired(): Boolean =
         notiFcmToken.isNotBlank() && relayKey.isNotBlank() && serviceAccountJson.isNotBlank()
 
+    /** Whether the liveness heartbeat runs on this device (send + monitor). Default on. */
+    var heartbeatEnabled: Boolean
+        get() = prefs.getBoolean(KEY_HEARTBEAT_ENABLED, true)
+        set(value) { prefs.edit().putBoolean(KEY_HEARTBEAT_ENABLED, value).apply() }
+
     /** Generated once, stable for the install; identifies this device in the n8n payload. */
     @Volatile private var cachedDeviceId: String? = null
     val deviceId: String
@@ -189,6 +194,7 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_REPUSH_CURSOR = "repush_cursor_id"
         private const val KEY_REPUSH_TOTAL = "repush_total"
         private const val KEY_LAST_PEER_BEAT_MS = "last_peer_beat_ms"
+        private const val KEY_HEARTBEAT_ENABLED = "heartbeat_enabled"
 
         @Volatile private var INSTANCE: SenderSettings? = null
 

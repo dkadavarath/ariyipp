@@ -40,6 +40,22 @@ object Heartbeat {
 
     fun paired(context: Context): Boolean = peer(context) != null
 
+    /** Whether the heartbeat runs on this device, from the role's own store. */
+    fun enabled(context: Context): Boolean = when (Settings.get(context).role) {
+        Role.COMPANION -> SenderSettings.get(context).heartbeatEnabled
+        else -> Settings.get(context).heartbeatEnabled
+    }
+
+    /** Coarse state for the Status screen. */
+    enum class Status { OK, DISABLED, FAILED, UNPAIRED }
+
+    fun status(context: Context): Status = when {
+        !enabled(context) -> Status.DISABLED
+        !paired(context) -> Status.UNPAIRED
+        HeartbeatPolicy.isStale(lastBeatAtMs(context), System.currentTimeMillis()) -> Status.FAILED
+        else -> Status.OK
+    }
+
     fun lastBeatAtMs(context: Context): Long = when (Settings.get(context).role) {
         Role.COMPANION -> SenderSettings.get(context).lastPeerBeatAtMs
         else -> Settings.get(context).lastPeerBeatAtMs
@@ -56,7 +72,7 @@ object Heartbeat {
     }
 
     fun isDisconnected(context: Context): Boolean =
-        paired(context) && HeartbeatPolicy.isStale(lastBeatAtMs(context), System.currentTimeMillis())
+        enabled(context) && paired(context) && HeartbeatPolicy.isStale(lastBeatAtMs(context), System.currentTimeMillis())
 
     /** Peer label for user-facing text, from this device's role. */
     fun peerLabel(context: Context): String =
@@ -65,6 +81,7 @@ object Heartbeat {
 
     /** Send one beat to the peer. [request] = "pong back now" (used by force-retry). Blocking network. */
     fun send(context: Context, request: Boolean): Boolean {
+        if (!enabled(context)) return false
         val p = peer(context) ?: return false
         return try {
             val payload = MessageCrypto.encrypt(Wire.encode(WireMessage.Heartbeat(request)), p.key)
@@ -78,6 +95,7 @@ object Heartbeat {
 
     /** A beat arrived from the peer: record it, clear the warning, and pong if it asked us to. */
     fun onBeatReceived(context: Context, request: Boolean) {
+        if (!enabled(context)) { clearNotification(context); return }
         setLastBeatAtMs(context, System.currentTimeMillis())
         clearNotification(context)
         Diag.log("heartbeat received from ${peerLabel(context)}${if (request) " (force-check)" else ""}")

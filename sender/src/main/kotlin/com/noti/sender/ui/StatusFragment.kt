@@ -63,10 +63,24 @@ class StatusFragment : Fragment(R.layout.cmp_fragment_status) {
     private fun refreshHeartbeatBanner() {
         val v = view ?: return
         val s = SenderSettings.get(requireContext())
-        val disconnected = s.peerPaired() &&
-            HeartbeatPolicy.isStale(s.lastPeerBeatAtMs, System.currentTimeMillis())
+        val now = System.currentTimeMillis()
+        val stale = HeartbeatPolicy.isStale(s.lastPeerBeatAtMs, now)
+        val disconnected = s.heartbeatEnabled && s.peerPaired() && stale
         v.findViewById<View>(R.id.card_hb_banner).visibility =
             if (disconnected) View.VISIBLE else View.GONE
+
+        val tv = v.findViewById<TextView>(R.id.tv_heartbeat_status)
+        val stateRes = when {
+            !s.heartbeatEnabled -> R.string.hb_state_disabled
+            !s.peerPaired() -> R.string.hb_state_unpaired
+            stale -> R.string.hb_state_failed
+            else -> R.string.hb_state_ok
+        }
+        tv.text = getString(R.string.hb_status, getString(stateRes))
+        val attr = if (stateRes == R.string.hb_state_failed)
+            com.google.android.material.R.attr.colorError
+        else com.google.android.material.R.attr.colorOnSurfaceVariant
+        tv.setTextColor(com.google.android.material.color.MaterialColors.getColor(tv, attr))
     }
 
     private fun confirmRepush() {

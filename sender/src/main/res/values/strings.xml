@@ -157,4 +157,11 @@
     <string name="hb_banner_title">Main app disconnected</string>
     <string name="hb_banner_body">No heartbeat from the main app in a while - relayed SMS may not be arriving.</string>
     <string name="hb_retry_now">Retry now</string>
+    <string name="sw_heartbeat">Heartbeat</string>
+    <string name="sw_heartbeat_hint">Periodically check the main device is reachable and warn if it goes offline.</string>
+    <string name="hb_status">Heartbeat: %1$s</string>
+    <string name="hb_state_ok">OK</string>
+    <string name="hb_state_disabled">Disabled</string>
+    <string name="hb_state_failed">Failed</string>
+    <string name="hb_state_unpaired">not paired</string>
 </resources>

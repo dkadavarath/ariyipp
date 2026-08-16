@@ -78,15 +78,6 @@
                     android:lineSpacingExtra="4dp" />
 
                 <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="@string/about_project_url"
-                    android:textAppearance="?attr/textAppearanceBodyMedium"
-                    android:autoLink="web"
-                    android:textColorLink="?attr/colorPrimary" />
-
-                <TextView
                     android:id="@+id/tv_device_id"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -176,6 +167,14 @@
             android:layout_height="wrap_content"
             android:text="@string/btn_help"
             app:icon="@drawable/ic_privacy" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_github"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/about_github" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_donate"

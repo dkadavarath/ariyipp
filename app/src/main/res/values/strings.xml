@@ -225,7 +225,8 @@
     <string name="about_version">Version %1$s</string>
     <string name="about_description">ariyipp links two phones over end-to-end encrypted FCM to relay SMS between them: a companion phone (with the SIM) forwards its incoming SMS to your main device, where you read and reply to them as a chat, and the main device can send SMS back through the companion. Notification capture and webhook posting are optional extras. This device\'s role is shown below, and can be switched anytime.</string>
     <string name="about_project_url">https://github.com/dkadavarath/noti</string>
-    <string name="about_donate">Support development (Ko-fi)</string>
+    <string name="about_github">View on GitHub</string>
+    <string name="about_donate">Buy me a Ko-fi</string>
     <string name="about_donate_url">https://ko-fi.com/dvkad</string>
     <string name="about_device_id">Device ID: %1$s</string>
     <string name="about_whats_new">What\'s new</string>
@@ -344,4 +345,11 @@
     <string name="hb_retry_now">Retry now</string>
     <string name="hb_banner_title">%1$s disconnected</string>
     <string name="hb_banner_body">No heartbeat in a while - relayed messages may not be getting through.</string>
+    <string name="sw_heartbeat">Heartbeat</string>
+    <string name="sw_heartbeat_hint">Periodically check the other device is reachable and warn if it goes offline.</string>
+    <string name="hb_status">Heartbeat: %1$s</string>
+    <string name="hb_state_ok">OK</string>
+    <string name="hb_state_disabled">Disabled</string>
+    <string name="hb_state_failed">Failed</string>
+    <string name="hb_state_unpaired">not paired</string>
 </resources>

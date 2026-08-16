@@ -41,6 +41,7 @@ class RelayReceiveActivity : ScreenActivity() {
         val enabled = findViewById<MaterialSwitch>(R.id.sw_inbound_enabled)
         val otpCopy = findViewById<MaterialSwitch>(R.id.sw_otp_copy)
         val suppressSystem = findViewById<MaterialSwitch>(R.id.sw_suppress_system)
+        val heartbeat = findViewById<MaterialSwitch>(R.id.sw_heartbeat)
         val keyField = findViewById<TextInputEditText>(R.id.et_relay_key)
         val tokenView = findViewById<TextView>(R.id.txt_token)
         val qr = findViewById<ImageView>(R.id.img_qr)
@@ -48,9 +49,13 @@ class RelayReceiveActivity : ScreenActivity() {
         enabled.isChecked = s.pushInboundEnabled
         otpCopy.isChecked = s.otpCopyEnabled
         suppressSystem.isChecked = s.suppressSystemNotifActions
+        heartbeat.isChecked = s.heartbeatEnabled
         if (s.relayKey.isBlank()) s.relayKey = MessageCrypto.generateKeyBase64()
         keyField.setText(s.relayKey)
         keyField.keyListener = null // read-only (still selectable/copyable) - Main owns the key
+        // setKeyListener(null) clears the password transformation, so re-mask now to avoid a
+        // one-frame plaintext flash of the key when the screen opens.
+        keyField.transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
         updateSaStatus()
 
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
@@ -80,8 +85,16 @@ class RelayReceiveActivity : ScreenActivity() {
             s.pushInboundEnabled = enabled.isChecked
             s.otpCopyEnabled = otpCopy.isChecked
             s.suppressSystemNotifActions = suppressSystem.isChecked
+            s.heartbeatEnabled = heartbeat.isChecked
             s.relayKey = keyField.text.toString()
             // Don't touch sndiFcmToken - it's set automatically when the companion announces itself.
+            if (heartbeat.isChecked) {
+                com.noti.logger.push.Heartbeat.baselineIfNeeded(this)
+                com.noti.logger.work.HeartbeatWorker.schedulePeriodic(this)
+            } else {
+                androidx.core.app.NotificationManagerCompat.from(this)
+                    .cancel(com.noti.shared.HeartbeatPolicy.NOTIFICATION_ID)
+            }
             Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show()
             finish()
         }

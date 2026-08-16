@@ -37,11 +37,15 @@ class PairingActivity : ScreenActivity() {
         val relayKey = findViewById<TextInputEditText>(R.id.et_relay_key)
         val fcmEnabled = findViewById<MaterialSwitch>(R.id.sw_fcm_enabled)
         val accept = findViewById<MaterialSwitch>(R.id.sw_accept_commands)
+        val heartbeat = findViewById<MaterialSwitch>(R.id.sw_heartbeat)
 
         token.setText(s.notiFcmToken)
         relayKey.setText(s.relayKey)
+        // Mask from frame 1 so the key isn't briefly shown in plaintext when the screen opens.
+        relayKey.transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
         fcmEnabled.isChecked = s.fcmEnabled
         accept.isChecked = s.acceptCommands
+        heartbeat.isChecked = s.heartbeatEnabled
         updateKeyStatus()
 
         // Cache this device's own FCM token so it can be announced to Main after pairing (Main can't
@@ -67,6 +71,11 @@ class PairingActivity : ScreenActivity() {
             s.relayKey = relayKey.text.toString()
             s.fcmEnabled = fcmEnabled.isChecked
             s.acceptCommands = accept.isChecked
+            s.heartbeatEnabled = heartbeat.isChecked
+            if (!heartbeat.isChecked) {
+                androidx.core.app.NotificationManagerCompat.from(this)
+                    .cancel(com.noti.shared.HeartbeatPolicy.NOTIFICATION_ID)
+            }
             com.noti.sender.SmsSyncWorker.baselineIfNeeded(this) // mark before the first new SMS
             com.noti.sender.TokenAnnounceWorker.enqueue(this) // tell Main our endpoint (no copy-back)
             Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()

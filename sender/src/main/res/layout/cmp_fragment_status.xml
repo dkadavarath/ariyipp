@@ -128,6 +128,14 @@
                     android:text="@string/btn_ignore_battery"
                     android:visibility="gone"
                     app:icon="@drawable/ic_status_active" />
+
+                <TextView
+                    android:id="@+id/tv_heartbeat_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

@@ -30,12 +30,15 @@ class AboutFragment : Fragment(R.layout.fragment_about) {
             startActivity(Intent(requireContext(), HelpActivity::class.java))
         }
 
-        view.findViewById<View>(R.id.btn_donate).setOnClickListener {
-            try {
-                startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(getString(R.string.about_donate_url))))
-            } catch (_: Exception) {
-                // No browser available; nothing to do.
-            }
+        view.findViewById<View>(R.id.btn_github).setOnClickListener { openUrl(R.string.about_project_url) }
+        view.findViewById<View>(R.id.btn_donate).setOnClickListener { openUrl(R.string.about_donate_url) }
+    }
+
+    private fun openUrl(urlRes: Int) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(getString(urlRes))))
+        } catch (_: Exception) {
+            // No browser/handler available.
         }
     }
 
