@@ -5,6 +5,7 @@
 ![targetSdk](https://img.shields.io/badge/targetSdk-35-1565c0)
 ![Release](https://img.shields.io/badge/release-v1.0-1565c0)
 ![Language](https://img.shields.io/badge/kotlin-100%25-7f52ff)
+![License](https://img.shields.io/badge/license-GPL--3.0-1565c0)
 
 A lightweight, native-Kotlin Android app that **relays SMS between two of your phones** over an
 **end-to-end encrypted** channel. One phone holds the SIM; the other is the one you carry. Incoming
@@ -142,3 +143,9 @@ Kotlin, Material 3, Room, WorkManager, Firebase Cloud Messaging (HTTP v1), kotli
 
 Multi-module: `:app` (the merged application), `:sender` (the companion role, an Android library), and
 `:shared` (pure-JVM crypto, the typed wire format, and the FCM sender).
+
+## License
+
+ariyipp is free software licensed under the **GNU General Public License v3.0** — see
+[LICENSE](LICENSE) for the full text. In short: you're free to use, study, share, and modify it, but
+any derivative you distribute must also be released under the GPL-3.0.
