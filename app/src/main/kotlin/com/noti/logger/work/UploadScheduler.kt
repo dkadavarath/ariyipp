@@ -56,7 +56,9 @@ object UploadScheduler {
 
     fun schedulePeriodic(context: Context) {
         val s = Settings.get(context)
-        if (s.triggerMode == TriggerMode.PERIODIC) {
+        // Only wake periodically when there is somewhere to upload to. A relay-only Main device (no
+        // webhook) has nothing to flush, so scheduling a recurring worker would just burn battery.
+        if (s.triggerMode == TriggerMode.PERIODIC && s.webhookUrl.isNotBlank()) {
             val request = PeriodicWorkRequestBuilder<UploadWorker>(
                 s.intervalMinutes.toLong(), TimeUnit.MINUTES
             )

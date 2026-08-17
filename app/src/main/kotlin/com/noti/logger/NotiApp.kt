@@ -34,11 +34,13 @@ class NotiApp : Application() {
             else -> UploadScheduler.applyFromSettings(this)
         }
 
-        // Liveness heartbeat (both roles). Baseline the clock so a fresh pair doesn't false-alarm,
-        // then keep the periodic beat/check scheduled. No-op until paired.
-        if (Settings.get(this).role != null) {
+        // Liveness heartbeat (both roles). Only schedule the recurring worker when it's actually
+        // enabled - a user who turned heartbeat off shouldn't have a 15-min worker firing to no-op.
+        if (Settings.get(this).role != null && Heartbeat.enabled(this)) {
             Heartbeat.baselineIfNeeded(this)
             HeartbeatWorker.schedulePeriodic(this)
+        } else {
+            HeartbeatWorker.cancel(this)
         }
     }
 }

@@ -92,6 +92,7 @@ class RelayReceiveActivity : ScreenActivity() {
                 com.noti.logger.push.Heartbeat.baselineIfNeeded(this)
                 com.noti.logger.work.HeartbeatWorker.schedulePeriodic(this)
             } else {
+                com.noti.logger.work.HeartbeatWorker.cancel(this)
                 androidx.core.app.NotificationManagerCompat.from(this)
                     .cancel(com.noti.shared.HeartbeatPolicy.NOTIFICATION_ID)
             }
