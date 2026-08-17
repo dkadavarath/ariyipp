@@ -20,6 +20,12 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         get() = prefs.getString(KEY_SA_JSON, "") ?: ""
         set(value) { prefs.edit().putString(KEY_SA_JSON, value).apply() }
 
+    /** Imported `google-services.json` contents, used to init Firebase (FCM) at runtime instead of
+     *  at build time. */
+    var firebaseConfigJson: String
+        get() = prefs.getString(KEY_FIREBASE_CONFIG_JSON, "") ?: ""
+        set(value) { prefs.edit().putString(KEY_FIREBASE_CONFIG_JSON, value).apply() }
+
     /** Pre-shared AES-256-GCM key (base64), the same value noti holds. */
     var relayKey: String
         get() = prefs.getString(KEY_RELAY_KEY, "") ?: ""
@@ -171,6 +177,7 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         private const val PREFS_NAME = "noti_sender_settings"
 
         private const val KEY_SA_JSON = "sa_json"
+        private const val KEY_FIREBASE_CONFIG_JSON = "firebase_config_json"
         private const val KEY_RELAY_KEY = "relay_key"
         private const val KEY_NOTI_TOKEN = "noti_token"
         private const val KEY_MY_TOKEN = "my_token"

@@ -224,6 +224,14 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putString(KEY_SA_JSON, value).apply()
         }
 
+    /** Imported `google-services.json` contents, used to init Firebase (FCM) at runtime instead of
+     *  at build time — see [com.noti.logger.push.FirebaseInit]. */
+    var firebaseConfigJson: String
+        get() = prefs.getString(KEY_FIREBASE_CONFIG_JSON, "") ?: ""
+        set(value) {
+            prefs.edit().putString(KEY_FIREBASE_CONFIG_JSON, value).apply()
+        }
+
     /** sndi's FCM registration token - the target for send-SMS commands. */
     var sndiFcmToken: String
         get() = prefs.getString(KEY_SNDI_TOKEN, "") ?: ""
@@ -353,6 +361,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_RELAY_KEY = "relay_key"
         private const val KEY_FCM_TOKEN = "fcm_token"
         private const val KEY_SA_JSON = "sa_json"
+        private const val KEY_FIREBASE_CONFIG_JSON = "firebase_config_json"
         private const val KEY_SNDI_TOKEN = "sndi_token"
         private const val KEY_LAST_UPLOAD_AT_MS = "last_upload_at_ms"
         private const val KEY_LAST_UPLOAD_RESULT = "last_upload_result"

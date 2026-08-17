@@ -27,14 +27,12 @@ later): **Main** (the hub you read and reply on) or **Companion** (the SMS phone
   (FCM) only ever carries ciphertext.
 - **One-way pairing by QR** — the main device owns and shows the shared key; the companion scans it
   and announces itself back automatically. No copying tokens by hand.
-- **Duplicate-proof** — the relay works off the SMS provider's stable row ids, so a phone that fires
-  the incoming-SMS broadcast twice can't double-send.
 - **Liveness heartbeat** — each device periodically checks the other is reachable and warns (with a
   Retry action) if it goes offline. Toggle it off if you don't want it.
 - **Per-conversation mute**, unread badges, one-time-code copy, and inline reply from the notification.
 - **Encrypted backup & restore** through the system file picker, passphrase-protected.
-- **Optional extras:** capture this phone's notifications and forward them to a webhook (e.g. an
-  [n8n](https://n8n.io) node), and push the webhook config to the companion.
+- **Optional extras:** capture this phone's notifications and forward them to a webhook, and push the
+  webhook config to the companion.
 - **Theming:** light/dark/system, Material You, and a true-black AMOLED mode.
 
 ## How it works
@@ -57,23 +55,62 @@ so reverse-send works with nothing copied by hand.
 
 ## Bring your own Firebase (BYO-FCM)
 
-The app ships **without** any Firebase credentials. You supply your own so the relay runs entirely on
-your own project:
+The app ships **without** any Firebase credentials — nothing is baked in at build time. You supply
+your own project, imported **on-device**, so the relay runs entirely on it:
 
 1. Create a Firebase project and add an Android app with the id `com.noti.logger`.
-2. Enable **Cloud Messaging** and download `google-services.json` into `app/`.
-3. Generate a **service-account key** (JSON) with the *Firebase Cloud Messaging API* enabled, and
-   import it on-device (Pairing → Import service-account key) on both phones.
+2. Enable **Cloud Messaging** and download that app's `google-services.json`.
+3. Generate a **service-account key** (JSON) with the *Firebase Cloud Messaging API* enabled.
+4. On each phone: Settings → Pairing → **Import Firebase files** — pick both files at once (or one at
+   a time; each updates independently). This initializes Firebase and gets the device its push token.
 
-`google-services.json`, service-account keys, and signing keys are all gitignored — they never land
-in the repo.
+Signing keys are gitignored and never land in the repo; the two imported files above live only in the
+app's encrypted on-device settings, never on disk in the project.
 
 ## Configure on device
 
 1. Install on both phones; pick **Main** on one and **Companion** on the other.
 2. On the companion, grant SMS access and exempt it from battery optimization (Status screen).
-3. Import the service-account key on both, then pair: scan the main device's QR from the companion.
+3. Import the Firebase files on both (see above), then pair: scan the main device's QR from the companion.
 4. On the main device, turn on **Receive relayed messages**.
+
+## Webhook payload
+
+Both webhook legs — notification capture on the main device, and SMS forwarding on the companion —
+post the same JSON shape: a batch of items.
+
+```json
+{
+  "batch": [
+    {
+      "device_id": "3f7c9e2a-...",
+      "uid": "3f7c9e2a-...|sms|1735900000000",
+      "package": "sms",
+      "app_label": "SMS",
+      "post_time": "2026-07-03T08:39:00.174Z",
+      "title": "+15551234567",
+      "text": "From: +15551234567\nMessage: Hello\nSent: 1735899999000\nReceived: 1735900000000\nSim: SIM 1",
+      "big_text": null,
+      "sub_text": null,
+      "category": "sms"
+    }
+  ]
+}
+```
+
+- Sent as `POST` with `Content-Type: application/json`, optionally gzipped (`Content-Encoding: gzip`).
+- An optional auth header (name and value both configurable — e.g. `Authorization: Bearer <token>`,
+  or a custom header for other auth schemes) is added when both are set.
+- Forwarded SMS always have `package`/`category` = `"sms"`; captured notifications carry the
+  originating app's real package name and label instead.
+- Expected response: HTTP 200 with a JSON array acknowledging each `uid`:
+
+```json
+[{ "success": ["uid1"], "failure": ["Key (uid)=(uid2) already exists."] }]
+```
+
+  `success` uids are cleared from the local outbox. A `failure` message containing "already exists"
+  is also treated as delivered (idempotent retry); any other failure is retried.
 
 ## Build from source
 

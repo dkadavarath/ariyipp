@@ -5,8 +5,10 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.google.services)
 }
+// No google-services plugin: Firebase is initialized at RUNTIME from a user-imported
+// google-services.json (Pairing screen -> Import Firebase files), not baked in at build time. This
+// lets the app build from source with no Firebase project of the maintainer's baked in.
 
 // Release signing is configured only when keystore.properties exists (kept out of VCS).
 val keystorePropsFile = rootProject.file("keystore.properties")
@@ -22,8 +24,8 @@ android {
         applicationId = "com.noti.logger"
         minSdk = 26
         targetSdk = 35
-        versionCode = 51
-        versionName = "2.0.13"
+        versionCode = 52
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

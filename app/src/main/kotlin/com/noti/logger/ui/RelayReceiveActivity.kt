@@ -13,7 +13,9 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.messaging.FirebaseMessaging
 import com.noti.logger.R
 import com.noti.logger.config.Settings
+import com.noti.logger.push.FirebaseInit
 import com.noti.logger.push.QrCodes
+import com.noti.shared.GoogleServices
 import com.noti.shared.MessageCrypto
 import com.noti.shared.PairingPayload
 import kotlinx.serialization.json.Json
@@ -31,9 +33,12 @@ class RelayReceiveActivity : ScreenActivity() {
     override val titleRes = R.string.title_relay
 
     private var currentToken: String = ""
+    private lateinit var qrView: ImageView
+    private lateinit var tokenView: TextView
+    private lateinit var keyField: TextInputEditText
 
-    private val importSa = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { onSaPicked(it) }
+    private val importFiles = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        uris.forEach { onFilePicked(it) }
     }
 
     override fun onScreenCreated() {
@@ -42,9 +47,9 @@ class RelayReceiveActivity : ScreenActivity() {
         val otpCopy = findViewById<MaterialSwitch>(R.id.sw_otp_copy)
         val suppressSystem = findViewById<MaterialSwitch>(R.id.sw_suppress_system)
         val heartbeat = findViewById<MaterialSwitch>(R.id.sw_heartbeat)
-        val keyField = findViewById<TextInputEditText>(R.id.et_relay_key)
-        val tokenView = findViewById<TextView>(R.id.txt_token)
-        val qr = findViewById<ImageView>(R.id.img_qr)
+        keyField = findViewById(R.id.et_relay_key)
+        tokenView = findViewById(R.id.txt_token)
+        qrView = findViewById(R.id.img_qr)
 
         enabled.isChecked = s.pushInboundEnabled
         otpCopy.isChecked = s.otpCopyEnabled
@@ -56,14 +61,9 @@ class RelayReceiveActivity : ScreenActivity() {
         // setKeyListener(null) clears the password transformation, so re-mask now to avoid a
         // one-frame plaintext flash of the key when the screen opens.
         keyField.transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
+        updateFbStatus()
         updateSaStatus()
-
-        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
-            currentToken = token
-            s.fcmToken = token
-            tokenView.text = token
-            refreshQr(qr, keyField.text.toString())
-        }
+        refreshToken()
 
         findViewById<MaterialButton>(R.id.btn_generate_key).setOnClickListener {
             MaterialAlertDialogBuilder(this)
@@ -72,13 +72,13 @@ class RelayReceiveActivity : ScreenActivity() {
                 .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(R.string.regen_key_yes) { _, _ ->
                     keyField.setText(MessageCrypto.generateKeyBase64())
-                    refreshQr(qr, keyField.text.toString())
+                    refreshQr(qrView, keyField.text.toString())
                 }
                 .show()
         }
 
         findViewById<MaterialButton>(R.id.btn_import_sa).setOnClickListener {
-            importSa.launch(arrayOf("application/json", "text/*", "*/*"))
+            importFiles.launch(arrayOf("application/json", "text/*", "*/*"))
         }
 
         findViewById<View>(R.id.btn_save).setOnClickListener {
@@ -105,20 +105,67 @@ class RelayReceiveActivity : ScreenActivity() {
         qr.setImageBitmap(QrCodes.encode(PairingPayload.format(currentToken, key), 600))
     }
 
-    private fun onSaPicked(uri: Uri) {
+    /** Refreshes the device token now if Firebase is configured; otherwise shows a prompt to import
+     *  the config, instead of leaving the token field stuck on "loading". */
+    private fun refreshToken() {
+        if (!FirebaseInit.ensureInitialized(this)) {
+            tokenView.text = getString(R.string.relay_fb_needed)
+            return
+        }
+        val s = Settings.get(this)
+        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+            currentToken = token
+            s.fcmToken = token
+            tokenView.text = token
+            refreshQr(qrView, keyField.text.toString())
+        }
+    }
+
+    /** Reads one picked file and routes it by content: a google-services.json updates the Firebase
+     *  config, a service-account key updates the send credential. Either can be re-imported alone. */
+    private fun onFilePicked(uri: Uri) {
         val content = try {
             contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty()
         } catch (e: Exception) {
             ""
         }
-        val valid = try {
-            val o = Json.parseToJsonElement(content).jsonObject
-            o["private_key"] != null && o["client_email"] != null
-        } catch (e: Exception) {
-            false
+        val s = Settings.get(this)
+        when {
+            GoogleServices.looksLikeGoogleServices(content) -> {
+                val valid = try {
+                    GoogleServices.parse(content, packageName); true
+                } catch (e: Exception) {
+                    false
+                }
+                if (valid) s.firebaseConfigJson = content
+                updateFbStatus(invalid = !valid)
+                if (valid) refreshToken()
+            }
+            isServiceAccountKey(content) -> {
+                s.serviceAccountJson = content
+                updateSaStatus()
+            }
+            else -> Toast.makeText(this, R.string.relay_sa_invalid, Toast.LENGTH_SHORT).show()
         }
-        if (valid) Settings.get(this).serviceAccountJson = content
-        updateSaStatus(invalid = !valid)
+    }
+
+    private fun isServiceAccountKey(content: String): Boolean = try {
+        val o = Json.parseToJsonElement(content).jsonObject
+        o["private_key"] != null && o["client_email"] != null
+    } catch (e: Exception) {
+        false
+    }
+
+    private fun updateFbStatus(invalid: Boolean = false) {
+        val json = Settings.get(this).firebaseConfigJson
+        findViewById<TextView>(R.id.txt_fb_status).text = when {
+            invalid -> getString(R.string.relay_fb_invalid)
+            json.isBlank() -> getString(R.string.relay_fb_none)
+            else -> {
+                val project = try { GoogleServices.parse(json, packageName).projectId } catch (e: Exception) { null }
+                getString(R.string.relay_fb_imported, project ?: "?")
+            }
+        }
     }
 
     private fun updateSaStatus(invalid: Boolean = false) {

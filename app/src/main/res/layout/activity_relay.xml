@@ -97,15 +97,22 @@
             <!-- (The companion's endpoint arrives automatically over the encrypted channel after it
                  scans this code — nothing to enter or scan here.) -->
 
-            <!-- 4. Service-account key -->
+            <!-- 4. Firebase (google-services.json + service-account key, both imported on-device) -->
             <TextView
                 style="@style/PairSectionHeader"
                 android:text="@string/pair_hdr_sa" />
 
             <TextView
+                android:id="@+id/txt_fb_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+            <TextView
                 android:id="@+id/txt_sa_status"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
 
             <com.google.android.material.button.MaterialButton
@@ -115,6 +122,15 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="@string/btn_import_sa" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:alpha="0.7"
+                android:lineSpacingExtra="2dp"
+                android:text="@string/btn_import_sa_hint"
+                android:textAppearance="?attr/textAppearanceBodySmall" />
 
             <!-- 5. Options -->
             <TextView
