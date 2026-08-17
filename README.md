@@ -54,19 +54,59 @@ Pairing is one-way: the main device generates the shared AES key and shows it (p
 as a QR; the companion scans it, then announces its own push token back over the encrypted channel,
 so reverse-send works with nothing copied by hand.
 
+## Why FCM
+
+The transport is Firebase Cloud Messaging, chosen deliberately to **reuse an existing, free, reliable
+push channel** rather than stand up and run new infrastructure. FCM delivers data messages even under
+Doze / aggressive battery optimization, costs nothing, needs no self-hosted push server, and the
+Firebase project was already in place from the app's earlier life — so it saved building and
+maintaining that plumbing. The **send** side isn't even a proprietary SDK: it's a plain HTTP v1 REST
+call authenticated with a service-account key.
+
+The catch is the **receive** side, which relies on the proprietary `firebase-messaging` / Google Play
+Services library. That's fine for the GitHub build but is the one thing keeping the app off F-Droid —
+see the [UnifiedPush plan](#roadmap-unifiedpush) below.
+
 ## Bring your own Firebase (BYO-FCM)
 
-The app ships **without** any Firebase credentials — nothing is baked in at build time. You supply
-your own project, imported **on-device**, so the relay runs entirely on it:
+The app ships **without** any Firebase credentials — nothing is baked in at build time. You create a
+free Firebase project and import two files **on-device**, so the relay runs entirely on your project.
+Do this once; **both phones use the same project** (and the same two files).
 
-1. Create a Firebase project and add an Android app with the id `com.noti.logger`.
-2. Enable **Cloud Messaging** and download that app's `google-services.json`.
-3. Generate a **service-account key** (JSON) with the *Firebase Cloud Messaging API* enabled.
-4. On each phone: Settings → Pairing → **Import Firebase files** — pick both files at once (or one at
-   a time; each updates independently). This initializes Firebase and gets the device its push token.
+You'll import two files, which do different jobs:
 
-Signing keys are gitignored and never land in the repo; the two imported files above live only in the
-app's encrypted on-device settings, never on disk in the project.
+| File | What it's for | Which side uses it |
+| --- | --- | --- |
+| `google-services.json` | identifies the project so the device can **receive** pushes (get an FCM token) | receive |
+| service-account key (JSON) | authorizes this device to **send** pushes to the other one | send |
+
+### 1. Create the project and get `google-services.json`
+
+1. Open the [Firebase console](https://console.firebase.google.com) and **Add project** (the free
+   *Spark* plan is enough). Give it any name; Google Analytics is optional.
+2. On the project dashboard, click the **Android** icon (*Add app*) and register an app with package
+   name **`com.noti.logger`** — it must match exactly. You can leave the SHA-1 blank and **skip** the
+   "add the SDK / run the app" steps.
+3. Download the generated **`google-services.json`** onto (or transfer it to) the phone.
+
+### 2. Get the service-account key
+
+1. In the Firebase console, open **⚙ (Project settings) → Service accounts**.
+2. Click **Generate new private key → Generate key**. A JSON file downloads — this is the
+   service-account key (it carries the permission to send FCM messages). Keep it private; treat it
+   like a password.
+3. Confirm the send API is on: **Project settings → Cloud Messaging** should show *Firebase Cloud
+   Messaging API (V1)* **Enabled**. New projects have it on by default; if it's off, follow the
+   *Manage API in Google Cloud console* link and enable it there.
+
+### 3. Import both on each phone
+
+Settings → **Pairing → Import Firebase files** → pick **both** `google-services.json` and the
+service-account key (multi-select them, or import one at a time — each updates independently). The
+Pairing screen then shows this device's push token and the pairing QR.
+
+> Both files live only in the app's **encrypted on-device settings** — they're never written into the
+> repo (and signing keys stay gitignored too). Losing/rotating them just means re-importing.
 
 ## Configure on device
 
@@ -143,6 +183,29 @@ Kotlin, Material 3, Room, WorkManager, Firebase Cloud Messaging (HTTP v1), kotli
 
 Multi-module: `:app` (the merged application), `:sender` (the companion role, an Android library), and
 `:shared` (pure-JVM crypto, the typed wire format, and the FCM sender).
+
+## Roadmap: UnifiedPush
+
+To ship a fully open-source build (and get onto F-Droid), the push transport needs a **Firebase-free**
+path. The plan is [UnifiedPush](https://unifiedpush.org) — an open protocol where each device registers
+with a **distributor** app (e.g. [ntfy](https://ntfy.sh), self-hosted or public) and gets a push
+**endpoint URL**. Outline:
+
+1. **Two build flavors** from one codebase: `full` (FCM + UnifiedPush — this GitHub build) and `foss`
+   (UnifiedPush only, with `firebase-messaging` removed — the F-Droid build).
+2. **Abstract the transport.** The crypto, wire format, and message handlers are already
+   transport-agnostic — they only move an encrypted `payload` string — so just two things vary:
+   *register/receive* (FCM's `FirebaseMessagingService` ↔ UnifiedPush's `MessagingReceiver`) and
+   *send* (FCM REST POST with a service-account ↔ a plain HTTPS POST to the peer's endpoint URL, no
+   credential needed).
+3. **Generalize pairing.** Pairing already announces an endpoint over the encrypted channel (a `Token`
+   wire message); it just needs a transport tag so each side knows whether the peer's endpoint is an
+   FCM token or a UnifiedPush URL. A pair uses whichever transport both ends share.
+4. The v1.0 move to **runtime Firebase init** (importing `google-services.json` on-device instead of
+   at build time) was the first step of this — init is already abstracted, so the `foss` flavor just
+   omits it.
+
+This is post-v1 work; FCM stays the default for the GitHub build.
 
 ## License
 
