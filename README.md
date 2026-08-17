@@ -58,14 +58,13 @@ so reverse-send works with nothing copied by hand.
 
 The transport is Firebase Cloud Messaging, chosen deliberately to **reuse an existing, free, reliable
 push channel** rather than stand up and run new infrastructure. FCM delivers data messages even under
-Doze / aggressive battery optimization, costs nothing, needs no self-hosted push server, and the
-Firebase project was already in place from the app's earlier life — so it saved building and
-maintaining that plumbing. The **send** side isn't even a proprietary SDK: it's a plain HTTP v1 REST
-call authenticated with a service-account key.
+Doze / aggressive battery optimization, costs nothing, and needs no self-hosted push server. The
+**send** side isn't even a proprietary SDK: it's a plain HTTP v1 REST call authenticated with a
+service-account key.
 
 The catch is the **receive** side, which relies on the proprietary `firebase-messaging` / Google Play
-Services library. That's fine for the GitHub build but is the one thing keeping the app off F-Droid —
-see the [UnifiedPush plan](#roadmap-unifiedpush) below.
+Services library. A [UnifiedPush](https://unifiedpush.org) version (a fully open-source, Firebase-free
+build) is on the cards if there's enough demand for it.
 
 ## Bring your own Firebase (BYO-FCM)
 
@@ -183,29 +182,6 @@ Kotlin, Material 3, Room, WorkManager, Firebase Cloud Messaging (HTTP v1), kotli
 
 Multi-module: `:app` (the merged application), `:sender` (the companion role, an Android library), and
 `:shared` (pure-JVM crypto, the typed wire format, and the FCM sender).
-
-## Roadmap: UnifiedPush
-
-To ship a fully open-source build (and get onto F-Droid), the push transport needs a **Firebase-free**
-path. The plan is [UnifiedPush](https://unifiedpush.org) — an open protocol where each device registers
-with a **distributor** app (e.g. [ntfy](https://ntfy.sh), self-hosted or public) and gets a push
-**endpoint URL**. Outline:
-
-1. **Two build flavors** from one codebase: `full` (FCM + UnifiedPush — this GitHub build) and `foss`
-   (UnifiedPush only, with `firebase-messaging` removed — the F-Droid build).
-2. **Abstract the transport.** The crypto, wire format, and message handlers are already
-   transport-agnostic — they only move an encrypted `payload` string — so just two things vary:
-   *register/receive* (FCM's `FirebaseMessagingService` ↔ UnifiedPush's `MessagingReceiver`) and
-   *send* (FCM REST POST with a service-account ↔ a plain HTTPS POST to the peer's endpoint URL, no
-   credential needed).
-3. **Generalize pairing.** Pairing already announces an endpoint over the encrypted channel (a `Token`
-   wire message); it just needs a transport tag so each side knows whether the peer's endpoint is an
-   FCM token or a UnifiedPush URL. A pair uses whichever transport both ends share.
-4. The v1.0 move to **runtime Firebase init** (importing `google-services.json` on-device instead of
-   at build time) was the first step of this — init is already abstracted, so the `foss` flavor just
-   omits it.
-
-This is post-v1 work; FCM stays the default for the GitHub build.
 
 ## License
 
