@@ -24,7 +24,11 @@ android {
         applicationId = "com.noti.logger"
         minSdk = 26
         targetSdk = 35
-        versionCode = 53
+        // versionCode lives in its own range (100+) from the private dev repo's, which is a much
+        // lower/slower-climbing number - so a public release always installs as an upgrade over any
+        // private build, and the two can never collide. Bump by at least 1 (with headroom) each
+        // release; versionName is this public repo's own independent v1.x sequence.
+        versionCode = 100
         versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
