@@ -14,6 +14,15 @@ SMS on the SIM phone show up as a chat on your main phone, and you can reply —
 It's **one app with two roles**. Install it on both phones and pick a role on first run (switchable
 later): **Main** (the hub you read and reply on) or **Companion** (the SMS phone with the SIM).
 
+## Scope
+
+ariyipp is self-hosted: you run it entirely on your own two phones, on your own [Firebase project](#bring-your-own-firebase-byo-fcm).
+This repo doesn't operate a backend, and the maintainer doesn't provide Firebase infrastructure,
+service-account credentials, or any hosted service on your behalf — creating your free Firebase
+project and importing its two files onto your phones is a one-time step you do yourself. The APK on
+[Releases](../../releases) is built and signed by the maintainer for convenience; building from
+source with your own signing key (see [below](#build-from-source)) works exactly the same way.
+
 ## Screens
 
 | Status | Chat | Settings |
@@ -179,6 +188,12 @@ Release signing reads a gitignored `keystore.properties` (`storeFile`, `storePas
 - Message bodies are AES-256-GCM encrypted end-to-end; FCM carries ciphertext only.
 - Settings that hold secrets (the shared key, service-account JSON) use `EncryptedSharedPreferences`.
 - The app is not the default SMS handler and requests only the permissions it needs.
+
+This project is provided **as-is**, with no dedicated security-support channel or vulnerability-
+reporting process — it's a single-maintainer, source-available project, not a hosted service. If you
+find a security issue, open a GitHub issue. Since every install runs on infrastructure you own (your
+own Firebase project, your own devices, your own signing key if you build from source), you're
+responsible for reviewing, securing, and operating your own deployment.
 
 ## Tech stack
 
