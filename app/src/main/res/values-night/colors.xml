@@ -31,4 +31,8 @@
     <color name="status_warning_fg">#FFB74D</color>
     <color name="status_info_bg">#0D47A1</color>
     <color name="status_info_fg">#90CAF9</color>
+
+    <!-- Dark mode's outgoing bubble fill is a light pastel blue, so the delivered tick needs a deep
+         saturated blue to read as a distinct accent against it (bright cyan gets lost). -->
+    <color name="chat_tick_delivered">#01579B</color>
 </resources>

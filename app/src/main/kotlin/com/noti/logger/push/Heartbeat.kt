@@ -85,7 +85,7 @@ object Heartbeat {
         val p = peer(context) ?: return false
         return try {
             val payload = MessageCrypto.encrypt(Wire.encode(WireMessage.Heartbeat(request)), p.key)
-            val res = FcmSender(p.serviceAccountJson).send(p.token, mapOf("payload" to payload))
+            val res = FcmSender.forServiceAccount(p.serviceAccountJson).send(p.token, mapOf("payload" to payload))
             if (!res.ok) Diag.log("heartbeat → HTTP ${res.httpCode} (${res.detail.take(40)})")
             res.ok
         } catch (e: Exception) {

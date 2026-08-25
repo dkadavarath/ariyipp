@@ -10,7 +10,8 @@ class WireMessageTest {
     @Test fun `each variant round-trips`() {
         val messages = listOf(
             WireMessage.Relay(title = "Bank on e&", body = "OTP 4567", dedupe = "abc123", time = 1786172227000L),
-            WireMessage.Command(to = "+971500000000", body = "hi", sim = 1),
+            WireMessage.Command(to = "+971500000000", body = "hi", sim = 1, msgId = 42L),
+            WireMessage.DeliveryAck(msgId = 42L, status = WireMessage.DeliveryAck.SMS_SENT),
             WireMessage.WebhookConfig(enabled = true, url = "https://n8n.example/hook", authHeaderName = "key", authHeaderPrefix = "", authToken = "s3cr3t"),
             WireMessage.Token(endpoint = "fcm-token-xyz"),
             WireMessage.Heartbeat(request = true),

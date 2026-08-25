@@ -3,7 +3,7 @@
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84)
 ![minSdk](https://img.shields.io/badge/minSdk-26-1565c0)
 ![targetSdk](https://img.shields.io/badge/targetSdk-35-1565c0)
-![Release](https://img.shields.io/badge/release-v1.0-1565c0)
+![Release](https://img.shields.io/badge/release-v1.1-1565c0)
 ![Language](https://img.shields.io/badge/kotlin-100%25-7f52ff)
 ![License](https://img.shields.io/badge/license-GPL--3.0-1565c0)
 
@@ -22,10 +22,14 @@ later): **Main** (the hub you read and reply on) or **Companion** (the SMS phone
 
 ## Features
 
-- **SMS relay, both directions** — incoming SMS on the companion appear as a searchable chat on the
-  main device; compose on the main device and the companion sends it from its SIM.
+- **SMS relay, both directions** — incoming SMS on the companion appear as a searchable, compact chat
+  on the main device, with a floating date header, a jump-to-latest button, and real delivery-receipt
+  ticks (received by companion / handed to SIM / carrier-confirmed); compose on the main device and
+  the companion sends it from its SIM.
 - **End-to-end encrypted** — messages are AES-256-GCM encrypted with a pre-shared key; the transport
   (FCM) only ever carries ciphertext.
+- **Chat history retention** — how long relayed messages are kept locally is configurable, with old
+  ones purged automatically.
 - **One-way pairing by QR** — the main device owns and shows the shared key; the companion scans it
   and announces itself back automatically. No copying tokens by hand.
 - **Liveness heartbeat** — each device periodically checks the other is reachable and warns (with a

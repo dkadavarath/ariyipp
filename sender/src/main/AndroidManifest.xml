@@ -25,13 +25,23 @@
         <activity android:name=".ui.DiagnosticsActivity" android:exported="false" />
         <activity android:name=".ui.HelpActivity" android:exported="false" />
 
-        <!-- Observe incoming SMS; only the system (BROADCAST_SMS holder) may trigger it. -->
+        <!-- Observe incoming SMS; only the system (BROADCAST_SMS holder) may trigger it, and the
+             receiver defers all real work anyway - so no priority boost on the ordered broadcast. -->
         <receiver
             android:name=".sms.SmsReceiver"
             android:exported="true"
             android:permission="android.permission.BROADCAST_SMS">
-            <intent-filter android:priority="999">
+            <intent-filter>
                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Fired by our own SmsManager sent/delivery-report PendingIntents (SmsSender); not for
+             system or cross-app use. -->
+        <receiver android:name=".sms.SmsStatusReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="com.noti.sender.SMS_SENT" />
+                <action android:name="com.noti.sender.SMS_DELIVERED" />
             </intent-filter>
         </receiver>
 

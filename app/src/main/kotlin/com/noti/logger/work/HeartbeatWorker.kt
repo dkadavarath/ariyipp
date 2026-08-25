@@ -13,6 +13,8 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.noti.logger.push.Heartbeat
 import com.noti.shared.HeartbeatPolicy
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
 /**
@@ -22,12 +24,14 @@ import java.util.concurrent.TimeUnit
  */
 class HeartbeatWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
-    override suspend fun doWork(): Result {
+    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        // Heartbeat.send() is blocking HttpURLConnection code - keep it off Dispatchers.Default
+        // like every other network-touching worker here.
         val request = inputData.getBoolean(KEY_REQUEST, false)
         Heartbeat.baselineIfNeeded(applicationContext)
         Heartbeat.send(applicationContext, request)
         Heartbeat.refreshNotification(applicationContext)
-        return Result.success()
+        Result.success()
     }
 
     companion object {

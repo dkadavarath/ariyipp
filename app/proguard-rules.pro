@@ -5,11 +5,16 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# Keep Room entities
--keep class com.noti.logger.data.** { *; }
+# Room entities/DAOs: generated *Impl code references them directly, so R8 full mode already
+# keeps what's used; keep names only for readable stack traces / DB debugging.
+-keepnames class com.noti.logger.data.**
 
-# Keep WorkManager workers
--keep class com.noti.logger.work.** { *; }
+# WorkManager instantiates workers reflectively from the name stored in the WorkSpec. androidx.work's
+# consumer rules keep ListenableWorker subclasses, but keep their constructors explicitly anyway -
+# cheap insurance against a rule change in the library.
+-keep class com.noti.logger.work.** {
+    public <init>(android.content.Context, androidx.work.WorkerParameters);
+}
 
 # ---- kotlinx.serialization ----
 -keepattributes *Annotation*, InnerClasses

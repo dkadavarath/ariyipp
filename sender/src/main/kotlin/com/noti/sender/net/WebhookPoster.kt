@@ -15,6 +15,8 @@ object WebhookPoster {
     fun post(url: String, authHeaderName: String, authHeaderValue: String, batch: UploadBatch): Int {
         val body = json.encodeToString(batch).toByteArray(Charsets.UTF_8)
         val conn = URL(url).openConnection() as HttpURLConnection
+        // No disconnect(): closing the streams lets the connection return to the JVM keep-alive
+        // pool, so the next post skips DNS+TCP+TLS.
         return try {
             conn.requestMethod = "POST"
             conn.connectTimeout = 15_000
@@ -28,8 +30,6 @@ object WebhookPoster {
             conn.responseCode
         } catch (e: Exception) {
             -1
-        } finally {
-            conn.disconnect()
         }
     }
 }

@@ -19,6 +19,16 @@ object PushMessageHandler {
 
     const val PAYLOAD_KEY = "payload"
 
+    /** How long to wait for missing relay parts before giving up on an incomplete chunked body. */
+    private const val PART_TTL_MS = 5 * 60_000L
+
+    /** In-flight chunks of multi-part relays, keyed by the message's identity. */
+    private class PendingParts(val atMs: Long) {
+        val parts = HashMap<Int, WireMessage.Relay>()
+    }
+
+    private val pendingRels = LinkedHashMap<String, PendingParts>()
+
     fun handle(context: Context, data: Map<String, String>): Boolean {
         val ciphertext = data[PAYLOAD_KEY]?.takeIf { it.isNotBlank() } ?: return false
 
@@ -51,6 +61,7 @@ object PushMessageHandler {
                 true
             }
             is WireMessage.Relay -> showRelay(context, settings, wire)
+            is WireMessage.DeliveryAck -> applyAck(context, wire)
             is WireMessage.Heartbeat -> {
                 Heartbeat.onBeatReceived(context, wire.request)
                 true
@@ -59,11 +70,53 @@ object PushMessageHandler {
         }
     }
 
-    private fun showRelay(context: Context, settings: Settings, msg: WireMessage.Relay): Boolean {
+    /** Updates a sent message's ticks. A stale/unknown msgId (e.g. the row was since deleted) is a
+     *  quiet no-op, not an error - the ack just has nothing left to update. */
+    private fun applyAck(context: Context, ack: WireMessage.DeliveryAck): Boolean {
+        if (ack.msgId <= 0) return false
+        val changed = try {
+            NotiDatabase.get(context).relayedMessageDao().updateStatus(ack.msgId, ack.status)
+        } catch (e: Exception) {
+            0
+        }
+        Diag.log("delivery ack: msgId=${ack.msgId} status=${ack.status}" + if (changed == 0) " (no matching row)" else "")
+        return true
+    }
+
+    /**
+     * Buffers one chunk of a multi-part relay ([msg.parts] > 1) until all parts have arrived, then
+     * returns the assembled message. Single-part messages pass straight through. Returns null while
+     * parts are still missing (or for a stale/incomplete group that just got evicted).
+     */
+    @Synchronized
+    private fun assemble(msg: WireMessage.Relay): WireMessage.Relay? {
+        if (msg.parts <= 1) return msg
+
+        // Evict groups we've waited too long on - FCM high-priority delivery is near-instant, so
+        // anything this old means a part was lost; holding it forever would leak memory.
+        val now = System.currentTimeMillis()
+        pendingRels.entries.removeAll { now - it.value.atMs > PART_TTL_MS }
+
+        val key = msg.dedupe.ifBlank { "${msg.title}|${msg.time}" }
+        val bucket = pendingRels.getOrPut(key) { PendingParts(now) }
+        bucket.parts[msg.part] = msg
+        if (bucket.parts.size < msg.parts) {
+            Diag.log("inbound: buffered part ${msg.part + 1}/${msg.parts}")
+            return null
+        }
+
+        pendingRels.remove(key)
+        val first = bucket.parts[0] ?: bucket.parts.values.first()
+        val body = (0 until msg.parts).joinToString("") { bucket.parts[it]?.body.orEmpty() }
+        return first.copy(body = body, part = 0, parts = 1)
+    }
+
+    private fun showRelay(context: Context, settings: Settings, incoming: WireMessage.Relay): Boolean {
         if (!settings.pushInboundEnabled) {
             Diag.log("inbound push DROPPED - \"Receive relayed messages\" is OFF (Settings → Relay)")
             return false
         }
+        val msg = assemble(incoming) ?: return true // part buffered; nothing to show yet
 
         val title = msg.title.ifBlank { "Message" }
 
@@ -90,6 +143,15 @@ object PushMessageHandler {
             )
         } catch (e: Exception) {
             -1L // ignore; still notify below (without a deep-link target)
+        }
+
+        // Retention: chat history grows forever otherwise (the notifications table has its own
+        // purge in UploadWorker). Same knob and semantics as uploads: days ≤ 0 ⇒ keep nothing.
+        try {
+            val cutoff = System.currentTimeMillis() - settings.retentionDays.coerceAtLeast(0) * 86_400_000L
+            dao.purgeOlderThan(cutoff)
+        } catch (_: Exception) {
+            // best-effort
         }
 
         // A muted conversation still stores the message (it shows up as unread to catch up on later),

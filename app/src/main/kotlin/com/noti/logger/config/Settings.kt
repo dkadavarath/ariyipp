@@ -203,11 +203,22 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putBoolean(KEY_SUPPRESS_SYS_ACTIONS, value).apply()
         }
 
-    /** Pre-shared AES-256-GCM key (base64) for decrypting inbound relayed messages. */
+    /** Pre-shared AES-256-GCM key (base64) for decrypting inbound relayed messages. Memoized like
+     *  [deviceId] - it's read on every inbound push, and EncryptedSharedPreferences decrypts per read. */
+    @Volatile
+    private var cachedRelayKey: String? = null
     var relayKey: String
-        get() = prefs.getString(KEY_RELAY_KEY, "") ?: ""
+        get() {
+            cachedRelayKey?.let { return it }
+            synchronized(this) {
+                cachedRelayKey?.let { return it }
+                return (prefs.getString(KEY_RELAY_KEY, "") ?: "").also { cachedRelayKey = it }
+            }
+        }
         set(value) {
-            prefs.edit().putString(KEY_RELAY_KEY, value.trim()).apply()
+            val trimmed = value.trim()
+            prefs.edit().putString(KEY_RELAY_KEY, trimmed).apply()
+            cachedRelayKey = trimmed
         }
 
     /** This device's FCM registration token; copied to the sender app at pairing. Updated on refresh. */
@@ -217,11 +228,21 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putString(KEY_FCM_TOKEN, value).apply()
         }
 
-    /** Service-account key (JSON) so noti can PUSH send-SMS commands to sndi (Phase B, reverse send). */
+    /** Service-account key (JSON) so noti can PUSH send-SMS commands to sndi (Phase B, reverse send).
+     *  Memoized - it's a multi-KB blob re-read on every heartbeat/command send. */
+    @Volatile
+    private var cachedServiceAccountJson: String? = null
     var serviceAccountJson: String
-        get() = prefs.getString(KEY_SA_JSON, "") ?: ""
+        get() {
+            cachedServiceAccountJson?.let { return it }
+            synchronized(this) {
+                cachedServiceAccountJson?.let { return it }
+                return (prefs.getString(KEY_SA_JSON, "") ?: "").also { cachedServiceAccountJson = it }
+            }
+        }
         set(value) {
             prefs.edit().putString(KEY_SA_JSON, value).apply()
+            cachedServiceAccountJson = value
         }
 
     /** Imported `google-services.json` contents, used to init Firebase (FCM) at runtime instead of
@@ -299,11 +320,22 @@ class Settings private constructor(private val prefs: SharedPreferences) {
 
     // ---- Muted conversations ----
 
-    /** Senders whose new messages are stored (and shown as unread) but don't raise a notification. */
+    /** Senders whose new messages are stored (and shown as unread) but don't raise a notification.
+     *  Memoized - the whole set is consulted per inbound notification. */
+    @Volatile
+    private var cachedMutedSenders: Set<String>? = null
     var mutedSenders: Set<String>
-        get() = prefs.getStringSet(KEY_MUTED_SENDERS, emptySet()) ?: emptySet()
+        get() {
+            cachedMutedSenders?.let { return it }
+            synchronized(this) {
+                cachedMutedSenders?.let { return it }
+                return (prefs.getStringSet(KEY_MUTED_SENDERS, emptySet()) ?: emptySet())
+                    .also { cachedMutedSenders = it }
+            }
+        }
         set(value) {
             prefs.edit().putStringSet(KEY_MUTED_SENDERS, value).apply()
+            cachedMutedSenders = value
         }
 
     fun isMuted(sender: String): Boolean = mutedSenders.contains(sender)

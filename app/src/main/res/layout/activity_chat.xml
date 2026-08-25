@@ -41,14 +41,51 @@
         </com.google.android.material.appbar.MaterialToolbar>
     </com.google.android.material.appbar.AppBarLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recycler"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:clipToPadding="false"
-        android:paddingTop="8dp"
-        android:paddingBottom="6dp" />
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingTop="8dp"
+            android:paddingBottom="6dp" />
+
+        <!-- Floating date pill: pinned to the top while a day's messages scroll by,
+             swapped for the next day's label instead of scrolling away with the content. -->
+        <TextView
+            android:id="@+id/txt_sticky_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal|top"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/date_pill_bg"
+            android:elevation="1dp"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:visibility="gone" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/btn_scroll_bottom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="14dp"
+            android:visibility="gone"
+            app:fabSize="mini"
+            app:shapeAppearance="@style/ShapeAppearance.Material3.Corner.Full"
+            app:srcCompat="@drawable/ic_arrow_down"
+            app:backgroundTint="?attr/colorSurfaceContainerHighest"
+            app:tint="?attr/colorOnSurfaceVariant"
+            android:contentDescription="@string/chat_scroll_to_bottom" />
+    </FrameLayout>
 
     <View
         android:layout_width="match_parent"

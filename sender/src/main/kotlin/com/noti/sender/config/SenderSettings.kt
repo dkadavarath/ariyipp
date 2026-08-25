@@ -15,10 +15,23 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK }
  */
 class SenderSettings private constructor(private val prefs: SharedPreferences) {
 
-    /** Service-account JSON used to authenticate FCM sends (imported via the file picker). */
+    /** Service-account JSON used to authenticate FCM sends (imported via the file picker).
+     *  Memoized like [deviceId] - it's a multi-KB blob, and EncryptedSharedPreferences decrypts
+     *  per read; this gets read on every SMS relay / heartbeat / token announce. */
+    @Volatile
+    private var cachedServiceAccountJson: String? = null
     var serviceAccountJson: String
-        get() = prefs.getString(KEY_SA_JSON, "") ?: ""
-        set(value) { prefs.edit().putString(KEY_SA_JSON, value).apply() }
+        get() {
+            cachedServiceAccountJson?.let { return it }
+            synchronized(this) {
+                cachedServiceAccountJson?.let { return it }
+                return (prefs.getString(KEY_SA_JSON, "") ?: "").also { cachedServiceAccountJson = it }
+            }
+        }
+        set(value) {
+            prefs.edit().putString(KEY_SA_JSON, value).apply()
+            cachedServiceAccountJson = value
+        }
 
     /** Imported `google-services.json` contents, used to init Firebase (FCM) at runtime instead of
      *  at build time. */
@@ -26,15 +39,46 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         get() = prefs.getString(KEY_FIREBASE_CONFIG_JSON, "") ?: ""
         set(value) { prefs.edit().putString(KEY_FIREBASE_CONFIG_JSON, value).apply() }
 
-    /** Pre-shared AES-256-GCM key (base64), the same value noti holds. */
+    /** Pre-shared AES-256-GCM key (base64), the same value noti holds. Memoized - read on every
+     *  relayed SMS and heartbeat. */
+    @Volatile
+    private var cachedRelayKey: String? = null
     var relayKey: String
-        get() = prefs.getString(KEY_RELAY_KEY, "") ?: ""
-        set(value) { prefs.edit().putString(KEY_RELAY_KEY, value.trim()).apply() }
+        get() {
+            cachedRelayKey?.let { return it }
+            synchronized(this) {
+                cachedRelayKey?.let { return it }
+                return (prefs.getString(KEY_RELAY_KEY, "") ?: "").also { cachedRelayKey = it }
+            }
+        }
+        set(value) {
+            val trimmed = value.trim()
+            prefs.edit().putString(KEY_RELAY_KEY, trimmed).apply()
+            cachedRelayKey = trimmed
+        }
 
-    /** noti's FCM registration token (the push target), obtained at pairing. */
+    /** noti's FCM registration token (the push target), obtained at pairing. Memoized. */
+    @Volatile
+    private var cachedNotiFcmToken: String? = null
     var notiFcmToken: String
-        get() = prefs.getString(KEY_NOTI_TOKEN, "") ?: ""
-        set(value) { prefs.edit().putString(KEY_NOTI_TOKEN, value.trim()).apply() }
+        get() {
+            cachedNotiFcmToken?.let { return it }
+            synchronized(this) {
+                cachedNotiFcmToken?.let { return it }
+                return (prefs.getString(KEY_NOTI_TOKEN, "") ?: "").also { cachedNotiFcmToken = it }
+            }
+        }
+        set(value) {
+            val trimmed = value.trim()
+            prefs.edit().putString(KEY_NOTI_TOKEN, trimmed).apply()
+            cachedNotiFcmToken = trimmed
+        }
+
+    /** Last token we know Main received (set after a successful announce), so the process-start
+     *  announce only fires when the token actually changed. */
+    var announcedToken: String
+        get() = prefs.getString(KEY_ANNOUNCED_TOKEN, "") ?: ""
+        set(value) { prefs.edit().putString(KEY_ANNOUNCED_TOKEN, value).apply() }
 
     /** This device's own FCM token, so noti can push send-SMS commands here (Phase B). */
     var myFcmToken: String
@@ -181,6 +225,7 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_RELAY_KEY = "relay_key"
         private const val KEY_NOTI_TOKEN = "noti_token"
         private const val KEY_MY_TOKEN = "my_token"
+        private const val KEY_ANNOUNCED_TOKEN = "announced_token"
         private const val KEY_ACCEPT_COMMANDS = "accept_commands"
         private const val KEY_FCM_ENABLED = "fcm_enabled"
         private const val KEY_N8N_ENABLED = "n8n_enabled"

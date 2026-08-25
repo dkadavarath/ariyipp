@@ -101,7 +101,7 @@ class ComposeActivity : ScreenActivity() {
         }
         val sim = selectedSim
         lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
+            val msgId = withContext(Dispatchers.IO) {
                 NotiDatabase.get(this@ComposeActivity).relayedMessageDao().insert(
                     RelayedMessageEntity(
                         sender = to, sim = "", body = body,
@@ -110,7 +110,7 @@ class ComposeActivity : ScreenActivity() {
                 )
             }
             val ok = withContext(Dispatchers.IO) {
-                NotiCommandSender.send(applicationContext, to, body, sim)
+                NotiCommandSender.send(applicationContext, to, body, sim, msgId)
             }
             if (!ok) Toast.makeText(this@ComposeActivity, R.string.chat_send_failed, Toast.LENGTH_SHORT).show()
             startActivity(

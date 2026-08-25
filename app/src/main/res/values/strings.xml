@@ -47,6 +47,7 @@
     <string name="chat_send_not_configured">Set up sending in Settings → Relay first.</string>
     <string name="chat_send_failed">Couldn\'t reach the companion - will not retry.</string>
     <string name="chat_close">Close</string>
+    <string name="chat_scroll_to_bottom">Scroll to latest</string>
     <string name="date_today">Today</string>
     <string name="date_yesterday">Yesterday</string>
 
@@ -235,7 +236,7 @@
     <string name="about_donate_url">https://ko-fi.com/dvkad</string>
     <string name="about_device_id">Device ID: %1$s</string>
     <string name="about_whats_new">What\'s new</string>
-    <string name="about_changelog">ariyipp v1.0 - Pair two phones over end-to-end encrypted FCM to relay SMS between them. The main device receives the relayed SMS as a searchable chat and can reply; the companion phone (with the SIM) forwards its incoming SMS and sends SMS on request. Pick a role on first run and switch anytime. Optional extras: notification capture to a webhook, encrypted backup and restore, per-conversation mute, and a liveness heartbeat that warns if the other device goes offline. Bring your own Firebase project (BYO-FCM).</string>
+    <string name="about_changelog">ariyipp v1.1 - Chat screen redesign: compact bubbles with an inline timestamp, a floating date header, and a jump-to-latest button, grouped by day. Delivery-receipt ticks on sent messages are now real (received by companion / handed to SIM / carrier-confirmed) instead of decorative. Performance pass: chats open by loading only the newest history page, the conversation list updates itself live instead of polling, relayed payloads are smaller over the air, long SMS split reliably, connections are reused instead of re-authenticating on every send, cold start skips crypto work off the main thread, chat history respects a retention setting, and the conversation list/search now stay fast via a dedicated index as history grows. Also a batch of UI bug fixes: bubble line spacing, RTL timestamp placement, a shared-background flicker, and an oversized corner-radius clamp on short messages.\n\nariyipp v1.0 - Pair two phones over end-to-end encrypted FCM to relay SMS between them. The main device receives the relayed SMS as a searchable chat and can reply; the companion phone (with the SIM) forwards its incoming SMS and sends SMS on request. Pick a role on first run and switch anytime. Optional extras: notification capture to a webhook, encrypted backup and restore, per-conversation mute, and a liveness heartbeat that warns if the other device goes offline. Bring your own Firebase project (BYO-FCM).</string>
 
     <!-- Help screen -->
     <string name="help_title">Help</string>

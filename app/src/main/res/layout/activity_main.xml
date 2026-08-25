@@ -46,15 +46,15 @@
 
         <!-- Pinned to the screen (not the scrolling content) so the expanded header can't push it
              off-screen; shown only on the Messages tab. -->
-        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fab_compose"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|end"
             android:layout_margin="16dp"
             android:visibility="gone"
-            android:text="@string/compose_new"
-            app:icon="@drawable/ic_edit" />
+            android:contentDescription="@string/compose_new"
+            app:srcCompat="@drawable/ic_edit" />
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
     <!-- Menu is inflated per-role in MainActivity (hub vs companion). -->

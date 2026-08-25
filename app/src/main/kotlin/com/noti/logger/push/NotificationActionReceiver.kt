@@ -76,14 +76,14 @@ class NotificationActionReceiver : BroadcastReceiver() {
                         }
                         val dao = NotiDatabase.get(app).relayedMessageDao()
                         // Optimistically record the outgoing message (same as in-chat compose).
-                        dao.insert(
+                        val msgId = dao.insert(
                             RelayedMessageEntity(
                                 sender = sender, sim = "", body = text,
                                 receivedAt = System.currentTimeMillis(), outgoing = 1,
                             )
                         )
                         dao.markRead(sender)
-                        val ok = NotiCommandSender.send(app, sender, text)
+                        val ok = NotiCommandSender.send(app, sender, text, msgId = msgId)
                         if (ok) {
                             NotificationManagerCompat.from(app).cancel(notifId)
                         } else {

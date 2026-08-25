@@ -6,8 +6,11 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.RelayedMessageDao
 import com.noti.logger.data.RelayedMessageEntity
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -98,5 +101,90 @@ class RelayedMessageDaoTest {
         assertEquals(1, after["+222"]!!.unread)   // untouched
         assertEquals(1, dao.totalUnread())
         assertEquals("marking again is a no-op", 0, dao.markRead("+111"))
+    }
+
+    // ---- Paging (ChatActivity's newest-page + scroll-up history) ----
+
+    private fun insertConversation(sender: String, count: Int, startAt: Long): List<Long> =
+        (0 until count).map { i -> dao.insert(msg(sender, "m$i", startAt + i)) }
+
+    @Test
+    fun messagesPage_returns_the_newest_window_oldest_first() {
+        insertConversation("+111", 10, 100)
+        val page = dao.messagesPage("+111", limit = 4, offset = 0)
+        assertEquals(4, page.size)
+        // Newest four (m6..m9), but still in chronological order for the chat timeline.
+        assertEquals(listOf("m6", "m7", "m8", "m9"), page.map { it.body })
+    }
+
+    @Test
+    fun messagesPage_walks_back_older_pages_with_offset() {
+        insertConversation("+111", 10, 100)
+        val older = dao.messagesPage("+111", limit = 4, offset = 4)
+        assertEquals(listOf("m2", "m3", "m4", "m5"), older.map { it.body })
+
+        val oldest = dao.messagesPage("+111", limit = 4, offset = 8)
+        assertEquals("a short trailing page means 'all loaded'", listOf("m0", "m1"), oldest.map { it.body })
+
+        assertTrue("offset past the start is empty", dao.messagesPage("+111", limit = 4, offset = 12).isEmpty())
+    }
+
+    @Test
+    fun messagesPage_scopes_strictly_to_one_sender() {
+        insertConversation("+111", 5, 100)
+        insertConversation("+222", 3, 500)
+        assertEquals(3, dao.messagesPage("+222", limit = 10, offset = 0).size)
+        assertEquals("+222", dao.messagesPage("+222", limit = 10, offset = 0).first().sender)
+    }
+
+    @Test
+    fun purgeOlderThan_deletes_only_rows_before_the_cutoff() {
+        val now = System.currentTimeMillis()
+        dao.insert(msg("+old", "ancient", now - 40L * 86_400_000))
+        dao.insert(msg("+edge", "yesterday", now - 86_400_000))
+        dao.insert(msg("+new", "fresh", now - 60_000))
+
+        val deleted = dao.purgeOlderThan(now - 30L * 86_400_000)
+
+        assertEquals(1, deleted)
+        assertTrue("40-day-old row is gone", dao.messagesFor("+old").isEmpty())
+        assertEquals(2, dao.conversations().size)
+    }
+
+    @Test
+    fun conversationsFlow_emits_the_current_aggregate() = runBlocking {
+        dao.insert(msg("+111", "hi", 100))
+        dao.insert(msg("+222", "yo", 200))
+
+        val convos = dao.conversationsFlow().first()
+
+        assertEquals(listOf("+222", "+111"), convos.map { it.sender })
+        assertEquals(1, convos[0].count)
+    }
+
+    @Test
+    fun changeToken_reacts_to_inserts_deletes_and_status_updates_but_not_markRead() = runBlocking {
+        val initial = dao.changeToken().first()
+        assertEquals(0, initial.rows)
+
+        val id = dao.insert(msg("+111", "hi", 100))
+        val afterInsert = dao.changeToken().first()
+        assertEquals(1, afterInsert.rows)
+        assertEquals(id, afterInsert.maxId)
+
+        // A delivery-status update must move the token even though the row count doesn't change -
+        // this is what drives live tick updates in an open chat.
+        dao.updateStatus(id, com.noti.shared.WireMessage.DeliveryAck.SMS_DELIVERED)
+        val afterAck = dao.changeToken().first()
+        assertEquals(afterInsert.maxStatus + 3, afterAck.maxStatus)
+        assertTrue(afterAck != afterInsert)
+
+        // Marking read changes neither rows, maxStatus, nor maxId - the token must stay put so an
+        // open chat doesn't reload itself in a loop after its own markRead.
+        dao.markRead("+111")
+        assertEquals(afterAck, dao.changeToken().first())
+
+        dao.deleteMessage(id)
+        assertTrue(dao.changeToken().first() != afterAck)
     }
 }

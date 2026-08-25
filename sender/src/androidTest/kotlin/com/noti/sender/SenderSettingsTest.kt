@@ -23,6 +23,8 @@ class SenderSettingsTest {
         s.serviceAccountJson = ""
         s.relayKey = ""
         s.notiFcmToken = ""
+        s.myFcmToken = ""
+        s.announcedToken = ""
         s.n8nUrl = ""
         s.n8nToken = ""
         s.n8nAuthHeaderPrefix = "Bearer "
@@ -67,5 +69,42 @@ class SenderSettingsTest {
     fun device_id_is_stable_across_lookups() {
         assertEquals(SenderSettings.get(ctx).deviceId, SenderSettings.get(ctx).deviceId)
         assertTrue(SenderSettings.get(ctx).deviceId.isNotBlank())
+    }
+
+    // ---- Memoized hot secrets: writes must invalidate the cache ----
+
+    @Test
+    fun memoized_secrets_reflect_updates_immediately() {
+        val s = SenderSettings.get(ctx)
+
+        s.relayKey = "key-one"
+        assertEquals("key-one", s.relayKey)
+        s.relayKey = "  key-two  " // trimmed on write
+        assertEquals("write invalidates the cached value", "key-two", s.relayKey)
+
+        s.notiFcmToken = "tok-one"
+        assertEquals("tok-one", s.notiFcmToken)
+        s.notiFcmToken = "tok-two"
+        assertEquals("tok-two", s.notiFcmToken)
+
+        s.serviceAccountJson = """{"a":1}"""
+        assertEquals("""{"a":1}""", s.serviceAccountJson)
+        s.serviceAccountJson = """{"b":2}"""
+        assertEquals("""{"b":2}""", s.serviceAccountJson)
+    }
+
+    @Test
+    fun announced_token_defaults_blank_and_round_trips() {
+        val s = SenderSettings.get(ctx)
+        s.announcedToken = ""
+        assertEquals("", s.announcedToken)
+
+        // The process-start gate: announce only when the live token differs from the announced one.
+        s.myFcmToken = "token-current"
+        assertTrue(s.myFcmToken != s.announcedToken)
+        s.announcedToken = s.myFcmToken
+        assertEquals("after a successful announce the two match (no re-announce)", s.myFcmToken, s.announcedToken)
+        s.myFcmToken = "token-rotated"
+        assertTrue("a rotation re-arms the announce", s.myFcmToken != s.announcedToken)
     }
 }

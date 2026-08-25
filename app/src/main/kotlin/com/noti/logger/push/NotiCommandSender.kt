@@ -21,9 +21,11 @@ object NotiCommandSender {
 
     /**
      * Returns true if FCM accepted the command. [sim] is the SIM slot sndi should send from
-     * (0/1), or -1 for its default SIM.
+     * (0/1), or -1 for its default SIM. [msgId] is the local chat row id for this message (0 if
+     * none, e.g. not yet inserted) - echoed back by the companion in its delivery acks so the
+     * right bubble's ticks can be updated.
      */
-    fun send(context: Context, to: String, body: String, sim: Int = -1): Boolean {
+    fun send(context: Context, to: String, body: String, sim: Int = -1, msgId: Long = 0): Boolean {
         val s = Settings.get(context)
         if (!isConfigured(s)) {
             val missing = buildList {
@@ -34,9 +36,9 @@ object NotiCommandSender {
             Diag.log("compose FAILED - not configured: missing $missing (Settings → Relay)")
             return false
         }
-        val payload = MessageCrypto.encrypt(Wire.encode(WireMessage.Command(to, body, sim)), s.relayKey)
+        val payload = MessageCrypto.encrypt(Wire.encode(WireMessage.Command(to, body, sim, msgId)), s.relayKey)
         return try {
-            val res = FcmSender(s.serviceAccountJson).send(s.sndiFcmToken, mapOf("payload" to payload))
+            val res = FcmSender.forServiceAccount(s.serviceAccountJson).send(s.sndiFcmToken, mapOf("payload" to payload))
             Diag.log(
                 when {
                     res.ok -> "compose → HTTP 200 - command sent to the companion"
