@@ -6,13 +6,13 @@ import android.widget.ImageView
 import android.widget.TextView
 
 /**
- * Signal-style contact avatars: a solid colored circle with the contact's initials (or a person
+ * Contact avatars: a solid colored circle with the contact's initials (or a person
  * glyph for a bare phone number). The color is deterministic per conversation key, so a given sender
  * always gets the same one.
  */
 object Avatars {
 
-    // A curated palette that reads well with white text (Material ~700 tones), à la Signal.
+    // A curated palette that reads well with white text (Material ~700 tones).
     private val palette = intArrayOf(
         0xFFC2185B.toInt(), // crimson
         0xFF7B1FA2.toInt(), // purple

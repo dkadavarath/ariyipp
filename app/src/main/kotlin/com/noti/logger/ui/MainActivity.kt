@@ -115,7 +115,7 @@ class MainActivity : AppCompatActivity() {
         updateMessagesBadge()
     }
 
-    /** Shows the total unread count as a badge on the Messages tab (Signal-style). MAIN only. */
+    /** Shows the total unread count as a badge on the Messages tab. MAIN only. */
     fun updateMessagesBadge() {
         if (role != Role.MAIN) return
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)

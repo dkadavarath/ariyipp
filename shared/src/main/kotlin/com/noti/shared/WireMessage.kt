@@ -19,7 +19,11 @@ enum class Role { MAIN, COMPANION }
 @Serializable
 sealed interface WireMessage {
 
-    /** Companion → Main: a relayed SMS to show and notify. */
+    /** Companion → Main: a relayed SMS to show and notify.
+     *  [part]/[parts] carry body chunking for long SMS: when the encrypted payload would exceed
+     *  FCM's 4096-byte data cap, the sender splits the body into [parts] slices and ships one
+     *  Relay each ([part] = 0-based index). Single-message relays keep the defaults, which are
+     *  omitted on the wire (encodeDefaults = false). */
     @Serializable
     @SerialName("relay")
     data class Relay(
@@ -27,16 +31,41 @@ sealed interface WireMessage {
         val body: String = "",
         val dedupe: String = "",
         val time: Long = 0,
+        val part: Int = 0,
+        val parts: Int = 1,
     ) : WireMessage
 
-    /** Main → Companion: send this SMS from the SIM. */
+    /** Main → Companion: send this SMS from the SIM. [msgId] is Main's local row id for this
+     *  message, echoed back in a [DeliveryAck] so Main can match the ack to the right chat bubble. */
     @Serializable
     @SerialName("command")
     data class Command(
         val to: String = "",
         val body: String = "",
         val sim: Int = -1,
+        val msgId: Long = 0,
     ) : WireMessage
+
+    /**
+     * Companion → Main: what happened to the [Command] with this [msgId]. [status] is one of
+     * [DeliveryAck.RECEIVED] (the command reached the companion), [DeliveryAck.SMS_SENT] (handed
+     * off to the SIM successfully), [DeliveryAck.SMS_DELIVERED] (a carrier delivery report
+     * confirmed it reached the recipient - not all carriers send these, so this stage may never
+     * arrive even for a message that delivered fine), or [DeliveryAck.FAILED].
+     */
+    @Serializable
+    @SerialName("ack")
+    data class DeliveryAck(
+        val msgId: Long = 0,
+        val status: Int = 0,
+    ) : WireMessage {
+        companion object {
+            const val RECEIVED = 1
+            const val SMS_SENT = 2
+            const val SMS_DELIVERED = 3
+            const val FAILED = 4
+        }
+    }
 
     /** Main → Companion: overwrite the companion's webhook config (companion may ignore via a toggle). */
     @Serializable
@@ -73,7 +102,10 @@ object Wire {
     private val json = Json {
         classDiscriminator = "t"
         ignoreUnknownKeys = true
-        encodeDefaults = true
+        // Omit fields equal to their defaults: trims ~30-40% off typical relay payloads (FCM's
+        // data-message budget is 4096 bytes and base64 already adds +33%). Decode fills the
+        // defaults back in, so old peers that DO encode defaults still decode fine.
+        encodeDefaults = false
     }
 
     fun encode(message: WireMessage): String = json.encodeToString(message)

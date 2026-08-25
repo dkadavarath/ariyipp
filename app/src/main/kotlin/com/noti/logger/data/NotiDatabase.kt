@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [NotificationEntity::class, RelayedMessageEntity::class],
-    version = 5,
+    version = 7,
     exportSchema = false,
 )
 abstract class NotiDatabase : RoomDatabase() {
@@ -64,13 +64,35 @@ abstract class NotiDatabase : RoomDatabase() {
             }
         }
 
+        /** v5 → v6: add a delivery-status column to relayed_messages, driven by the companion's
+         *  DeliveryAck (received / sent / delivered / failed). Existing rows default to pending. */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE relayed_messages ADD COLUMN status INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** v6 → v7: add a compound (sender, receivedAt) index to relayed_messages so the
+         *  "latest message per sender" correlated subquery in conversations()/searchConversations()
+         *  is an index seek instead of an O(N^2) scan as history grows. */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_relayed_messages_sender_receivedAt " +
+                        "ON relayed_messages(sender, receivedAt)"
+                )
+            }
+        }
+
         fun get(context: Context): NotiDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     NotiDatabase::class.java,
                     "noti.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build().also { INSTANCE = it }
+                ).addMigrations(
+                    MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7
+                ).build().also { INSTANCE = it }
             }
         }
     }

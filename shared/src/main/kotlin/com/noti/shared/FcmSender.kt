@@ -30,6 +30,25 @@ data class FcmSendResult(val httpCode: Int, val ok: Boolean, val detail: String)
  */
 class FcmSender(serviceAccountJson: String) {
 
+    companion object {
+        // One instance per service-account key, process-wide: keeps the parsed key, the derived RSA
+        // private key, and the cached OAuth token (~1h) alive across all callers (heartbeat, command
+        // sends, SMS relay). Without this, every send re-parses the JSON, re-signs a JWT, and pays an
+        // extra HTTPS round-trip to the token endpoint. Guarded because sends can overlap across
+        // worker threads.
+        @Volatile private var cached: FcmSender? = null
+        @Volatile private var cachedKey: String = ""
+
+        @Synchronized
+        fun forServiceAccount(serviceAccountJson: String): FcmSender {
+            cached?.let { if (cachedKey == serviceAccountJson) return it }
+            return FcmSender(serviceAccountJson).also {
+                cached = it
+                cachedKey = serviceAccountJson
+            }
+        }
+    }
+
     @Serializable
     private data class ServiceAccount(
         @SerialName("client_email") val clientEmail: String,
@@ -134,21 +153,19 @@ class FcmSender(serviceAccountJson: String) {
 
     private fun httpPost(url: String, contentType: String, body: ByteArray, bearer: String?): Pair<Int, String> {
         val conn = URL(url).openConnection() as HttpURLConnection
-        return try {
-            conn.requestMethod = "POST"
-            conn.connectTimeout = 15_000
-            conn.readTimeout = 20_000
-            conn.doOutput = true
-            conn.setRequestProperty("Content-Type", contentType)
-            if (bearer != null) conn.setRequestProperty("Authorization", "Bearer $bearer")
-            conn.outputStream.use { it.write(body) }
-            val code = conn.responseCode
-            val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-            val resp = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            code to resp
-        } finally {
-            conn.disconnect()
-        }
+        // No disconnect() here: with the streams closed (below), the connection returns to the JVM's
+        // keep-alive pool, so the next send skips DNS+TCP+TLS. disconnect() would kill that socket.
+        conn.requestMethod = "POST"
+        conn.connectTimeout = 15_000
+        conn.readTimeout = 20_000
+        conn.doOutput = true
+        conn.setRequestProperty("Content-Type", contentType)
+        if (bearer != null) conn.setRequestProperty("Authorization", "Bearer $bearer")
+        conn.outputStream.use { it.write(body) }
+        val code = conn.responseCode
+        val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+        val resp = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+        return code to resp
     }
 
     /** Pulls the message id (success) or the error status (failure) out of an FCM response body. */

@@ -37,6 +37,25 @@ class MessageCryptoTest {
     }
 
     @Test
+    fun `large payloads are gzipped and round-trip`() {
+        // Repetitive text compresses hard; the encrypted blob must come back byte-for-byte.
+        val plain = ("Your verification code is 483920. ".repeat(50))
+        val encrypted = MessageCrypto.encrypt(plain, key)
+        assertEquals(plain, MessageCrypto.decrypt(encrypted, key))
+        // And the compression actually bought headroom vs the raw base64 size.
+        assert(encrypted.length < plain.length)
+    }
+
+    @Test
+    fun `legacy uncompressed payloads from older peers still decrypt`() {
+        // Simulate an old build's output by encrypting the bytes directly below the gzip threshold:
+        // no magic prefix, so decrypt must treat it as verbatim UTF-8.
+        val plain = "short and uncompressed"
+        val encrypted = MessageCrypto.encryptBytes(plain.toByteArray(Charsets.UTF_8), key)
+        assertEquals(plain, MessageCrypto.decrypt(encrypted, key))
+    }
+
+    @Test
     fun `a generated key round-trips`() {
         val k = MessageCrypto.generateKeyBase64()
         assertEquals("hello", MessageCrypto.decrypt(MessageCrypto.encrypt("hello", k), k))

@@ -5,24 +5,52 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <com.google.android.material.textfield.TextInputLayout
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="12dp"
+        android:layout_marginHorizontal="16dp"
         android:layout_marginTop="8dp"
-        app:startIconDrawable="@android:drawable/ic_menu_search"
-        app:endIconMode="clear_text">
+        android:layout_marginBottom="4dp"
+        android:background="@drawable/search_pill_bg">
 
-        <com.google.android.material.textfield.TextInputEditText
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="start|center_vertical"
+            android:layout_marginStart="14dp"
+            android:src="@drawable/ic_search"
+            app:tint="?attr/colorOnSurfaceVariant"
+            android:contentDescription="@null" />
+
+        <EditText
             android:id="@+id/et_search"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@null"
+            android:paddingStart="46dp"
+            android:paddingEnd="42dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
             android:hint="@string/messages_search_hint"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
             android:inputType="text"
             android:maxLines="1"
-            android:imeOptions="actionSearch" />
-    </com.google.android.material.textfield.TextInputLayout>
+            android:imeOptions="actionSearch"
+            android:importantForAutofill="no" />
+
+        <ImageView
+            android:id="@+id/img_search_clear"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="end|center_vertical"
+            android:layout_marginEnd="14dp"
+            android:src="@drawable/ic_close"
+            app:tint="?attr/colorOnSurfaceVariant"
+            android:visibility="gone"
+            android:contentDescription="@string/chat_close" />
+    </FrameLayout>
 
     <FrameLayout
         android:layout_width="match_parent"

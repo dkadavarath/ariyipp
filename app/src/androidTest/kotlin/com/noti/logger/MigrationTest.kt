@@ -55,6 +55,7 @@ class MigrationTest {
             .addMigrations(
                 NotiDatabase.MIGRATION_1_2, NotiDatabase.MIGRATION_2_3,
                 NotiDatabase.MIGRATION_3_4, NotiDatabase.MIGRATION_4_5,
+                NotiDatabase.MIGRATION_5_6, NotiDatabase.MIGRATION_6_7,
             )
             .build()
         runBlocking {

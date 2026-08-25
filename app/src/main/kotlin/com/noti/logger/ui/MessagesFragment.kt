@@ -14,10 +14,12 @@ import com.google.android.material.color.MaterialColors
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import android.widget.EditText
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.textfield.TextInputEditText
 import com.noti.logger.R
 import com.noti.logger.config.Settings
 import com.noti.logger.data.ConversationSummary
@@ -28,6 +30,7 @@ import com.noti.logger.util.Haptics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -35,13 +38,17 @@ import kotlinx.coroutines.withContext
 class MessagesFragment : Fragment(R.layout.fragment_messages) {
 
     private lateinit var adapter: ConversationAdapter
-    private lateinit var search: TextInputEditText
+    private lateinit var search: EditText
+    private lateinit var searchClear: View
 
     /** While the search is active (focused or non-empty), Back dismisses it instead of leaving the app. */
     private lateinit var searchBack: OnBackPressedCallback
 
     /** Debounce so a burst of keystrokes triggers one query, not one per character. */
     private var searchJob: Job? = null
+
+    /** Active conversation-list collection; restarted when the search query changes. */
+    private var listJob: Job? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         adapter = ConversationAdapter(
@@ -56,12 +63,15 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
             adapter = this@MessagesFragment.adapter
         }
         search = view.findViewById(R.id.et_search)
+        searchClear = view.findViewById(R.id.img_search_clear)
         search.doAfterTextChanged {
+            searchClear.visibility = if (it.isNullOrEmpty()) View.GONE else View.VISIBLE
             updateSearchBack()
             searchJob?.cancel()
-            searchJob = viewLifecycleOwner.lifecycleScope.launch { delay(220); refresh() }
+            searchJob = viewLifecycleOwner.lifecycleScope.launch { delay(220); observeConversations() }
         }
         search.setOnFocusChangeListener { _, _ -> updateSearchBack() }
+        searchClear.setOnClickListener { closeSearch() }
 
         searchBack = object : OnBackPressedCallback(false) {
             override fun handleOnBackPressed() = closeSearch()
@@ -85,21 +95,29 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
 
     override fun onResume() {
         super.onResume()
-        refresh() // pick up messages that arrived while away
+        // No manual reload needed: the Room Flow below re-emits on any table change. (Mute toggles
+        // are prefs, not Room, so they re-observe explicitly.)
+        observeConversations()
     }
 
-    private fun refresh() {
+    /**
+     * Collects the conversation list as a Room Flow: inserts/reads/deletes anywhere in the app push
+     * a fresh aggregate here, instead of re-querying the whole table on every resume.
+     */
+    private fun observeConversations() {
         val query = search.text?.toString().orEmpty().trim()
-        viewLifecycleOwner.lifecycleScope.launch {
-            val (convos, muted) = withContext(Dispatchers.IO) {
-                val dao = NotiDatabase.get(requireContext()).relayedMessageDao()
-                val list = if (query.isEmpty()) dao.conversations() else dao.searchConversations(query)
-                // Read the muted set once here instead of decrypting it per row in onBindViewHolder.
+        listJob?.cancel()
+        listJob = viewLifecycleOwner.lifecycleScope.launch {
+            val dao = NotiDatabase.get(requireContext()).relayedMessageDao()
+            val flow = if (query.isEmpty()) dao.conversationsFlow() else dao.searchConversationsFlow(query)
+            flow.map { list ->
+                // Read the muted set once per emission instead of decrypting it per row in onBind.
                 list to Settings.get(requireContext()).mutedSenders
+            }.collect { (convos, muted) ->
+                adapter.submit(convos, muted)
+                view?.findViewById<View>(R.id.txt_empty)?.visibility =
+                    if (convos.isEmpty()) View.VISIBLE else View.GONE
             }
-            adapter.submit(convos, muted)
-            view?.findViewById<View>(R.id.txt_empty)?.visibility =
-                if (convos.isEmpty()) View.VISIBLE else View.GONE
         }
     }
 
@@ -115,7 +133,7 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
             .setTitle(sender)
             .setItems(items) { _, which ->
                 when (which) {
-                    0 -> { s.setMuted(sender, !muted); refresh() }
+                    0 -> { s.setMuted(sender, !muted); observeConversations() }
                     1 -> markConversationRead(sender)
                     2 -> deleteConversation(sender)
                 }
@@ -128,7 +146,6 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
             withContext(Dispatchers.IO) {
                 NotiDatabase.get(requireContext()).relayedMessageDao().markRead(sender)
             }
-            refresh()
             (activity as? MainActivity)?.updateMessagesBadge()
         }
     }
@@ -142,20 +159,30 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
                     withContext(Dispatchers.IO) {
                         NotiDatabase.get(requireContext()).relayedMessageDao().deleteConversation(sender)
                     }
-                    refresh()
                     (activity as? MainActivity)?.updateMessagesBadge()
                 }
             }
             .show()
     }
 
-    private inner class ConversationAdapter(
+    /** ListAdapter + DiffUtil: only the rows that changed rebind, instead of the whole list
+     *  repainting on every refresh (ChatActivity's bubbles already diff the same way). */
+    private class ConversationAdapter(
         val onClick: (String) -> Unit,
         val onLongClick: (String) -> Unit,
-    ) : RecyclerView.Adapter<ConversationVH>() {
+    ) : ListAdapter<ConversationAdapter.Row, ConversationVH>(DIFF) {
 
-        private val items = ArrayList<ConversationSummary>()
-        private var mutedSenders: Set<String> = emptySet()
+        /** A row = the aggregate plus everything bind() needs that isn't in the DB (muted state). */
+        data class Row(val summary: ConversationSummary, val muted: Boolean)
+
+        companion object {
+            private val DIFF = object : DiffUtil.ItemCallback<Row>() {
+                override fun areItemsTheSame(oldItem: Row, newItem: Row) =
+                    oldItem.summary.sender == newItem.summary.sender
+
+                override fun areContentsTheSame(oldItem: Row, newItem: Row) = oldItem == newItem
+            }
+        }
 
         // Theme colours, resolved once (they don't change while the fragment is alive).
         private var colorOnSurface = 0
@@ -169,7 +196,7 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
         }
 
         fun submit(list: List<ConversationSummary>, muted: Set<String>) {
-            items.clear(); items.addAll(list); mutedSenders = muted; notifyDataSetChanged()
+            submitList(list.map { Row(it, it.sender in muted) })
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ConversationVH {
@@ -177,45 +204,43 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
             return ConversationVH(v)
         }
 
-        override fun getItemCount() = items.size
-
         override fun onBindViewHolder(holder: ConversationVH, position: Int) {
-            val c = items[position]
+            val c = getItem(position)
             val ctx = holder.itemView.context
-            holder.sender.text = c.sender
-            holder.last.text = c.lastBody
-            holder.time.text = ChatTime.listStamp(ctx, c.lastAt)
-            Avatars.apply(holder.avatar, holder.avatarInitials, holder.avatarIcon, c.sender)
+            holder.sender.text = c.summary.sender
+            holder.last.text = c.summary.lastBody
+            holder.time.text = ChatTime.listStamp(ctx, c.summary.lastAt)
+            Avatars.apply(holder.avatar, holder.avatarInitials, holder.avatarIcon, c.summary.sender)
 
-            // Signal-style: an unread conversation gets a bold name, a darker preview, an accent
+            // An unread conversation gets a bold name, a darker preview, an accent
             // timestamp, and a count badge; a read one is quieter.
-            val unread = c.unread > 0
+            val unread = c.summary.unread > 0
             holder.sender.setTypeface(null, if (unread) Typeface.BOLD else Typeface.NORMAL)
             holder.last.setTypeface(null, if (unread) Typeface.BOLD else Typeface.NORMAL)
             holder.last.setTextColor(if (unread) colorOnSurface else colorOnSurfaceVariant)
             holder.time.setTextColor(if (unread) colorPrimary else colorOnSurfaceVariant)
             if (unread) {
                 holder.unread.visibility = View.VISIBLE
-                holder.unread.text = if (c.unread > 99) "99+" else c.unread.toString()
+                holder.unread.text = if (c.summary.unread > 99) "99+" else c.summary.unread.toString()
             } else {
                 holder.unread.visibility = View.GONE
             }
 
-            holder.muted.visibility = if (c.sender in mutedSenders) View.VISIBLE else View.GONE
+            holder.muted.visibility = if (c.muted) View.VISIBLE else View.GONE
 
-            holder.itemView.setOnClickListener { onClick(c.sender) }
-            holder.itemView.setOnLongClickListener { Haptics.longPress(it); onLongClick(c.sender); true }
+            holder.itemView.setOnClickListener { onClick(c.summary.sender) }
+            holder.itemView.setOnLongClickListener { Haptics.longPress(it); onLongClick(c.summary.sender); true }
         }
     }
+}
 
-    private inner class ConversationVH(v: View) : RecyclerView.ViewHolder(v) {
-        val sender: TextView = v.findViewById(R.id.txt_sender)
-        val last: TextView = v.findViewById(R.id.txt_last)
-        val time: TextView = v.findViewById(R.id.txt_time)
-        val unread: TextView = v.findViewById(R.id.txt_unread)
-        val muted: ImageView = v.findViewById(R.id.ic_muted)
-        val avatar: View = v.findViewById(R.id.avatar)
-        val avatarInitials: TextView = v.findViewById(R.id.avatar_initials)
-        val avatarIcon: ImageView = v.findViewById(R.id.avatar_icon)
-    }
+private class ConversationVH(v: View) : RecyclerView.ViewHolder(v) {
+    val sender: TextView = v.findViewById(R.id.txt_sender)
+    val last: TextView = v.findViewById(R.id.txt_last)
+    val time: TextView = v.findViewById(R.id.txt_time)
+    val unread: TextView = v.findViewById(R.id.txt_unread)
+    val muted: ImageView = v.findViewById(R.id.ic_muted)
+    val avatar: View = v.findViewById(R.id.avatar)
+    val avatarInitials: TextView = v.findViewById(R.id.avatar_initials)
+    val avatarIcon: ImageView = v.findViewById(R.id.avatar_icon)
 }

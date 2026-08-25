@@ -3,6 +3,7 @@ package com.noti.sender
 import android.content.Context
 import com.noti.sender.config.SenderSettings
 import com.noti.shared.Diag
+import com.noti.shared.FcmSendResult
 import com.noti.shared.FcmSender
 import com.noti.sender.net.WebhookPoster
 import com.noti.sender.sms.CapturedSms
@@ -23,24 +24,67 @@ import com.noti.shared.epochMillisToIso
  */
 object SenderPipeline {
 
-    // Reuse one FcmSender so its cached OAuth token (valid ~1h) is kept, instead of re-parsing the
-    // key, re-signing a JWT, and re-doing the token exchange on every SMS. Rebuilt only when the
-    // service-account key changes. Guarded because sends can overlap across worker threads.
-    @Volatile private var cachedSender: FcmSender? = null
-    @Volatile private var cachedSenderKey: String = ""
-
-    @Synchronized
-    private fun fcmSender(serviceAccountJson: String): FcmSender {
-        cachedSender?.let { if (cachedSenderKey == serviceAccountJson) return it }
-        return FcmSender(serviceAccountJson).also {
-            cachedSender = it
-            cachedSenderKey = serviceAccountJson
-        }
-    }
+    // The per-key instance cache lives in FcmSender's companion, shared process-wide by every
+    // caller (this pipeline, heartbeat, command sends) so the OAuth token survives across all of them.
+    private fun fcmSender(serviceAccountJson: String): FcmSender =
+        FcmSender.forServiceAccount(serviceAccountJson)
 
     /** The encrypted FCM data payload for ippu: AES-GCM over the serialized wire message. */
     fun encryptForFcm(message: WireMessage, keyBase64: String): String =
         MessageCrypto.encrypt(Wire.encode(message), keyBase64)
+
+    /**
+     * FCM v1 caps a data message at 4096 bytes, and our envelope (token ~150-250 chars + JSON
+     * scaffolding + base64's +33%) eats several hundred of those. A payload over this pre-encryption
+     * character budget risks a permanent HTTP 400 that would abort whole-inbox repushes — so long
+     * bodies are split into part-relays instead (reassembled by ippu).
+     */
+    const val MAX_PAYLOAD_CHARS = 2_500
+
+    private const val MAX_PARTS = 8
+
+    /**
+     * Encrypted FCM payloads for [message]: one element for a normal relay, or one per body chunk
+     * when the whole payload would exceed [MAX_PAYLOAD_CHARS]. Pure - unit-testable.
+     */
+    fun encryptedPayloads(message: WireMessage.Relay, keyBase64: String): List<String> {
+        val whole = encryptForFcm(message, keyBase64)
+        if (whole.length <= MAX_PAYLOAD_CHARS || message.body.isEmpty()) return listOf(whole)
+
+        // Find the smallest part count whose every chunk fits the budget.
+        var parts = 2
+        var chunks: List<String> = emptyList()
+        while (parts <= MAX_PARTS) {
+            chunks = splitBody(message.body, parts)
+            val allFit = chunks.all { chunk ->
+                encryptForFcm(message.copy(body = chunk, parts = parts), keyBase64).length <= MAX_PAYLOAD_CHARS
+            }
+            if (allFit) break
+            parts++
+        }
+        if (parts > MAX_PARTS) return listOf(whole) // unsplittable; let FCM reject as before
+
+        return chunks.mapIndexed { i, chunk ->
+            encryptForFcm(message.copy(body = chunk, part = i, parts = parts), keyBase64)
+        }
+    }
+
+    /** Splits [body] into exactly [parts] slices at code-point boundaries (never inside an emoji). */
+    private fun splitBody(body: String, parts: Int): List<String> {
+        val out = ArrayList<String>(parts)
+        val approxPerPart = body.length / parts
+        var start = 0
+        for (i in 0 until parts) {
+            var end = if (i == parts - 1) body.length else minOf(body.length, start + approxPerPart)
+            // Keep surrogate pairs together.
+            if (end in (start + 1) until body.length &&
+                Character.isHighSurrogate(body[end - 1]) && Character.isLowSurrogate(body[end])
+            ) end--
+            out.add(body.substring(start, maxOf(start, end)))
+            start = maxOf(start, end)
+        }
+        return out
+    }
 
     /** What ippu shows: sender "on <sim>" as the title (e.g. "+971500000000 on e&"), body verbatim. */
     fun fcmMessage(sms: CapturedSms): WireMessage.Relay =
@@ -64,19 +108,26 @@ object SenderPipeline {
 
     enum class SendOutcome { DELIVERED, TRANSIENT, PERMANENT, NOT_CONFIGURED }
 
-    /** Encrypted FCM push of one SMS to ippu. Logs a reason only on failure (quiet on success). */
+    /** Encrypted FCM push of one SMS to ippu. Logs a reason only on failure (quiet on success).
+     *  Bodies too large for one FCM data message are sent as part-relays (see [encryptedPayloads]);
+     *  the send stops at the first failed leg so retries re-send from that part. */
     fun pushToIppu(context: Context, sms: CapturedSms): SendOutcome {
         val s = SenderSettings.get(context)
         if (!isConfigured(s)) return SendOutcome.NOT_CONFIGURED
         return try {
-            val payload = encryptForFcm(fcmMessage(sms), s.relayKey)
-            val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload))
+            val payloads = encryptedPayloads(fcmMessage(sms), s.relayKey)
+            var res: FcmSendResult? = null
+            for (payload in payloads) {
+                res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload))
+                if (!res.ok) break
+            }
+            val r = res!!
             when {
-                res.ok -> SendOutcome.DELIVERED
-                res.httpCode == -1 || res.httpCode == 429 || res.httpCode in 500..599 -> {
-                    Diag.log(fcmDiag(res.httpCode, res.detail)); SendOutcome.TRANSIENT
+                r.ok -> SendOutcome.DELIVERED
+                r.httpCode == -1 || r.httpCode == 429 || r.httpCode in 500..599 -> {
+                    Diag.log(fcmDiag(r.httpCode, r.detail)); SendOutcome.TRANSIENT
                 }
-                else -> { Diag.log(fcmDiag(res.httpCode, res.detail)); SendOutcome.PERMANENT }
+                else -> { Diag.log(fcmDiag(r.httpCode, r.detail)); SendOutcome.PERMANENT }
             }
         } catch (e: Exception) {
             Diag.log("FCM → ERROR: ${e.message}"); SendOutcome.TRANSIENT
@@ -97,6 +148,29 @@ object SenderPipeline {
             val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload))
             when {
                 res.ok -> { Diag.log("endpoint announced to main"); SendOutcome.DELIVERED }
+                res.httpCode == -1 || res.httpCode == 429 || res.httpCode in 500..599 -> SendOutcome.TRANSIENT
+                else -> { Diag.log(fcmDiag(res.httpCode, res.detail)); SendOutcome.PERMANENT }
+            }
+        } catch (e: Exception) {
+            SendOutcome.TRANSIENT
+        }
+    }
+
+    /**
+     * Companion → Main: reports what happened to a [msgId] previously received in a Command, so
+     * Main can update that message's ticks. Best-effort - a failure here just leaves the ticks
+     * showing whatever the last successful ack said (or none), it doesn't retry or block sending.
+     */
+    fun pushAckToIppu(context: Context, msgId: Long, status: Int): SendOutcome {
+        val s = SenderSettings.get(context)
+        if (s.serviceAccountJson.isBlank() || s.notiFcmToken.isBlank() || s.relayKey.isBlank()) {
+            return SendOutcome.NOT_CONFIGURED
+        }
+        return try {
+            val payload = MessageCrypto.encrypt(Wire.encode(WireMessage.DeliveryAck(msgId, status)), s.relayKey)
+            val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload))
+            when {
+                res.ok -> SendOutcome.DELIVERED
                 res.httpCode == -1 || res.httpCode == 429 || res.httpCode in 500..599 -> SendOutcome.TRANSIENT
                 else -> { Diag.log(fcmDiag(res.httpCode, res.detail)); SendOutcome.PERMANENT }
             }

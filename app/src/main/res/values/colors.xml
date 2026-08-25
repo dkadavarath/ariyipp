@@ -37,4 +37,9 @@
     <color name="status_warning_fg">#E65100</color>
     <color name="status_info_bg">#E3F2FD</color>
     <color name="status_info_fg">#1565C0</color>
+
+    <!-- Delivered read-receipt tick: needs to read as a distinct accent against the outgoing bubble
+         fill (brand_primary), which is dark blue in light mode - a bright cyan pops against it. Dark
+         mode's inverted (light) bubble fill needs the opposite: see values-night/. -->
+    <color name="chat_tick_delivered">#40C4FF</color>
 </resources>

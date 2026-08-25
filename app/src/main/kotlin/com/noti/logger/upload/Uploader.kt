@@ -44,9 +44,10 @@ class Uploader(
         val jsonBytes = json.encodeToString(batch).toByteArray(Charsets.UTF_8)
         val body = if (gzip) gzip(jsonBytes) else jsonBytes
 
-        var conn: HttpURLConnection? = null
+        // No disconnect() in a finally: closing the streams (via .use / buffered read below) returns
+        // the connection to the JVM keep-alive pool, so the next upload skips DNS+TCP+TLS.
+        val conn = URL(url).openConnection() as HttpURLConnection
         return try {
-            conn = URL(url).openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
             conn.connectTimeout = connectTimeoutMs
             conn.readTimeout = readTimeoutMs
@@ -77,8 +78,6 @@ class Uploader(
             UploadOutcome.Retry
         } catch (e: Exception) {
             UploadOutcome.Retry
-        } finally {
-            conn?.disconnect()
         }
     }
 

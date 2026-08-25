@@ -20,6 +20,10 @@ object SmsInbox {
     /** Inbox messages with `_id` strictly greater than [sinceId], oldest first. */
     fun since(context: Context, sinceId: Long): List<CapturedSms> {
         val out = ArrayList<CapturedSms>()
+        // SIM labels resolved once per subscription, not per row: simLabel() ends in an
+        // EncryptedSharedPreferences read (simName), which would otherwise decrypt 1-2 times
+        // per scanned SMS during a burst inbox scan.
+        val simLabels = HashMap<Int, String>()
         val cursor = context.contentResolver.query(
             Telephony.Sms.Inbox.CONTENT_URI, COLUMNS,
             "${Telephony.Sms._ID} > ?", arrayOf(sinceId.toString()),
@@ -34,13 +38,14 @@ object SmsInbox {
             val iSub = c.getColumnIndex(Telephony.Sms.SUBSCRIPTION_ID)
             while (c.moveToNext()) {
                 val date = if (iDate >= 0) c.getLong(iDate) else 0L
+                val subId = if (iSub >= 0) c.getInt(iSub) else -1
                 out.add(
                     CapturedSms(
                         from = c.getString(iAddr).orEmpty(),
                         body = c.getString(iBody).orEmpty(),
                         sentMillis = if (iSent >= 0) c.getLong(iSent) else date,
                         receivedMillis = date,
-                        sim = simLabel(context, if (iSub >= 0) c.getInt(iSub) else -1),
+                        sim = simLabels.getOrPut(subId) { simLabel(context, subId) },
                         id = if (iId >= 0) c.getLong(iId) else -1,
                     )
                 )

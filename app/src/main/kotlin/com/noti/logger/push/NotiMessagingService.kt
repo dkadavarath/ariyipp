@@ -3,6 +3,7 @@ package com.noti.logger.push
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.noti.logger.config.Settings
+import com.noti.sender.SenderPipeline
 import com.noti.sender.config.SenderSettings
 import com.noti.sender.sms.HeartbeatHandler
 import com.noti.sender.sms.SmsCommandHandler
@@ -10,6 +11,7 @@ import com.noti.sender.sms.SmsSender
 import com.noti.sender.sms.WebhookConfigHandler
 import com.noti.shared.Diag
 import com.noti.shared.Role
+import com.noti.shared.WireMessage
 
 /**
  * The single FCM entry point for the merged app, dispatching by role:
@@ -32,11 +34,17 @@ class NotiMessagingService : FirebaseMessagingService() {
     private fun handleCommand(message: RemoteMessage) {
         // A send-SMS command?
         SmsCommandHandler.parse(applicationContext, message.data)?.let { cmd ->
+            if (cmd.msgId > 0) {
+                SenderPipeline.pushAckToIppu(applicationContext, cmd.msgId, WireMessage.DeliveryAck.RECEIVED)
+            }
             try {
-                SmsSender.send(applicationContext, cmd.to, cmd.body, cmd.sim)
+                SmsSender.send(applicationContext, cmd.to, cmd.body, cmd.sim, cmd.msgId)
                 Diag.log("command → sent SMS to ${cmd.to} (slot ${cmd.sim}, ${cmd.body.length} chars)")
             } catch (e: Exception) {
                 Diag.log("command → SMS send FAILED: ${e.message} (SEND_SMS granted?)")
+                if (cmd.msgId > 0) {
+                    SenderPipeline.pushAckToIppu(applicationContext, cmd.msgId, WireMessage.DeliveryAck.FAILED)
+                }
             }
             return
         }
