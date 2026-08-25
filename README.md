@@ -94,22 +94,55 @@ You'll import two files, which do different jobs:
 
 ### 1. Create the project and get `google-services.json`
 
-1. Open the [Firebase console](https://console.firebase.google.com) and **Add project** (the free
-   *Spark* plan is enough). Give it any name; Google Analytics is optional.
-2. On the project dashboard, click the **Android** icon (*Add app*) and register an app with package
-   name **`com.noti.logger`** — it must match exactly. You can leave the SHA-1 blank and **skip** the
-   "add the SDK / run the app" steps.
-3. Download the generated **`google-services.json`** onto (or transfer it to) the phone.
+1. Open the [Firebase console](https://console.firebase.google.com) and click **Add project**. The
+   free **Spark** plan is enough — FCM has no usage cost at any scale this app would hit. Give the
+   project any name; Google Analytics is optional and can be skipped.
+2. On the project's Overview page, click the **Android** icon (**Add app**) to register an app.
+   - **Android package name** must be exactly **`com.noti.logger`** — this is baked into the APK
+     and has to match precisely for the config file to work.
+   - The **SHA-1 field can be left blank** — ariyipp doesn't use any Firebase feature that needs it
+     (e.g. Dynamic Links, Phone Auth), only Cloud Messaging.
+   - You can stop once the config file downloads; the "add the SDK to your project" steps that
+     follow are for app developers building from source, not something you do on the phone.
+   - Google's own [Add Firebase to your Android project](https://firebase.google.com/docs/android/setup)
+     guide covers this same registration flow in more depth, with its own screenshots, if you want a
+     second reference.
+3. Download the generated **`google-services.json`** and get it onto the phone (email it to
+   yourself, save it to a cloud drive, whatever's convenient) — Settings → Pairing imports it
+   directly from wherever you save it.
 
 ### 2. Get the service-account key
 
-1. In the Firebase console, open **⚙ (Project settings) → Service accounts**.
-2. Click **Generate new private key → Generate key**. A JSON file downloads — this is the
-   service-account key (it carries the permission to send FCM messages). Keep it private; treat it
-   like a password.
-3. Confirm the send API is on: **Project settings → Cloud Messaging** should show *Firebase Cloud
-   Messaging API (V1)* **Enabled**. New projects have it on by default; if it's off, follow the
-   *Manage API in Google Cloud console* link and enable it there.
+The service-account key is what lets a phone **send** a push (compose a message, forward an SMS) —
+`google-services.json` only lets a phone *receive* one. It's a standard
+[Google Cloud service account](https://cloud.google.com/iam/docs/service-account-overview): a
+non-human identity Firebase creates automatically for every project, scoped to that project's
+Admin SDK APIs (which includes sending FCM messages via the HTTP v1 API ariyipp uses).
+
+1. In the [Firebase console](https://console.firebase.google.com), open your project, then
+   **⚙️ (the gear icon next to "Project Overview") → Project settings → Service accounts**.
+2. You'll see a **Firebase Admin SDK** panel with a service account already listed — something like
+   `firebase-adminsdk-xxxxx@<your-project-id>.iam.gserviceaccount.com`. That's expected; Firebase
+   creates it automatically per project, you don't create your own. Click **Generate new private
+   key**, then confirm with **Generate key** in the dialog that follows.
+3. A JSON file downloads immediately — that file **is** the service-account key. See
+   [Add the Firebase Admin SDK to your server](https://firebase.google.com/docs/admin/setup#initialize-sdk)
+   for the full reference on this file's format and what it grants (ariyipp reads the same file, it
+   just runs the calls from the phone instead of a server).
+4. **Treat this file like a password.** Anyone holding it can send push messages as your project —
+   though not read your messages, since ariyipp's own AES-256-GCM encryption (not this key) is what
+   protects message content; this key only proves the *sender's* identity to Google. If you ever
+   suspect it's leaked, come back to this same **Service accounts** tab and generate a new one — the
+   old key can be individually revoked from
+   [Google Cloud Console → IAM & Admin → Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts)
+   (open the service account, **Keys** tab) without affecting the app; just re-import the new key on
+   both phones afterward.
+5. Confirm the send API is actually enabled: still in **Project settings**, open the **Cloud
+   Messaging** tab and check that **Firebase Cloud Messaging API (V1)** shows **Enabled**. New
+   projects have it on by default. If it shows disabled, click that row's **Manage API in Google
+   Cloud Console** link and enable it there — see Google's
+   [Enabling and disabling APIs](https://support.google.com/googleapi/answer/6158841) doc if the
+   Cloud Console layout is unfamiliar.
 
 ### 3. Import both on each phone
 
