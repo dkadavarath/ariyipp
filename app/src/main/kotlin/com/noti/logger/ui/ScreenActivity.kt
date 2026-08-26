@@ -24,6 +24,7 @@ abstract class ScreenActivity : AppCompatActivity() {
         Theming.applyDynamicColorIfEnabled(this)
         super.onCreate(savedInstanceState)
         Theming.applyAmoledIfEnabled(this) // after super so AppCompat doesn't reset the overlay
+        Theming.applyPredictiveBackTransitions(this)
         setContentView(layoutRes)
 
         val root = findViewById<View>(R.id.screen_root)

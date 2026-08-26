@@ -22,8 +22,11 @@
     <color name="brand_on_secondary_container">#111C2B</color>
 
     <!-- Neutral surfaces (light). The M3 baseline surface ramp is lavender-tinted; these are near-
-         neutral greys so cards/pages don't cast a colour. Dark values in values-night/. -->
-    <color name="app_surface_variant">#E3E3E6</color>
+         neutral greys so cards/pages don't cast a colour. Dark values in values-night/.
+         app_surface_variant is the incoming-chat-bubble fill; it used to sit only 8 units off
+         app_surface_container_high (the chat background, #EBEBEE vs #E3E3E6) - nearly invisible.
+         Darkened to match the ~28-unit gap dark mode already has between the same two tiers. -->
+    <color name="app_surface_variant">#D4D4D8</color>
     <color name="app_surface_container_lowest">#FFFFFF</color>
     <color name="app_surface_container_low">#F6F6F8</color>
     <color name="app_surface_container">#F1F1F3</color>

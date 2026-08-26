@@ -274,6 +274,20 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putString(KEY_LAST_UPLOAD_RESULT, value).apply()
         }
 
+    /** The Status screen's DB-status text as of the last time it was computed, so a cold app start
+     *  can paint it immediately instead of showing nothing while Room re-queries. Blank = none yet. */
+    var statusCacheLastUpload: String
+        get() = prefs.getString(KEY_STATUS_CACHE_LAST_UPLOAD, "") ?: ""
+        set(value) {
+            prefs.edit().putString(KEY_STATUS_CACHE_LAST_UPLOAD, value).apply()
+        }
+
+    var statusCacheData: String
+        get() = prefs.getString(KEY_STATUS_CACHE_DATA, "") ?: ""
+        set(value) {
+            prefs.edit().putString(KEY_STATUS_CACHE_DATA, value).apply()
+        }
+
     /** When we last heard a heartbeat from the peer (companion). 0 = not baselined / not paired. */
     var lastPeerBeatAtMs: Long
         get() = prefs.getLong(KEY_LAST_PEER_BEAT_MS, 0L)
@@ -397,6 +411,8 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_SNDI_TOKEN = "sndi_token"
         private const val KEY_LAST_UPLOAD_AT_MS = "last_upload_at_ms"
         private const val KEY_LAST_UPLOAD_RESULT = "last_upload_result"
+        private const val KEY_STATUS_CACHE_LAST_UPLOAD = "status_cache_last_upload"
+        private const val KEY_STATUS_CACHE_DATA = "status_cache_data"
         private const val KEY_LAST_PEER_BEAT_MS = "last_peer_beat_ms"
         private const val KEY_HEARTBEAT_ENABLED = "heartbeat_enabled"
         private const val KEY_THEME_MODE = "theme_mode"

@@ -45,6 +45,7 @@ class AppPickerActivity : AppCompatActivity() {
         Theming.applyDynamicColorIfEnabled(this)
         super.onCreate(savedInstanceState)
         Theming.applyAmoledIfEnabled(this) // after super so AppCompat doesn't reset the overlay
+        Theming.applyPredictiveBackTransitions(this)
         setContentView(R.layout.activity_app_picker)
 
         val root = findViewById<View>(R.id.picker_root)

@@ -37,6 +37,12 @@ object MessageCrypto {
     /** Only attempt compression at or above this many bytes - smaller payloads don't benefit. */
     private const val GZIP_MIN_BYTES = 64
 
+    /** Refuses to inflate more than this many bytes - guards against a maliciously crafted small
+     *  ciphertext that decompresses enormously (a "gzip bomb"), which would otherwise exhaust memory
+     *  before the plaintext is even used. Generous relative to any real relay/command/config payload
+     *  (a few KB at most), so no legitimate message is ever affected. */
+    private const val MAX_DECOMPRESSED_BYTES = 1 shl 20 // 1 MiB
+
     private val random = SecureRandom()
     private val encoder: Base64.Encoder = Base64.getEncoder()
     private val decoder: Base64.Decoder = Base64.getDecoder()
@@ -102,10 +108,24 @@ object MessageCrypto {
         null
     }
 
+    private class DecompressedTooLargeException : Exception()
+
     private fun gunzip(data: ByteArray): ByteArray = try {
-        val out = ByteArrayOutputStream(data.size * 4)
-        GZIPInputStream(ByteArrayInputStream(data)).use { it.copyTo(out) }
+        val out = ByteArrayOutputStream(minOf(data.size * 4, MAX_DECOMPRESSED_BYTES))
+        GZIPInputStream(ByteArrayInputStream(data)).use { input ->
+            val buf = ByteArray(8192)
+            var total = 0
+            while (true) {
+                val n = input.read(buf)
+                if (n < 0) break
+                total += n
+                if (total > MAX_DECOMPRESSED_BYTES) throw DecompressedTooLargeException()
+                out.write(buf, 0, n)
+            }
+        }
         out.toByteArray()
+    } catch (e: DecompressedTooLargeException) {
+        throw GeneralSecurityException("decompressed payload exceeds $MAX_DECOMPRESSED_BYTES bytes")
     } catch (e: Exception) {
         throw GeneralSecurityException("gzipped payload is corrupt", e)
     }

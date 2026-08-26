@@ -28,8 +28,8 @@ android {
         // lower/slower-climbing number - so a public release always installs as an upgrade over any
         // private build, and the two can never collide. Bump by at least 1 (with headroom) each
         // release; versionName is this public repo's own independent v1.x sequence.
-        versionCode = 100
-        versionName = "1.1"
+        versionCode = 110
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

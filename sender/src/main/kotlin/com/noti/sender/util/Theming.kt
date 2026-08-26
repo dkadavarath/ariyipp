@@ -3,6 +3,7 @@ package com.noti.sender.util
 import android.app.Activity
 import android.content.res.Configuration
 import android.graphics.Color
+import android.os.Build
 import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
 import com.noti.sender.R
@@ -46,5 +47,15 @@ object Theming {
         if (!amoledActive(activity)) return
         activity.theme.applyStyle(R.style.ThemeOverlay_Sendi_Amoled, true)
         activity.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.BLACK))
+    }
+
+    /** On API 34+, replaces the theme's static open/close window animations with the
+     *  predictive-back-aware equivalent, so navigating to/from this screen shows a live interactive
+     *  preview during the back gesture. Older API levels keep the theme's windowAnimationStyle. */
+    fun applyPredictiveBackTransitions(activity: Activity) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            activity.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_OPEN, R.anim.screen_open_enter, R.anim.screen_open_exit)
+            activity.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_CLOSE, R.anim.screen_close_enter, R.anim.screen_close_exit)
+        }
     }
 }

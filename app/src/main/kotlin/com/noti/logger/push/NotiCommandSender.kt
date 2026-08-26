@@ -36,7 +36,10 @@ object NotiCommandSender {
             Diag.log("compose FAILED - not configured: missing $missing (Settings → Relay)")
             return false
         }
-        val payload = MessageCrypto.encrypt(Wire.encode(WireMessage.Command(to, body, sim, msgId)), s.relayKey)
+        val payload = MessageCrypto.encrypt(
+            Wire.encode(WireMessage.Command(to, body, sim, msgId, issuedAt = System.currentTimeMillis())),
+            s.relayKey,
+        )
         return try {
             val res = FcmSender.forServiceAccount(s.serviceAccountJson).send(s.sndiFcmToken, mapOf("payload" to payload))
             Diag.log(

@@ -14,9 +14,27 @@
         <!-- Neutralise the M3 lavender/blue-tinted surface ramp so cards and pages read neutral and
              consistent (Settings especially, being one large filled card). -->
         <item name="colorSurfaceVariant">@color/app_surface_variant</item>
+        <!-- The base/window surface (colorSurface, and android:colorBackground/windowBackground,
+             which Material3 ties to it) was left unset here, so any screen without an explicit
+             card/container background - ChatActivity's root, sub-screens' root, onboarding - fell
+             through to M3's own stock dark palette instead of this theme's neutral greys.
+             "container_low" (#1A1B1D) technically isn't pure black, but it's dark enough to read as
+             black at a glance - measured at RGB(26,27,27) on device, next to cards at RGB(51,53,55).
+             Pinned to "container_high" instead: a clearly-lighter, unambiguously-grey tier, still
+             visibly darker than the filled cards (colorSurfaceContainerHighest) above it.
+             colorSurfaceContainer (what Material3 popup/dropdown menus render on by default) is
+             bumped up to match the cards' tier too, so a menu popping up over this background is
+             visibly a shade lighter instead of blending into it. The plain-platform overflow menu on
+             the Messages screen (android.widget.PopupMenu) doesn't read colorSurfaceContainer though -
+             it uses the older platform attr android:colorBackgroundFloating, which defaults to
+             android:colorBackground and so silently matched the page again; set explicitly here too. -->
+        <item name="android:colorBackground">@color/app_surface_container_high</item>
+        <item name="android:windowBackground">@color/app_surface_container_high</item>
+        <item name="android:colorBackgroundFloating">@color/app_surface_container_highest</item>
+        <item name="colorSurface">@color/app_surface_container_high</item>
         <item name="colorSurfaceContainerLowest">@color/app_surface_container_lowest</item>
         <item name="colorSurfaceContainerLow">@color/app_surface_container_low</item>
-        <item name="colorSurfaceContainer">@color/app_surface_container</item>
+        <item name="colorSurfaceContainer">@color/app_surface_container_highest</item>
         <item name="colorSurfaceContainerHigh">@color/app_surface_container_high</item>
         <item name="colorSurfaceContainerHighest">@color/app_surface_container_highest</item>
         <!-- Slide + fade for opening/closing screens (settings sub-screens, chat, compose). -->
@@ -38,6 +56,7 @@
          Cards read as seamless black; section titles and spacing carry the structure. -->
     <style name="ThemeOverlay.Noti.Amoled" parent="">
         <item name="android:colorBackground">#FF000000</item>
+        <item name="android:colorBackgroundFloating">#FF000000</item>
         <item name="colorSurface">#FF000000</item>
         <item name="colorSurfaceContainerLowest">#FF000000</item>
         <item name="colorSurfaceContainerLow">#FF000000</item>

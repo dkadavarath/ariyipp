@@ -3,7 +3,7 @@
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84)
 ![minSdk](https://img.shields.io/badge/minSdk-26-1565c0)
 ![targetSdk](https://img.shields.io/badge/targetSdk-35-1565c0)
-![Release](https://img.shields.io/badge/release-v1.1-1565c0)
+![Release](https://img.shields.io/badge/release-v1.2-1565c0)
 ![Language](https://img.shields.io/badge/kotlin-100%25-7f52ff)
 ![License](https://img.shields.io/badge/license-GPL--3.0-1565c0)
 
@@ -44,6 +44,9 @@ source with your own signing key (see [below](#build-from-source)) works exactly
 - **Liveness heartbeat** — each device periodically checks the other is reachable and warns (with a
   Retry action) if it goes offline. Toggle it off if you don't want it.
 - **Per-conversation mute**, unread badges, one-time-code copy, and inline reply from the notification.
+- **Share & multi-select** — share any message to another app (separate from Forward, which relays it
+  as SMS through the companion), and bulk mark-as-read/mute/delete conversations from the Messages
+  list.
 - **Encrypted backup & restore** through the system file picker, passphrase-protected.
 - **Optional extras:** capture this phone's notifications and forward them to a webhook, and push the
   webhook config to the companion.

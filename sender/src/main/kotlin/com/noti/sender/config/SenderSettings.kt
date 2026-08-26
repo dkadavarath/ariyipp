@@ -175,6 +175,19 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         get() = prefs.getLong(KEY_LAST_WEBHOOK_ID, -1L)
         set(value) { prefs.edit().putLong(KEY_LAST_WEBHOOK_ID, value).apply() }
 
+    /** Replay-protection high-water mark: the highest [com.noti.shared.WireMessage.Command.msgId]
+     *  accepted so far. -1 = none yet. Persisted so a captured/replayed command can't slip through
+     *  after an app or device restart. */
+    var lastCommandMsgId: Long
+        get() = prefs.getLong(KEY_LAST_COMMAND_MSG_ID, -1L)
+        set(value) { prefs.edit().putLong(KEY_LAST_COMMAND_MSG_ID, value).apply() }
+
+    /** Replay/rollback guard: the highest [com.noti.shared.WireMessage.WebhookConfig.configVersion]
+     *  applied so far. -1 = none yet (accepts the first config pushed, whatever its version). */
+    var lastWebhookConfigVersion: Long
+        get() = prefs.getLong(KEY_LAST_WEBHOOK_CONFIG_VERSION, -1L)
+        set(value) { prefs.edit().putLong(KEY_LAST_WEBHOOK_CONFIG_VERSION, value).apply() }
+
     // ---- Full repush (one-shot: push the entire inbox so ippu can rebuild after a gap) ----
 
     /** Resume point (provider `_id`) for an in-progress repush (0 = start from the whole inbox). */
@@ -243,6 +256,8 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_KEEPALIVE = "keepalive"
         private const val KEY_LAST_RELAYED_ID = "last_relayed_sms_id"
         private const val KEY_LAST_WEBHOOK_ID = "last_webhook_sms_id"
+        private const val KEY_LAST_COMMAND_MSG_ID = "last_command_msg_id"
+        private const val KEY_LAST_WEBHOOK_CONFIG_VERSION = "last_webhook_config_version"
         private const val KEY_REPUSH_CURSOR = "repush_cursor_id"
         private const val KEY_REPUSH_TOTAL = "repush_total"
         private const val KEY_LAST_PEER_BEAT_MS = "last_peer_beat_ms"

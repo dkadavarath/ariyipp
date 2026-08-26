@@ -26,6 +26,7 @@ class SmsCommandHandlerTest {
         val s = SenderSettings.get(ctx)
         s.relayKey = key
         s.acceptCommands = true
+        s.lastCommandMsgId = -1L
     }
 
     @After
@@ -33,16 +34,27 @@ class SmsCommandHandlerTest {
         val s = SenderSettings.get(ctx)
         s.relayKey = ""
         s.acceptCommands = false
+        s.lastCommandMsgId = -1L
     }
 
-    private fun payload(to: String, body: String, encKey: String = key): Map<String, String> {
-        val plain = Wire.encode(WireMessage.Command(to = to, body = body))
+    private fun payload(
+        to: String,
+        body: String,
+        encKey: String = key,
+        msgId: Long = 1L,
+        issuedAt: Long = System.currentTimeMillis(),
+    ): Map<String, String> {
+        val plain = Wire.encode(WireMessage.Command(to = to, body = body, msgId = msgId, issuedAt = issuedAt))
         return mapOf(SmsCommandHandler.PAYLOAD_KEY to MessageCrypto.encrypt(plain, encKey))
     }
 
     @Test
     fun parses_a_valid_command() {
-        assertEquals(WireMessage.Command("+123456", "hello"), SmsCommandHandler.parse(ctx, payload("+123456", "hello")))
+        val issuedAt = System.currentTimeMillis()
+        assertEquals(
+            WireMessage.Command("+123456", "hello", msgId = 1L, issuedAt = issuedAt),
+            SmsCommandHandler.parse(ctx, payload("+123456", "hello", msgId = 1L, issuedAt = issuedAt)),
+        )
     }
 
     @Test
@@ -64,5 +76,36 @@ class SmsCommandHandlerTest {
     @Test
     fun blank_recipient_returns_null() {
         assertNull(SmsCommandHandler.parse(ctx, payload("", "x")))
+    }
+
+    @Test
+    fun missing_msgId_returns_null() {
+        assertNull(SmsCommandHandler.parse(ctx, payload("+1", "x", msgId = 0L)))
+    }
+
+    @Test
+    fun replayed_msgId_returns_null_the_second_time() {
+        val p = payload("+1", "x", msgId = 5L)
+        assertEquals("+1", SmsCommandHandler.parse(ctx, p)?.to)
+        assertNull(SmsCommandHandler.parse(ctx, p))
+    }
+
+    @Test
+    fun lower_msgId_than_high_water_mark_returns_null() {
+        SenderSettings.get(ctx).lastCommandMsgId = 10L
+        assertNull(SmsCommandHandler.parse(ctx, payload("+1", "x", msgId = 10L)))
+        assertNull(SmsCommandHandler.parse(ctx, payload("+1", "x", msgId = 9L)))
+    }
+
+    @Test
+    fun stale_issuedAt_returns_null() {
+        val old = System.currentTimeMillis() - 11 * 60_000L
+        assertNull(SmsCommandHandler.parse(ctx, payload("+1", "x", issuedAt = old)))
+    }
+
+    @Test
+    fun future_issuedAt_returns_null() {
+        val future = System.currentTimeMillis() + 3 * 60_000L
+        assertNull(SmsCommandHandler.parse(ctx, payload("+1", "x", issuedAt = future)))
     }
 }

@@ -31,7 +31,11 @@ object WebhookConfigHandler {
         } catch (e: Exception) {
             return null
         }
-        return wire as? WireMessage.WebhookConfig
+        val cfg = wire as? WireMessage.WebhookConfig ?: return null
+        // Reject a stale/replayed config: only a version newer than the last one applied can take
+        // effect, so a captured older push can't roll back to a stale URL or auth token.
+        if (cfg.configVersion <= s.lastWebhookConfigVersion) return null
+        return cfg
     }
 
     fun apply(context: Context, cfg: WireMessage.WebhookConfig) {
@@ -41,5 +45,6 @@ object WebhookConfigHandler {
         s.n8nAuthHeaderName = cfg.authHeaderName
         s.n8nAuthHeaderPrefix = cfg.authHeaderPrefix
         s.n8nToken = cfg.authToken
+        s.lastWebhookConfigVersion = cfg.configVersion
     }
 }
