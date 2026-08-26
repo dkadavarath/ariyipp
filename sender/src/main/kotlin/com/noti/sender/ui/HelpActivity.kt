@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.noti.sender.R
+import com.noti.sender.util.Theming
 
 /** Help tab content for ariy: how to pair, relay, send on command, and troubleshoot. */
 class HelpActivity : AppCompatActivity() {
@@ -24,6 +25,7 @@ class HelpActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Theming.applyPredictiveBackTransitions(this)
         setContentView(R.layout.cmp_activity_help)
 
         val root = findViewById<View>(R.id.help_root)

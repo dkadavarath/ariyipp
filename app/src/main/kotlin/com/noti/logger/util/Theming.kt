@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
+import android.os.Build
 import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
 import com.noti.logger.R
@@ -73,5 +74,21 @@ object Theming {
         // Force the window background too: it's resolved from the theme at window creation, so the
         // overlay alone won't repaint it.
         activity.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.BLACK))
+    }
+
+    /**
+     * On API 34+, replaces Theme.Noti's static open/close window animations with the
+     * predictive-back-aware equivalent for this activity, so navigating to/from it shows a live
+     * interactive preview during the back gesture instead of a canned slide playing only on release.
+     * Older API levels keep using the theme's windowAnimationStyle unchanged - this only ever adds
+     * behavior on top of it, never removes the fallback. Skip calling this on an activity whose close
+     * transition should exit straight to the launcher (e.g. the root/onboarding activity), so the
+     * system's own "peek home screen" predictive animation shows instead of a custom one.
+     */
+    fun applyPredictiveBackTransitions(activity: Activity) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            activity.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_OPEN, R.anim.screen_open_enter, R.anim.screen_open_exit)
+            activity.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_CLOSE, R.anim.screen_close_enter, R.anim.screen_close_exit)
+        }
     }
 }

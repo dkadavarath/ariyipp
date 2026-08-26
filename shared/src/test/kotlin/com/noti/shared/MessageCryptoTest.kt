@@ -4,8 +4,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
+import java.io.ByteArrayOutputStream
 import java.security.GeneralSecurityException
+import java.security.SecureRandom
 import java.util.Base64
+import java.util.zip.GZIPOutputStream
+import javax.crypto.Cipher
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 class MessageCryptoTest {
 
@@ -44,6 +50,27 @@ class MessageCryptoTest {
         assertEquals(plain, MessageCrypto.decrypt(encrypted, key))
         // And the compression actually bought headroom vs the raw base64 size.
         assert(encrypted.length < plain.length)
+    }
+
+    @Test
+    fun `a gzip bomb is rejected instead of exhausting memory`() {
+        // 5 MiB of zeros compresses to a tiny gzip stream - decrypt must refuse to inflate it back
+        // out. Encrypted by hand (nonce || ciphertext, per the documented wire format) rather than via
+        // encryptBytes, which would just re-compress this already-gzipped data instead of shipping it
+        // as-is - exactly what a real attacker crafting ciphertext directly (with a stolen key) would
+        // also do, so this doubles as the more realistic attack shape anyway.
+        val bombPlain = ByteArray(5 * 1024 * 1024)
+        val bombGzip = ByteArrayOutputStream().also { bos ->
+            GZIPOutputStream(bos).use { it.write(bombPlain) }
+        }.toByteArray()
+
+        val nonce = ByteArray(12).also { SecureRandom().nextBytes(it) }
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
+            init(Cipher.ENCRYPT_MODE, SecretKeySpec(Base64.getDecoder().decode(key), "AES"), GCMParameterSpec(128, nonce))
+        }
+        val payload = Base64.getEncoder().encodeToString(nonce + cipher.doFinal(bombGzip))
+
+        assertThrows(GeneralSecurityException::class.java) { MessageCrypto.decrypt(payload, key) }
     }
 
     @Test

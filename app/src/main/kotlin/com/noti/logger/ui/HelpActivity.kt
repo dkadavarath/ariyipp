@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.noti.logger.R
+import com.noti.logger.util.Theming
 
 class HelpActivity : AppCompatActivity() {
 
@@ -27,6 +28,7 @@ class HelpActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Theming.applyPredictiveBackTransitions(this)
         setContentView(R.layout.activity_help)
 
         val root = findViewById<View>(R.id.help_root)

@@ -28,6 +28,7 @@ object NotiConfigSender {
             authHeaderName = s.authHeaderName,
             authHeaderPrefix = s.authHeaderPrefix,
             authToken = s.bearerToken,
+            configVersion = System.currentTimeMillis(),
         )
         val payload = MessageCrypto.encrypt(Wire.encode(cfg), s.relayKey)
         return try {

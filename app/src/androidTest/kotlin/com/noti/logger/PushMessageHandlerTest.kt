@@ -209,6 +209,21 @@ class PushMessageHandlerTest {
         deleteConversation(chunkSender)
     }
 
+    @Test
+    fun oversized_parts_count_is_dropped() {
+        deleteConversation(chunkSender)
+        assertFalse(PushMessageHandler.handle(ctx, partPayload(0, 1000, "x", uniq("chunk-e"))))
+        assertTrue(rowsFor(chunkSender).isEmpty())
+    }
+
+    @Test
+    fun out_of_range_part_index_is_dropped() {
+        deleteConversation(chunkSender)
+        assertFalse(PushMessageHandler.handle(ctx, partPayload(5, 3, "x", uniq("chunk-f"))))
+        assertFalse(PushMessageHandler.handle(ctx, partPayload(-1, 3, "x", uniq("chunk-g"))))
+        assertTrue(rowsFor(chunkSender).isEmpty())
+    }
+
     // ---- Retention purge (runs after every insert) ----
 
     @Test

@@ -92,10 +92,16 @@ class ChatActivity : AppCompatActivity() {
     /** The px width the meta row needs, per (clock text, ticks) - see [reserveMetaSpace]. */
     private val metaReserveWidthCache = HashMap<String, Float>()
 
+    /** [reserveMetaSpace]'s full result per (msgId, showTicks) - a message's body/time never change,
+     *  so the only thing that can invalidate this is a delivery-status update flipping showTicks,
+     *  which is already part of the key. Avoids building a StaticLayout on every bind while scrolling. */
+    private val metaSuffixCache = HashMap<Pair<Long, Boolean>, String>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         Theming.applyDynamicColorIfEnabled(this)
         super.onCreate(savedInstanceState)
         Theming.applyAmoledIfEnabled(this) // after super so AppCompat doesn't reset the overlay
+        Theming.applyPredictiveBackTransitions(this)
         setContentView(R.layout.activity_chat)
 
         val root = findViewById<View>(R.id.screen_root)
@@ -122,7 +128,12 @@ class ChatActivity : AppCompatActivity() {
         )
 
         colorPrimary = MaterialColors.getColor(root, com.google.android.material.R.attr.colorPrimary)
-        colorSurfaceVariant = MaterialColors.getColor(root, com.google.android.material.R.attr.colorSurfaceVariant)
+        // Read the fixed resource directly rather than the colorSurfaceVariant theme attribute: under
+        // Material You, DynamicColors overrides that attribute with a wallpaper-derived tone
+        // independent of our own pinned window background, which can land the incoming bubble only a
+        // few units off the page - barely visible. This role (bubble/date-pill/compose-field fill) is
+        // deliberately neutral and untouched by dynamic color, same as it already is in AMOLED mode.
+        colorSurfaceVariant = ContextCompat.getColor(this, R.color.app_surface_variant)
         colorOnPrimary = MaterialColors.getColor(root, com.google.android.material.R.attr.colorOnPrimary)
         colorOnSurface = MaterialColors.getColor(root, com.google.android.material.R.attr.colorOnSurface)
         colorTimeOnPrimary = ColorUtils.setAlphaComponent(colorOnPrimary, 179) // ~70%
@@ -309,6 +320,7 @@ class ChatActivity : AppCompatActivity() {
             getString(R.string.msg_copy),
             getString(R.string.msg_select_text),
             getString(R.string.msg_forward),
+            getString(R.string.msg_share),
             getString(R.string.msg_delete),
         )
         MaterialAlertDialogBuilder(this)
@@ -320,10 +332,21 @@ class ChatActivity : AppCompatActivity() {
                         Intent(this, ComposeActivity::class.java)
                             .putExtra(ComposeActivity.EXTRA_PREFILL_BODY, m.body)
                     )
-                    3 -> deleteMessage(m.id)
+                    3 -> shareText(m.body)
+                    4 -> deleteMessage(m.id)
                 }
             }
             .show()
+    }
+
+    /** Hands the message off to the system share sheet, so it can be forwarded through any other
+     *  installed app - distinct from "Forward", which relays it as a new SMS through the companion. */
+    private fun shareText(text: String) {
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
+        startActivity(Intent.createChooser(send, getString(R.string.msg_share)))
     }
 
     private fun copyText(text: String) {
@@ -357,14 +380,38 @@ class ChatActivity : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menu.add(0, MENU_DELETE, 0, R.string.chat_delete)
+        menu.add(0, MENU_MUTE, 0, "")
+        menu.add(0, MENU_MARK_READ, 1, R.string.conv_mark_read)
+        menu.add(0, MENU_DELETE, 2, R.string.chat_delete)
         return true
+    }
+
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        val muted = Settings.get(this).isMuted(sender)
+        menu.findItem(MENU_MUTE).setTitle(if (muted) R.string.conv_unmute else R.string.conv_mute)
+        return super.onPrepareOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
         android.R.id.home -> { finish(); true }
+        MENU_MUTE -> { toggleMute(); true }
+        MENU_MARK_READ -> { markRead(); true }
         MENU_DELETE -> { confirmDelete(); true }
         else -> super.onOptionsItemSelected(item)
+    }
+
+    private fun toggleMute() {
+        val s = Settings.get(this)
+        s.setMuted(sender, !s.isMuted(sender))
+        invalidateOptionsMenu()
+    }
+
+    private fun markRead() {
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                NotiDatabase.get(this@ChatActivity).relayedMessageDao().markRead(sender)
+            }
+        }
     }
 
     private fun confirmDelete() {
@@ -557,7 +604,7 @@ class ChatActivity : AppCompatActivity() {
             holder.body.text = m.body
             holder.body.setPadding(basePadding[0], basePadding[1], basePadding[2], (31f * d).toInt())
         } else {
-            holder.body.text = m.body + reserveMetaSpace(m.body, holder.body, timeText, showTicks, d)
+            holder.body.text = m.body + reserveMetaSpace(m.id, m.body, holder.body, timeText, showTicks, d)
             holder.body.setPadding(basePadding[0], basePadding[1], basePadding[2], (7f * d).toInt())
         }
 
@@ -589,33 +636,35 @@ class ChatActivity : AppCompatActivity() {
      * StaticLayout using the view's own paint/break settings, so wrapping matches) lets us choose
      * the own-line form deterministically instead.
      */
-    private fun reserveMetaSpace(body: String, bodyView: TextView, timeText: String, showTicks: Boolean, d: Float): String {
+    private fun reserveMetaSpace(msgId: Long, body: String, bodyView: TextView, timeText: String, showTicks: Boolean, d: Float): String {
         if (body.isEmpty()) return ""
-        val spaceCount = metaReserveCache.getOrPut("n|$timeText|$showTicks") {
-            val ticksWidth = if (showTicks) (15f * d) + (3f * d) else 0f
-            val endPadding = 10f * d
-            val reserveWidthPx = metaPaint.measureText(timeText) + ticksWidth + endPadding
-            val spaceWidthPx = bodyView.paint.measureText(" ").coerceAtLeast(1f)
-            kotlin.math.ceil(reserveWidthPx / spaceWidthPx).toInt().coerceAtLeast(1)
-        }
-        val reserveWidth = metaReserveWidthCache.getOrPut("$timeText|$showTicks") {
-            val ticksWidth = if (showTicks) (15f * d) + (3f * d) else 0f
-            metaPaint.measureText(timeText) + ticksWidth + 10f * d
-        }
+        return metaSuffixCache.getOrPut(msgId to showTicks) {
+            val spaceCount = metaReserveCache.getOrPut("n|$timeText|$showTicks") {
+                val ticksWidth = if (showTicks) (15f * d) + (3f * d) else 0f
+                val endPadding = 10f * d
+                val reserveWidthPx = metaPaint.measureText(timeText) + ticksWidth + endPadding
+                val spaceWidthPx = bodyView.paint.measureText(" ").coerceAtLeast(1f)
+                kotlin.math.ceil(reserveWidthPx / spaceWidthPx).toInt().coerceAtLeast(1)
+            }
+            val reserveWidth = metaReserveWidthCache.getOrPut("$timeText|$showTicks") {
+                val ticksWidth = if (showTicks) (15f * d) + (3f * d) else 0f
+                metaPaint.measureText(timeText) + ticksWidth + 10f * d
+            }
 
-        // Would time+ticks fit after the body's real last line? Measure the body alone with the
-        // same constraints the actual layout will use.
-        val available = bodyMaxPx - bodyView.paddingLeft - bodyView.paddingRight
-        if (available > 0) {
-            val sl = android.text.StaticLayout.Builder
-                .obtain(body, 0, body.length, bodyView.paint, available)
-                .setBreakStrategy(bodyView.breakStrategy)
-                .setHyphenationFrequency(bodyView.hyphenationFrequency)
-                .build()
-            val fitsInline = sl.getLineRight(sl.lineCount - 1) + reserveWidth <= available
-            if (!fitsInline) return "\n" + " ".repeat(spaceCount)
+            // Would time+ticks fit after the body's real last line? Measure the body alone with the
+            // same constraints the actual layout will use.
+            val available = bodyMaxPx - bodyView.paddingLeft - bodyView.paddingRight
+            if (available > 0) {
+                val sl = android.text.StaticLayout.Builder
+                    .obtain(body, 0, body.length, bodyView.paint, available)
+                    .setBreakStrategy(bodyView.breakStrategy)
+                    .setHyphenationFrequency(bodyView.hyphenationFrequency)
+                    .build()
+                val fitsInline = sl.getLineRight(sl.lineCount - 1) + reserveWidth <= available
+                if (!fitsInline) return@getOrPut "\n" + " ".repeat(spaceCount)
+            }
+            " " + " ".repeat(spaceCount)
         }
-        return " " + " ".repeat(spaceCount)
     }
 
     /**
@@ -686,7 +735,9 @@ class ChatActivity : AppCompatActivity() {
         /** Start loading older history when the user is this close to the top of the list. */
         private const val LOAD_OLDER_THRESHOLD = 10
 
-        private const val MENU_DELETE = 1
+        private const val MENU_MUTE = 1
+        private const val MENU_MARK_READ = 2
+        private const val MENU_DELETE = 3
         private const val TYPE_SEPARATOR = 0
         private const val TYPE_MSG = 1
     }

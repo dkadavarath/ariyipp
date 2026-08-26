@@ -103,6 +103,11 @@ interface RelayedMessageDao {
     @Query("DELETE FROM relayed_messages WHERE sender = :sender")
     fun deleteConversation(sender: String)
 
+    /** Batched form of [deleteConversation] for multi-select: one transaction instead of one per
+     *  conversation. */
+    @Query("DELETE FROM relayed_messages WHERE sender IN (:senders)")
+    fun deleteConversations(senders: List<String>)
+
     @Query("DELETE FROM relayed_messages WHERE id = :id")
     fun deleteMessage(id: Long)
 
@@ -114,6 +119,15 @@ interface RelayedMessageDao {
     /** Marks every incoming message in a conversation as read. Returns rows changed. */
     @Query("UPDATE relayed_messages SET read = 1 WHERE sender = :sender AND outgoing = 0 AND read = 0")
     fun markRead(sender: String): Int
+
+    /** Batched form of [markRead] for multi-select: one transaction instead of one per
+     *  conversation. Returns rows changed. */
+    @Query("UPDATE relayed_messages SET read = 1 WHERE sender IN (:senders) AND outgoing = 0 AND read = 0")
+    fun markRead(senders: List<String>): Int
+
+    /** Marks every incoming message in every conversation as read. Returns rows changed. */
+    @Query("UPDATE relayed_messages SET read = 1 WHERE outgoing = 0 AND read = 0")
+    fun markAllRead(): Int
 
     /** Applies a delivery-ack status, but never lets an out-of-order ack regress an already more
      *  advanced status (e.g. a late "received" arriving after "sent"). Returns rows changed. */

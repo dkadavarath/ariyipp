@@ -22,6 +22,14 @@ object PushMessageHandler {
     /** How long to wait for missing relay parts before giving up on an incomplete chunked body. */
     private const val PART_TTL_MS = 5 * 60_000L
 
+    /** Sanity bound on a chunked relay's part count. A real long SMS splits into a handful of parts;
+     *  this only guards against a malformed or hostile [WireMessage.Relay.parts] value. */
+    private const val MAX_PARTS = 64
+
+    /** Sanity bound on how many distinct in-flight multi-part groups are buffered at once - on top
+     *  of [PART_TTL_MS] eviction, this caps memory even if many groups open within the TTL window. */
+    private const val MAX_PENDING_GROUPS = 20
+
     /** In-flight chunks of multi-part relays, keyed by the message's identity. */
     private class PendingParts(val atMs: Long) {
         val parts = HashMap<Int, WireMessage.Relay>()
@@ -96,6 +104,11 @@ object PushMessageHandler {
         // anything this old means a part was lost; holding it forever would leak memory.
         val now = System.currentTimeMillis()
         pendingRels.entries.removeAll { now - it.value.atMs > PART_TTL_MS }
+        // Cap on top of TTL eviction: bounds memory even if many groups open within the TTL window.
+        while (pendingRels.size >= MAX_PENDING_GROUPS) {
+            val oldestKey = pendingRels.entries.minByOrNull { it.value.atMs }?.key ?: break
+            pendingRels.remove(oldestKey)
+        }
 
         val key = msg.dedupe.ifBlank { "${msg.title}|${msg.time}" }
         val bucket = pendingRels.getOrPut(key) { PendingParts(now) }
@@ -114,6 +127,10 @@ object PushMessageHandler {
     private fun showRelay(context: Context, settings: Settings, incoming: WireMessage.Relay): Boolean {
         if (!settings.pushInboundEnabled) {
             Diag.log("inbound push DROPPED - \"Receive relayed messages\" is OFF (Settings → Relay)")
+            return false
+        }
+        if (incoming.parts > 1 && (incoming.parts > MAX_PARTS || incoming.part < 0 || incoming.part >= incoming.parts)) {
+            Diag.log("inbound: dropped relay with invalid part=${incoming.part}/${incoming.parts}")
             return false
         }
         val msg = assemble(incoming) ?: return true // part buffered; nothing to show yet

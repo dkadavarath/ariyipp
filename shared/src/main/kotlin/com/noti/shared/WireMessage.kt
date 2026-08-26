@@ -36,7 +36,11 @@ sealed interface WireMessage {
     ) : WireMessage
 
     /** Main → Companion: send this SMS from the SIM. [msgId] is Main's local row id for this
-     *  message, echoed back in a [DeliveryAck] so Main can match the ack to the right chat bubble. */
+     *  message (a Room autoincrement id - always positive and strictly increasing, never reused),
+     *  echoed back in a [DeliveryAck] so Main can match the ack to the right chat bubble. It also
+     *  doubles as a replay-protection sequence number: the companion only accepts a [msgId] higher
+     *  than the last one it processed. [issuedAt] (epoch millis) bounds how long a captured
+     *  ciphertext stays replayable even before that high-water mark alone would reject it. */
     @Serializable
     @SerialName("command")
     data class Command(
@@ -44,6 +48,7 @@ sealed interface WireMessage {
         val body: String = "",
         val sim: Int = -1,
         val msgId: Long = 0,
+        val issuedAt: Long = 0,
     ) : WireMessage
 
     /**
@@ -67,7 +72,10 @@ sealed interface WireMessage {
         }
     }
 
-    /** Main → Companion: overwrite the companion's webhook config (companion may ignore via a toggle). */
+    /** Main → Companion: overwrite the companion's webhook config (companion may ignore via a toggle).
+     *  [configVersion] (epoch millis when Main built this push) is a replay/rollback guard: the
+     *  companion only accepts a version higher than the last one it applied, so a captured older
+     *  config push can't restore a stale webhook URL or auth token. */
     @Serializable
     @SerialName("config")
     data class WebhookConfig(
@@ -76,6 +84,7 @@ sealed interface WireMessage {
         val authHeaderName: String = "",
         val authHeaderPrefix: String = "",
         val authToken: String = "",
+        val configVersion: Long = 0,
     ) : WireMessage
 
     /** Companion → Main: the companion's current push endpoint, so Main can reach it with no copy-back. */

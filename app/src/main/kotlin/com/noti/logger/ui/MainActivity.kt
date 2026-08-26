@@ -113,6 +113,10 @@ class MainActivity : AppCompatActivity() {
             return
         }
         updateMessagesBadge()
+        // A real app-level resume (unlike an in-app tab switch, which never pauses this Activity) -
+        // permissions may have changed if the user was away in system Settings, so the Status tab
+        // should actually re-check them next time it resumes instead of trusting its cached state.
+        StatusCache.permissionsNeedRefresh = true
     }
 
     /** Shows the total unread count as a badge on the Messages tab. MAIN only. */

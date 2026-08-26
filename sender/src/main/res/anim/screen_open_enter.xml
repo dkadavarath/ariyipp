@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Incoming screen: slides in from the right and fades up (shared-axis X, forward). -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@interpolator/emphasized">
+    <translate android:fromXDelta="22%p" android:toXDelta="0" android:duration="300" />
+    <alpha android:fromAlpha="0" android:toAlpha="1" android:duration="220" />
+</set>
