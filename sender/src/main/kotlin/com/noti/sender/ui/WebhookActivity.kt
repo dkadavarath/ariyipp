@@ -6,6 +6,7 @@ import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.textfield.TextInputEditText
 import com.noti.sender.R
 import com.noti.sender.config.SenderSettings
+import com.noti.shared.WebhookUrlPolicy
 
 /** Optional plaintext forwarding of each SMS to the n8n webhook, using noti's payload schema. */
 class WebhookActivity : ScreenActivity() {
@@ -32,7 +33,12 @@ class WebhookActivity : ScreenActivity() {
         acceptRemote.isChecked = s.acceptRemoteConfig
 
         findViewById<View>(R.id.btn_save).setOnClickListener {
-            s.n8nUrl = url.text.toString()
+            val newUrl = url.text.toString().trim()
+            if (newUrl.isNotBlank() && !WebhookUrlPolicy.isAllowed(newUrl)) {
+                url.error = getString(R.string.webhook_url_must_be_https)
+                return@setOnClickListener
+            }
+            s.n8nUrl = newUrl
             s.n8nToken = token.text.toString()
             val name = headerName.text.toString().trim().ifBlank { "Authorization" }
             s.n8nAuthHeaderName = name

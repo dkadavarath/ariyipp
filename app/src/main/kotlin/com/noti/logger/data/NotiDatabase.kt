@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [NotificationEntity::class, RelayedMessageEntity::class],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 abstract class NotiDatabase : RoomDatabase() {
@@ -84,6 +84,18 @@ abstract class NotiDatabase : RoomDatabase() {
             }
         }
 
+        /** v7 → v8: add a compound (packageName, createdAt) index to notifications so the
+         *  per-package rate-limit check in NotiListenerService (a backstop against a single
+         *  noisy/malicious source flooding storage) is an index seek instead of a table scan. */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_notifications_packageName_createdAt " +
+                        "ON notifications(packageName, createdAt)"
+                )
+            }
+        }
+
         fun get(context: Context): NotiDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -91,7 +103,8 @@ abstract class NotiDatabase : RoomDatabase() {
                     NotiDatabase::class.java,
                     "noti.db"
                 ).addMigrations(
-                    MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7
+                    MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
+                    MIGRATION_7_8
                 ).build().also { INSTANCE = it }
             }
         }

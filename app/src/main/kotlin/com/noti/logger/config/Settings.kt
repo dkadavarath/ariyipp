@@ -2,6 +2,7 @@ package com.noti.logger.config
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.noti.logger.redact.AppRule
@@ -430,27 +431,44 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         }
 
         private fun openPrefs(appContext: Context): SharedPreferences {
+            // Building the master key can fail on its own (locked keystore before first unlock,
+            // a flaky keystore IPC, a broken provider) - that's a transient/device problem, not a
+            // sign the stored data is corrupt, so let it propagate untouched rather than deleting
+            // a file that was never the issue.
+            val masterKey = buildMasterKey(appContext)
             return try {
-                buildEncryptedPrefs(appContext)
+                buildEncryptedPrefs(appContext, masterKey)
             } catch (e: Exception) {
-                // Corrupt or missing keyset - wipe and recreate.
+                // The master key itself works, but the keyset file under it won't decrypt -
+                // either genuinely corrupt, or (e.g. after an app-data restore, where keystore
+                // keys never travel with the backup) it was encrypted under a master key that no
+                // longer exists on this device. Either way the data is unrecoverable, so wipe and
+                // start fresh rather than crash-looping forever. This does mean silently losing
+                // pairing/relay key/webhook config - there's no UI to warn from here, so at least
+                // log loudly for crash/bug reports.
+                Log.e("Settings", "Encrypted settings keyset unreadable under a valid master key, resetting", e)
                 deletePrefsFile(appContext)
-                buildEncryptedPrefs(appContext)
+                try {
+                    buildEncryptedPrefs(appContext, masterKey)
+                } catch (e2: Exception) {
+                    throw IllegalStateException("Encrypted settings are unusable even after a reset", e2)
+                }
             }
         }
 
-        private fun buildEncryptedPrefs(appContext: Context): SharedPreferences {
-            val masterKey = MasterKey.Builder(appContext)
+        private fun buildMasterKey(appContext: Context): MasterKey =
+            MasterKey.Builder(appContext)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                 .build()
-            return EncryptedSharedPreferences.create(
+
+        private fun buildEncryptedPrefs(appContext: Context, masterKey: MasterKey): SharedPreferences =
+            EncryptedSharedPreferences.create(
                 appContext,
                 PREFS_NAME,
                 masterKey,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
-        }
 
         private fun deletePrefsFile(appContext: Context) {
             val prefsDir = File(appContext.filesDir.parent ?: return, "shared_prefs")

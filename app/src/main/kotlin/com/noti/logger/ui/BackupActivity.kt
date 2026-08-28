@@ -28,6 +28,14 @@ import java.util.Locale
  */
 class BackupActivity : ScreenActivity() {
 
+    private companion object {
+        // The backup bundles the relay key, service-account key, webhook token, and full SMS
+        // history - a short passphrase is the only thing standing between a stolen file and all
+        // of it. 12 chars pushes an offline brute-force well past what's practical even against a
+        // fast KDF.
+        const val MIN_NEW_PASSPHRASE_LEN = 12
+    }
+
     override val layoutRes = R.layout.activity_backup
     override val titleRes = R.string.menu_backup_title
 
@@ -145,7 +153,11 @@ class BackupActivity : ScreenActivity() {
             dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener {
                 val pass = passField.text?.toString().orEmpty()
                 when {
-                    pass.length < 6 -> passField.error = getString(R.string.backup_pass_short)
+                    // Only enforced when setting a NEW passphrase (confirm == true) - restoring
+                    // must still accept whatever (possibly shorter) passphrase an older backup was
+                    // actually created with, or existing backups would become unrestorable.
+                    confirm && pass.length < MIN_NEW_PASSPHRASE_LEN ->
+                        passField.error = getString(R.string.backup_pass_short)
                     confirm && pass != confirmField.text?.toString() ->
                         confirmField.error = getString(R.string.backup_pass_mismatch)
                     else -> { dialog.dismiss(); onOk(pass) }
