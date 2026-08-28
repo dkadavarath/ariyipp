@@ -1,6 +1,7 @@
 package com.noti.logger.upload
 
 import com.noti.shared.UploadBatch
+import com.noti.shared.WebhookUrlPolicy
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -21,6 +22,10 @@ sealed interface UploadOutcome {
     object Retry : UploadOutcome
     /** 4xx transport rejection (auth/URL) - alert the user in-app, then retry. */
     data class ClientError(val code: Int) : UploadOutcome
+    /** The configured URL isn't https (and isn't the loopback/emulator-host exception the app's
+     *  network security config also allows) - rejected before ever opening a connection, so a
+     *  typo'd http:// URL fails with a clear reason instead of an opaque retry loop. */
+    object InvalidUrl : UploadOutcome
 }
 
 class Uploader(
@@ -41,6 +46,7 @@ class Uploader(
         batch: UploadBatch,
         gzip: Boolean = false
     ): UploadOutcome {
+        if (!WebhookUrlPolicy.isAllowed(url)) return UploadOutcome.InvalidUrl
         val jsonBytes = json.encodeToString(batch).toByteArray(Charsets.UTF_8)
         val body = if (gzip) gzip(jsonBytes) else jsonBytes
 

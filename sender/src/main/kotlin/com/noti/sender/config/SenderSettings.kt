@@ -2,6 +2,7 @@ package com.noti.sender.config
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import java.io.File
@@ -98,9 +99,11 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean(KEY_N8N_ENABLED, false)
         set(value) { prefs.edit().putBoolean(KEY_N8N_ENABLED, value).apply() }
 
-    /** Kill-switch for accepting webhook config pushed from Main. Default on; off = fully local. */
+    /** Opt-in for accepting webhook config pushed from Main. Default OFF: a pushed config silently
+     *  overwrites this device's webhook url/auth with no confirmation, so this stays local-only
+     *  until the user deliberately turns it on. */
     var acceptRemoteConfig: Boolean
-        get() = prefs.getBoolean(KEY_ACCEPT_REMOTE_CONFIG, true)
+        get() = prefs.getBoolean(KEY_ACCEPT_REMOTE_CONFIG, false)
         set(value) { prefs.edit().putBoolean(KEY_ACCEPT_REMOTE_CONFIG, value).apply() }
 
     var n8nUrl: String
@@ -270,25 +273,44 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
                 INSTANCE ?: SenderSettings(openPrefs(context.applicationContext)).also { INSTANCE = it }
             }
 
-        private fun openPrefs(appContext: Context): SharedPreferences = try {
-            buildEncryptedPrefs(appContext)
-        } catch (e: Exception) {
-            // Corrupt or missing keyset - wipe and recreate.
-            File(appContext.filesDir.parent ?: "", "shared_prefs/$PREFS_NAME.xml").delete()
-            buildEncryptedPrefs(appContext)
+        private fun openPrefs(appContext: Context): SharedPreferences {
+            // Building the master key can fail on its own (locked keystore before first unlock,
+            // a flaky keystore IPC, a broken provider) - that's a transient/device problem, not a
+            // sign the stored data is corrupt, so let it propagate untouched rather than deleting
+            // a file that was never the issue.
+            val masterKey = buildMasterKey(appContext)
+            return try {
+                buildEncryptedPrefs(appContext, masterKey)
+            } catch (e: Exception) {
+                // The master key itself works, but the keyset file under it won't decrypt -
+                // either genuinely corrupt, or (e.g. after an app-data restore, where keystore
+                // keys never travel with the backup) it was encrypted under a master key that no
+                // longer exists on this device. Either way the data is unrecoverable, so wipe and
+                // start fresh rather than crash-looping forever. This does mean silently losing
+                // the relay key/service-account credentials - there's no UI to warn from here, so
+                // at least log loudly for crash/bug reports.
+                Log.e("SenderSettings", "Encrypted settings keyset unreadable under a valid master key, resetting", e)
+                File(appContext.filesDir.parent ?: "", "shared_prefs/$PREFS_NAME.xml").delete()
+                try {
+                    buildEncryptedPrefs(appContext, masterKey)
+                } catch (e2: Exception) {
+                    throw IllegalStateException("Encrypted settings are unusable even after a reset", e2)
+                }
+            }
         }
 
-        private fun buildEncryptedPrefs(appContext: Context): SharedPreferences {
-            val masterKey = MasterKey.Builder(appContext)
+        private fun buildMasterKey(appContext: Context): MasterKey =
+            MasterKey.Builder(appContext)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                 .build()
-            return EncryptedSharedPreferences.create(
+
+        private fun buildEncryptedPrefs(appContext: Context, masterKey: MasterKey): SharedPreferences =
+            EncryptedSharedPreferences.create(
                 appContext,
                 PREFS_NAME,
                 masterKey,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
-        }
     }
 }

@@ -94,8 +94,7 @@ object Backup {
             s.mutedSenders = mutedSenders.toSet()
         }
         val dao = NotiDatabase.get(context).relayedMessageDao()
-        dao.clearAll()
-        dao.insertAll(
+        dao.replaceAll(
             payload.messages.map {
                 RelayedMessageEntity(
                     sender = it.sender, sim = it.sim, body = it.body, receivedAt = it.receivedAt,

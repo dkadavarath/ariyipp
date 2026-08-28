@@ -11,7 +11,8 @@ import androidx.room.PrimaryKey
         Index(value = ["uploaded"]),
         Index(value = ["postTime"]),
         Index(value = ["uid"], unique = true),
-        Index(value = ["contentHash"])
+        Index(value = ["contentHash"]),
+        Index(value = ["packageName", "createdAt"])
     ]
 )
 data class NotificationEntity(

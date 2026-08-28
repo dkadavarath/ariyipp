@@ -3,6 +3,7 @@ package com.noti.logger.data
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 /** Cheap fingerprint of the relayed_messages table, for change-driven UI refreshes. Room re-runs
@@ -164,4 +165,13 @@ interface RelayedMessageDao {
 
     @Insert
     fun insertAll(messages: List<RelayedMessageEntity>)
+
+    /** Atomically replaces the whole message history (used by a backup restore): clearing and
+     *  re-inserting run as one transaction, so a failure partway - a bad row, a DB error, the
+     *  process dying mid-restore - can't leave the history emptied without the new rows in place. */
+    @Transaction
+    fun replaceAll(messages: List<RelayedMessageEntity>) {
+        clearAll()
+        insertAll(messages)
+    }
 }

@@ -78,6 +78,15 @@ class UploadWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                         settings.lastUploadAtMs = System.currentTimeMillis()
                         return@withContext Result.retry()
                     }
+                    UploadOutcome.InvalidUrl -> {
+                        // Misconfigured (non-https, non-loopback) URL - will never succeed until
+                        // the user fixes it in Settings. Nothing deleted. Alert + retry (matches
+                        // ClientError: retries are cheap and the next fix-then-save picks it up).
+                        Alerter.alertInvalidWebhookUrl(applicationContext)
+                        settings.lastUploadResult = "invalid webhook URL (must be https) - alerted, retrying"
+                        settings.lastUploadAtMs = System.currentTimeMillis()
+                        return@withContext Result.retry()
+                    }
                 }
             }
 

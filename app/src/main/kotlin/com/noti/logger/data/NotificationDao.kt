@@ -29,4 +29,10 @@ interface NotificationDao {
     /** Count rows with the same content captured at/after [since] (epoch ms) - for dedup. */
     @Query("SELECT COUNT(*) FROM notifications WHERE contentHash = :hash AND createdAt >= :since")
     suspend fun countRecentByHash(hash: String, since: Long): Int
+
+    /** Count rows from a single package captured at/after [since] - a per-package rate-limit
+     *  backstop against a single noisy/malicious source flooding storage with unique content that
+     *  the content-hash dedup above can't catch. */
+    @Query("SELECT COUNT(*) FROM notifications WHERE packageName = :packageName AND createdAt >= :since")
+    suspend fun countRecentByPackage(packageName: String, since: Long): Int
 }

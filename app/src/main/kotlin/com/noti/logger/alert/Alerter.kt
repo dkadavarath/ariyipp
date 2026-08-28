@@ -20,6 +20,7 @@ object Alerter {
     private const val CHANNEL_ID = "noti_alerts"
     private const val ALERT_UPLOAD_ERROR_ID = 1001
     private const val ALERT_FAILURES_ID = 1003
+    private const val ALERT_INVALID_URL_ID = 1004
 
     private fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -70,6 +71,17 @@ object Alerter {
             "noti: upload rejected (HTTP $httpCode)",
             "The webhook rejected $recordCount record(s) with HTTP $httpCode. " +
                 "Retrying automatically - check the webhook URL, auth, or payload settings."
+        )
+    }
+
+    /** The configured webhook URL isn't https (and isn't a loopback/emulator dev exception). */
+    fun alertInvalidWebhookUrl(context: Context) {
+        post(
+            context,
+            ALERT_INVALID_URL_ID,
+            "noti: webhook URL must be https",
+            "The configured webhook URL isn't https, so uploads are blocked. Update it in " +
+                "Settings > Webhook."
         )
     }
 

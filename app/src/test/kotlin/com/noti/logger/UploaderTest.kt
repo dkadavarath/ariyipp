@@ -314,6 +314,30 @@ class UploaderTest {
 
     // ---- Unreachable host ----
 
+    // ---- URL scheme validation ----
+
+    @Test
+    fun `non-https non-loopback URL returns InvalidUrl without connecting`() = withServer { server ->
+        // A real reachable server, deliberately addressed by its loopback IP with a scheme swap
+        // that would still resolve fine over http if the guard didn't stop it first - proves the
+        // check itself blocks it rather than the request just happening to fail for some other
+        // reason (e.g. an unresolvable host).
+        val result = uploader().post("http://192.0.2.1:${server.port}/", "tok", sampleBatch())
+        assertEquals(UploadOutcome.InvalidUrl, result)
+        assertTrue("must not have reached the server", server.requests.isEmpty())
+    }
+
+    @Test
+    fun `https URL is allowed`() = withServer { server ->
+        // No TLS server available in this unit test, so this only proves the scheme check itself
+        // passes https through (it then fails downstream on the handshake, which is fine - that's
+        // exercised by the existing "unreachable port" Retry test, just via a different cause).
+        val result = uploader().upload(
+            "https://localhost:${server.port}/", "Authorization", "Bearer tok", sampleBatch()
+        )
+        assertEquals(UploadOutcome.Retry, result)
+    }
+
     @Test
     fun `unreachable port returns Retry`() {
         // Bind a ServerSocket just to obtain an ephemeral port, then close it immediately

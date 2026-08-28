@@ -9,6 +9,7 @@ import com.noti.logger.R
 import com.noti.logger.config.Settings
 import com.noti.logger.push.NotiConfigSender
 import com.noti.logger.work.UploadScheduler
+import com.noti.shared.WebhookUrlPolicy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -35,8 +36,15 @@ class ConnectionActivity : ScreenActivity() {
         if (s.authHeaderPrefix != "Bearer ") headerPrefix.setText(s.authHeaderPrefix)
         gzip.isChecked = s.gzipEnabled
 
-        fun persist() {
-            s.webhookUrl = url.text.toString().trim()
+        // @return false (and shows a field error) if the URL isn't https - the caller must not
+        // proceed (push/save) in that case, so an unsafe URL is rejected before it's ever stored.
+        fun persist(): Boolean {
+            val newUrl = url.text.toString().trim()
+            if (newUrl.isNotBlank() && !WebhookUrlPolicy.isAllowed(newUrl)) {
+                url.error = getString(R.string.webhook_url_must_be_https)
+                return false
+            }
+            s.webhookUrl = newUrl
             s.bearerToken = token.text.toString().trim()
             val name = headerName.text.toString().trim().ifBlank { "Authorization" }
             s.authHeaderName = name
@@ -46,10 +54,11 @@ class ConnectionActivity : ScreenActivity() {
             s.authHeaderPrefix = if (prefix.isBlank() && name == "Authorization") "Bearer " else prefix
             s.gzipEnabled = gzip.isChecked
             UploadScheduler.applyFromSettings(this)
+            return true
         }
 
         findViewById<MaterialButton>(R.id.btn_push).setOnClickListener {
-            persist()
+            if (!persist()) return@setOnClickListener
             lifecycleScope.launch {
                 val ok = withContext(Dispatchers.IO) { NotiConfigSender.pushWebhook(applicationContext) }
                 Toast.makeText(
@@ -61,7 +70,7 @@ class ConnectionActivity : ScreenActivity() {
         }
 
         findViewById<android.view.View>(R.id.btn_save).setOnClickListener {
-            persist()
+            if (!persist()) return@setOnClickListener
             Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show()
             finish()
         }

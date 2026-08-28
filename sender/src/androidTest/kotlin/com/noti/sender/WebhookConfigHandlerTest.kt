@@ -68,6 +68,17 @@ class WebhookConfigHandlerTest {
         assertNull(WebhookConfigHandler.parse(ctx, payload(WireMessage.WebhookConfig(url = "https://x", configVersion = 4L))))
     }
 
+    @Test fun non_https_url_returns_null() {
+        assertNull(
+            WebhookConfigHandler.parse(ctx, payload(WireMessage.WebhookConfig(url = "http://evil.example/hook", configVersion = 1L))),
+        )
+    }
+
+    @Test fun blank_url_is_allowed_as_disabled() {
+        val cfg = WireMessage.WebhookConfig(enabled = false, url = "", configVersion = 1L)
+        assertEquals(cfg, WebhookConfigHandler.parse(ctx, payload(cfg)))
+    }
+
     @Test fun applying_a_config_raises_the_high_water_mark() {
         val cfg = WireMessage.WebhookConfig(url = "https://x", configVersion = 7L)
         assertEquals(cfg, WebhookConfigHandler.parse(ctx, payload(cfg)))
