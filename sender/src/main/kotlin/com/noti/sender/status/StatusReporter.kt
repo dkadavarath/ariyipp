@@ -77,7 +77,7 @@ object StatusReporter {
         if (s.serviceAccountJson.isBlank() || s.notiFcmToken.isBlank() || s.relayKey.isBlank()) return false
         return try {
             val report = StatusCollector.snapshot(context, trigger)
-            val payload = MessageCrypto.encrypt(Wire.encode(report), s.relayKey)
+            val payload = MessageCrypto.encrypt(Wire.encodeFor(report, com.noti.shared.Wire.Direction.COMPANION_TO_MAIN), s.relayKey)
             val res = FcmSender.forServiceAccount(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload), label = com.noti.shared.FcmLabel.STATUS_REPORT)
             if (!res.ok) Diag.log("status → HTTP ${res.httpCode} (${res.detail.take(40)})")
             else if (WireMessage.StatusReport.isAlert(trigger)) Diag.log("status alert sent to main (trigger $trigger)")

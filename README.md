@@ -3,7 +3,7 @@
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84)
 ![minSdk](https://img.shields.io/badge/minSdk-26-1565c0)
 ![targetSdk](https://img.shields.io/badge/targetSdk-35-1565c0)
-![Release](https://img.shields.io/badge/release-v1.5-1565c0)
+![Release](https://img.shields.io/badge/release-v1.6-1565c0)
 ![Language](https://img.shields.io/badge/kotlin-100%25-7f52ff)
 ![License](https://img.shields.io/badge/license-GPL--3.0-1565c0)
 
@@ -36,7 +36,17 @@ source with your own signing key (see [below](#build-from-source)) works exactly
   ticks (received by companion / handed to SIM / carrier-confirmed); compose on the main device and
   the companion sends it from its SIM.
 - **End-to-end encrypted** — messages are AES-256-GCM encrypted with a pre-shared key; the transport
-  (FCM) only ever carries ciphertext.
+  (FCM) only ever carries ciphertext, and every message is tagged with its direction so it can't be
+  bounced back to the phone that sent it. Both phones must run the same version.
+- **Encrypted on the phone too** — the app's database (messages, captured notifications, reminders)
+  is encrypted at rest with SQLCipher, keyed from the phone's hardware keystore.
+- **Safeguards on the companion** — a Security screen there caps how many SMS the main device can
+  have it send (20 an hour and 50 a day by default) and can restrict sends to numbers that have
+  texted it. Both are set on the companion only, so a leaked main device can't change them.
+- **Screenshot protection** — the pairing, key and backup screens are kept out of screenshots and
+  Recent apps by default; messages, chats and reminders can be protected too (Settings → Privacy).
+- **Survives outages** — if FCM drops queued messages while the main device is offline, it asks the
+  companion to re-send what it missed.
 - **Chat history retention** — relayed messages are kept forever by default, or for as long as you
   set. A repush or catch-up of old SMS is stored quietly instead of buzzing once per message.
 - **One-way pairing by QR** — the main device owns and shows the shared key; the companion scans it
@@ -76,7 +86,8 @@ source with your own signing key (see [below](#build-from-source)) works exactly
   as SMS through the companion), and bulk mark-as-read/mute/delete conversations from the Messages
   list.
 - **Encrypted backup & restore** through the system file picker, passphrase-protected (AES-256-GCM
-  over a PBKDF2-SHA256 key, 600k iterations; older backups still restore). Covers chat history,
+  over a PBKDF2-SHA256 key, 600k iterations; a new passphrase needs 16+ characters without repeats
+  or runs; older backups still restore). Covers chat history,
   pairing, reminder rules and bills, and every setting.
 - **Optional extras:** capture this phone's notifications and forward them to a webhook (https only),
   and push the webhook config to the companion — opt-in on the companion, and it's notified of any
@@ -224,14 +235,20 @@ post the same JSON shape: a batch of items.
   or a custom header for other auth schemes) is added when both are set.
 - Forwarded SMS always have `package`/`category` = `"sms"`; captured notifications carry the
   originating app's real package name and label instead.
-- Expected response: HTTP 200 with a JSON array acknowledging each `uid`:
+- Response: any HTTP 2xx means delivered. To confirm records one by one (captured notifications
+  only), reply with a JSON array acknowledging each `uid`:
 
 ```json
 [{ "success": ["uid1"], "failure": ["Key (uid)=(uid2) already exists."] }]
 ```
 
   `success` uids are cleared from the local outbox. A `failure` message containing "already exists"
-  is also treated as delivered (idempotent retry); any other failure is retried.
+  is also treated as delivered (idempotent retry); any other failure is retried. A 2xx with any
+  other body (n8n's default `{"message":"Workflow was started"}`, or none) counts the whole batch
+  as delivered, and the app tells you once that the endpoint isn't confirming records. Forwarded
+  SMS go one per request and any 2xx is enough.
+- Redirects are not followed: a 3xx is reported as a configuration error and the data is held.
+  Point the URL straight at the final address.
 
 ## Build from source
 

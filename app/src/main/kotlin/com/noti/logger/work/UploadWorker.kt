@@ -29,6 +29,7 @@ class UploadWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
             val maxPages = 50
             var pagesScanned = 0
             var totalFailed = 0
+            var unconfirmed = 0
             val failureMessages = ArrayList<String>()
 
             // Validation lives in n8n; the endpoint always replies 200 with per-uid
@@ -74,6 +75,12 @@ class UploadWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                         }
                         if (drained) break // reached the end of the queue
                     }
+                    UploadOutcome.Unconfirmed -> {
+                        // 2xx without per-record results: the endpoint took the batch.
+                        dao.markUploaded(page.map { it.id })
+                        unconfirmed += page.size
+                        if (drained) break
+                    }
                     UploadOutcome.Retry -> {
                         settings.lastUploadResult = "retry"
                         return@withContext Result.retry()
@@ -109,7 +116,16 @@ class UploadWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                 return@withContext Result.retry()
             }
 
-            settings.lastUploadResult = "ok"
+            settings.lastUploadResult =
+                if (unconfirmed > 0) "ok - $unconfirmed sent, endpoint didn't list them as stored" else "ok"
+            if (unconfirmed > 0) {
+                com.noti.shared.Diag.log("upload: $unconfirmed record(s) accepted without per-record results (counted as delivered)")
+                // Once per endpoint: for anyone using such a reply on purpose, more would be noise.
+                if (settings.unconfirmedNotifiedUrl != settings.webhookUrl) {
+                    settings.unconfirmedNotifiedUrl = settings.webhookUrl
+                    Alerter.alertUploadUnconfirmed(applicationContext)
+                }
+            }
             Result.success()
         } catch (e: Exception) {
             try {

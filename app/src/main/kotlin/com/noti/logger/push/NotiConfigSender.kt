@@ -30,7 +30,7 @@ object NotiConfigSender {
             authToken = s.bearerToken,
             configVersion = System.currentTimeMillis(),
         )
-        val payload = MessageCrypto.encrypt(Wire.encode(cfg), s.relayKey)
+        val payload = MessageCrypto.encrypt(Wire.encodeFor(cfg, com.noti.shared.Wire.Direction.MAIN_TO_COMPANION), s.relayKey)
         return try {
             val res = FcmSender.forServiceAccount(s.serviceAccountJson).send(s.sndiFcmToken, mapOf("payload" to payload), label = com.noti.shared.FcmLabel.CONFIG)
             Diag.log(if (res.ok) "webhook config pushed to companion" else "push webhook → HTTP ${res.httpCode} (${res.detail.take(50)})")

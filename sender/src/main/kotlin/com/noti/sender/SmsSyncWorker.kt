@@ -34,6 +34,11 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val ctx = applicationContext
+        if (!CompanionRole.active(ctx)) {
+            // A job left over from when this phone was the companion: never relay from Main.
+            CompanionRole.stopAll(ctx)
+            return@withContext Result.success()
+        }
         if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
             return@withContext Result.success() // can't read the provider
         }
@@ -61,15 +66,19 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         if (SenderPipeline.isConfigured(s)) {
             if (s.lastRelayedSmsId == -1L) {
                 s.lastRelayedSmsId = SmsInbox.newestId(ctx)
+                s.lastRelayedSmsDate = SmsInbox.dateOf(ctx, s.lastRelayedSmsId)
                 Diag.log("relay: baseline at id ${s.lastRelayedSmsId} - new SMS will relay to main")
             } else {
-                val rows = SmsInbox.since(ctx, s.lastRelayedSmsId)
+                if (s.lastRelayedSmsDate == 0L) s.lastRelayedSmsDate = SmsInbox.dateOf(ctx, s.lastRelayedSmsId)
+                val rows = SmsInbox.pending(ctx, s.lastRelayedSmsId, s.lastRelayedSmsDate)
                 if (rows.isNotEmpty()) foundRows = true
                 if (rows.isNotEmpty()) Diag.log("relay: ${rows.size} new SMS → main")
                 for (sms in rows) {
                     when (SenderPipeline.pushToIppu(ctx, sms)) {
                         SenderPipeline.SendOutcome.DELIVERED,
-                        SenderPipeline.SendOutcome.PERMANENT -> s.lastRelayedSmsId = sms.id
+                        SenderPipeline.SendOutcome.PERMANENT -> {
+                            s.lastRelayedSmsId = sms.id; s.lastRelayedSmsDate = sms.receivedMillis
+                        }
                         // BLOCKED holds the mark too: skipping would lose the SMS for good.
                         SenderPipeline.SendOutcome.TRANSIENT,
                         SenderPipeline.SendOutcome.BLOCKED -> { retry = true; break }
@@ -83,15 +92,19 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         if (s.n8nEnabled && s.n8nUrl.isNotBlank()) {
             if (s.lastWebhookSmsId == -1L) {
                 s.lastWebhookSmsId = SmsInbox.newestId(ctx)
+                s.lastWebhookSmsDate = SmsInbox.dateOf(ctx, s.lastWebhookSmsId)
                 Diag.log("webhook: baseline at id ${s.lastWebhookSmsId}")
             } else {
-                val rows = SmsInbox.since(ctx, s.lastWebhookSmsId)
+                if (s.lastWebhookSmsDate == 0L) s.lastWebhookSmsDate = SmsInbox.dateOf(ctx, s.lastWebhookSmsId)
+                val rows = SmsInbox.pending(ctx, s.lastWebhookSmsId, s.lastWebhookSmsDate)
                 if (rows.isNotEmpty()) foundRows = true
                 if (rows.isNotEmpty()) Diag.log("webhook: ${rows.size} new SMS → n8n")
                 for (sms in rows) {
                     when (SenderPipeline.pushToWebhook(ctx, sms)) {
                         SenderPipeline.SendOutcome.DELIVERED,
-                        SenderPipeline.SendOutcome.PERMANENT -> s.lastWebhookSmsId = sms.id
+                        SenderPipeline.SendOutcome.PERMANENT -> {
+                            s.lastWebhookSmsId = sms.id; s.lastWebhookSmsDate = sms.receivedMillis
+                        }
                         SenderPipeline.SendOutcome.TRANSIENT,
                         SenderPipeline.SendOutcome.BLOCKED -> { retry = true; break }
                         SenderPipeline.SendOutcome.NOT_CONFIGURED -> break
@@ -129,8 +142,9 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
             val n8nNeeds = s.n8nEnabled && s.n8nUrl.isNotBlank() && s.lastWebhookSmsId == -1L
             if (!fcmNeeds && !n8nNeeds) return
             val newest = SmsInbox.newestId(context)
-            if (fcmNeeds) s.lastRelayedSmsId = newest
-            if (n8nNeeds) s.lastWebhookSmsId = newest
+            val date = SmsInbox.dateOf(context, newest)
+            if (fcmNeeds) { s.lastRelayedSmsId = newest; s.lastRelayedSmsDate = date }
+            if (n8nNeeds) { s.lastWebhookSmsId = newest; s.lastWebhookSmsDate = date }
         }
 
         /** Scan and relay new rows immediately (manual button, boot). */

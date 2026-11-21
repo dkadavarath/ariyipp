@@ -348,8 +348,9 @@ class RemindersFragment : Fragment(R.layout.fragment_reminders) {
     private fun computeTotals(ctx: android.content.Context): Totals {
         val home = FxRates.home(ctx)
         return try {
-            val horizon = System.currentTimeMillis() + 30L * 86_400_000L
-            val due = NotiDatabase.get(ctx).billOccurrenceDao().active().filter { it.dueAt in 1..horizon }
+            val horizon = java.time.LocalDate.now().plusDays(30)
+            val due = NotiDatabase.get(ctx).billOccurrenceDao().active()
+                .filter { it.dueAt > 0 && !com.noti.logger.reminder.DueDates.fromMs(it.dueAt).isAfter(horizon) }
             // Only touch the network (at most daily) when something actually needs converting.
             val needsRates = due.any { b -> b.amount != null && FxRates.isoOf(b.currency, home) != home }
             val fx = if (needsRates) FxRates.current(ctx, home) else null
@@ -658,7 +659,7 @@ class RemindersFragment : Fragment(R.layout.fragment_reminders) {
             }
             // On one line there is no room to spell out "Overdue by 3 days"; colour carries it.
             val overdue = !row.dimmed && bill.dueAt > 0 &&
-                ReminderPolicy.fromEpochMillis(bill.dueAt).toLocalDate().isBefore(java.time.LocalDate.now())
+                com.noti.logger.reminder.DueDates.fromMs(bill.dueAt).isBefore(java.time.LocalDate.now())
             holder.sub.setTextColor(MaterialColors.getColor(holder.sub,
                 if (compact && overdue) androidx.appcompat.R.attr.colorError
                 else com.google.android.material.R.attr.colorOnSurfaceVariant))

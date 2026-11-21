@@ -10,6 +10,7 @@ object FcmLabel {
     const val HEARTBEAT_TO_COMPANION = "heartbeat-m2c"
     const val HEARTBEAT_TO_MAIN = "heartbeat-c2m"
     const val COMMAND = "command-m2c"
+    const val CATCH_UP = "catchup-m2c"
     const val STATUS_REQUEST = "statusreq-m2c"
     const val CONFIG = "config-m2c"
     const val TOKEN_TO_COMPANION = "token-m2c"

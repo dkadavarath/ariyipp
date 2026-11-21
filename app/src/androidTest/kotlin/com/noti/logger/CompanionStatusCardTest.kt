@@ -55,7 +55,7 @@ class CompanionStatusCardTest {
             signalLevel = 3, networkType = "LTE", roaming = true,
             wifi = true, wifiLevel = 3, online = true, vpn = true,
         )
-        PushMessageHandler.handle(ctx, mapOf(PushMessageHandler.PAYLOAD_KEY to MessageCrypto.encrypt(Wire.encode(report), key)))
+        PushMessageHandler.handle(ctx, mapOf(PushMessageHandler.PAYLOAD_KEY to MessageCrypto.encrypt(Wire.encodeFor(report, Wire.Direction.COMPANION_TO_MAIN), key)))
     }
 
     @After fun clear() {
@@ -138,7 +138,7 @@ class CompanionStatusCardTest {
         // A companion without READ_PHONE_STATE reports signalLevel -1. A 0-level gauge would say
         // "no signal", which is a different and alarming claim, so it is dimmed and shown as a dash.
         val unknown = WireMessage.StatusReport(atMs = System.currentTimeMillis(), batteryPct = -1, signalLevel = -1, mobileData = true)
-        PushMessageHandler.handle(ctx, mapOf(PushMessageHandler.PAYLOAD_KEY to MessageCrypto.encrypt(Wire.encode(unknown), key)))
+        PushMessageHandler.handle(ctx, mapOf(PushMessageHandler.PAYLOAD_KEY to MessageCrypto.encrypt(Wire.encodeFor(unknown, Wire.Direction.COMPANION_TO_MAIN), key)))
 
         ActivityScenario.launch(DiagnosticsActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->

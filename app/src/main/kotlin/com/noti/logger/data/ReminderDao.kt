@@ -60,6 +60,10 @@ interface BillOccurrenceDao {
     @Query("SELECT * FROM reminder_bills WHERE sourceKey = :key LIMIT 1")
     fun bySourceKey(key: String): BillOccurrenceEntity?
 
+    /** A rule's bill for the cycle due on [dueAt], whatever its status. */
+    @Query("SELECT * FROM reminder_bills WHERE ruleId = :ruleId AND dueAt = :dueAt ORDER BY id LIMIT 1")
+    fun byRuleAndDue(ruleId: Long, dueAt: Long): BillOccurrenceEntity?
+
     /** Active bills whose reminder is due to be (re)scheduled. */
     @Query("SELECT * FROM reminder_bills WHERE status = 0 AND dueAt > 0 ORDER BY dueAt")
     fun schedulable(): List<BillOccurrenceEntity>
@@ -127,6 +131,10 @@ interface ParkingSessionDao {
 
     @Update
     fun update(session: ParkingSessionEntity)
+
+    /** Records that the alarm for reminder time [remindAt] has rung. */
+    @Query("UPDATE reminder_parking SET rangFor = :remindAt WHERE id = :id")
+    fun markRang(id: Long, remindAt: Long)
 
     @Query("UPDATE reminder_parking SET active = 0, endedAt = :at WHERE id = :id")
     fun end(id: Long, at: Long)

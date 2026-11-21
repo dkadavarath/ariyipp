@@ -17,8 +17,41 @@ object SmsInbox {
         Telephony.Sms.DATE, Telephony.Sms.DATE_SENT, Telephony.Sms.SUBSCRIPTION_ID,
     )
 
+    /**
+     * What a relay leg still has to send: rows past [markId], plus the row *at* [markId] when it is
+     * newer than [markDate] - the newest SMS was deleted and the next one reused its id, so `>`
+     * alone would skip it for good. Oldest first.
+     */
+    fun pending(context: Context, markId: Long, markDate: Long): List<CapturedSms> {
+        val after = since(context, markId)
+        if (markDate <= 0 || markId <= 0) return after
+        val atMark = query(context, "${Telephony.Sms._ID} = ?", arrayOf(markId.toString())).firstOrNull()
+        return if (isReused(atMark, markDate)) listOf(atMark!!) + after else after
+    }
+
+    /** True when the row now at the mark is a different, newer message than the one relayed. Pure. */
+    fun isReused(atMark: CapturedSms?, markDate: Long): Boolean =
+        atMark != null && markDate > 0 && atMark.receivedMillis > markDate
+
+    /** The highest `_id` received before [dateMs] (0 if none): a repush from here covers every SMS
+     *  received at or after [dateMs]. */
+    fun lastIdBefore(context: Context, dateMs: Long): Long {
+        val c = context.contentResolver.query(
+            Telephony.Sms.Inbox.CONTENT_URI, arrayOf(Telephony.Sms._ID),
+            "${Telephony.Sms.DATE} < ?", arrayOf(dateMs.toString()), "${Telephony.Sms._ID} DESC LIMIT 1",
+        ) ?: return 0L
+        return c.use { if (it.moveToFirst()) it.getLong(0) else 0L }
+    }
+
+    /** Received time of row [id], or 0 when it's gone. */
+    fun dateOf(context: Context, id: Long): Long =
+        query(context, "${Telephony.Sms._ID} = ?", arrayOf(id.toString())).firstOrNull()?.receivedMillis ?: 0L
+
     /** Inbox messages with `_id` strictly greater than [sinceId], oldest first. */
-    fun since(context: Context, sinceId: Long): List<CapturedSms> {
+    fun since(context: Context, sinceId: Long): List<CapturedSms> =
+        query(context, "${Telephony.Sms._ID} > ?", arrayOf(sinceId.toString()))
+
+    private fun query(context: Context, selection: String, args: Array<String>): List<CapturedSms> {
         val out = ArrayList<CapturedSms>()
         // SIM labels resolved once per subscription, not per row: simLabel() ends in an
         // EncryptedSharedPreferences read (simName), which would otherwise decrypt 1-2 times
@@ -26,7 +59,7 @@ object SmsInbox {
         val simLabels = HashMap<Int, String>()
         val cursor = context.contentResolver.query(
             Telephony.Sms.Inbox.CONTENT_URI, COLUMNS,
-            "${Telephony.Sms._ID} > ?", arrayOf(sinceId.toString()),
+            selection, args,
             "${Telephony.Sms._ID} ASC",
         ) ?: return out
         cursor.use { c ->

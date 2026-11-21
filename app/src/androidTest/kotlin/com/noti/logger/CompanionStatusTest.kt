@@ -47,7 +47,7 @@ class CompanionStatusTest {
     }
 
     private fun payload(msg: WireMessage): Map<String, String> =
-        mapOf(PushMessageHandler.PAYLOAD_KEY to MessageCrypto.encrypt(Wire.encode(msg), key))
+        mapOf(PushMessageHandler.PAYLOAD_KEY to MessageCrypto.encrypt(Wire.encodeFor(msg, Wire.Direction.COMPANION_TO_MAIN), key))
 
     @Test fun a_report_is_decrypted_stored_and_readable() {
         val report = WireMessage.StatusReport(
@@ -86,7 +86,7 @@ class CompanionStatusTest {
     @Test fun a_report_encrypted_with_the_wrong_key_is_dropped() {
         val foreign = mapOf(
             PushMessageHandler.PAYLOAD_KEY to MessageCrypto.encrypt(
-                Wire.encode(WireMessage.StatusReport(batteryPct = 7)), MessageCrypto.generateKeyBase64(),
+                Wire.encodeFor(WireMessage.StatusReport(batteryPct = 7), Wire.Direction.COMPANION_TO_MAIN), MessageCrypto.generateKeyBase64(),
             ),
         )
         assertFalse(PushMessageHandler.handle(ctx, foreign))

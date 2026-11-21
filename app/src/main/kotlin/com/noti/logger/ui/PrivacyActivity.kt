@@ -17,6 +17,10 @@ class PrivacyActivity : ScreenActivity() {
         val keywords = findViewById<EditText>(R.id.et_excluded_keywords)
         val dedupe = findViewById<EditText>(R.id.et_dedupe_window)
         val retention = findViewById<EditText>(R.id.et_retention_days)
+        val protectKeys = findViewById<MaterialSwitch>(R.id.sw_protect_keys)
+        val protectMessages = findViewById<MaterialSwitch>(R.id.sw_protect_messages)
+        protectKeys.isChecked = s.protectKeyScreens
+        protectMessages.isChecked = s.protectMessages
 
         captureBody.isChecked = s.captureBody
         keywords.setText(s.excludedKeywords.joinToString("\n"))
@@ -29,6 +33,8 @@ class PrivacyActivity : ScreenActivity() {
                 .lines().map { it.trim() }.filter { it.isNotBlank() }
             s.dedupeWindowSeconds = dedupe.text.toString().toIntOrNull() ?: s.dedupeWindowSeconds
             s.retentionDays = retention.text.toString().toIntOrNull() ?: s.retentionDays
+            s.protectKeyScreens = protectKeys.isChecked
+            s.protectMessages = protectMessages.isChecked
             Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show()
             finish()
         }

@@ -33,6 +33,7 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val ctx = applicationContext
+        if (!CompanionRole.active(ctx)) return@withContext Result.success()
         val s = SenderSettings.get(ctx)
 
         if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
@@ -48,7 +49,7 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
 
         val cursor = s.repushCursorId
         val batch = SmsInbox.since(ctx, cursor)
-        if (cursor == 0L) s.repushTotal = batch.size
+        if (cursor == 0L || s.repushTotal <= 0) s.repushTotal = batch.size
         val total = s.repushTotal.coerceAtLeast(1)
         val base = (total - batch.size).coerceAtLeast(0) // already handled on prior (retried) runs
 
@@ -114,8 +115,13 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
         private const val UNIQUE = "sms-repush"
 
         /** Kick off a fresh full repush of the entire inbox (resets the resume cursor). */
-        fun start(context: Context) {
-            SenderSettings.get(context).repushCursorId = 0L
+        fun start(context: Context) = startFrom(context, 0L)
+
+        /** Re-send the SMS after row [afterId] - a catch-up Main asked for (see CatchUpHandler). */
+        fun startFrom(context: Context, afterId: Long) {
+            val s = SenderSettings.get(context)
+            s.repushCursorId = afterId.coerceAtLeast(0L)
+            s.repushTotal = 0 // recounted from the cursor on the first run
             WorkManager.getInstance(context).enqueueUniqueWork(
                 UNIQUE, ExistingWorkPolicy.REPLACE,
                 OneTimeWorkRequestBuilder<RepushWorker>()

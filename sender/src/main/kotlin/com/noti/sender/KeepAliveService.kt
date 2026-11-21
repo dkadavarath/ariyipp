@@ -32,6 +32,11 @@ class KeepAliveService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // A sticky restart after the phone was switched to Main: don't come back.
+        if (!CompanionRole.active(this)) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         ensureChannel()
         // The status monitor's battery broadcast and wifi callback only fire while this process is
         // alive, which is exactly what this service exists to arrange - so it starts and stops with
@@ -81,7 +86,7 @@ class KeepAliveService : Service() {
             val s = SenderSettings.get(context)
             val canReceive = ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) ==
                 PackageManager.PERMISSION_GRANTED
-            if (s.keepAliveEnabled && canReceive) {
+            if (s.keepAliveEnabled && canReceive && CompanionRole.active(context)) {
                 ContextCompat.startForegroundService(context, Intent(context, KeepAliveService::class.java))
             }
         }

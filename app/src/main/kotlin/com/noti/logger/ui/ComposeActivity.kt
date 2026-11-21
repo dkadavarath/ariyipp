@@ -28,10 +28,15 @@ class ComposeActivity : ScreenActivity() {
 
     override val layoutRes = R.layout.activity_compose
     override val titleRes = R.string.compose_title
+    override val screenKind = com.noti.sender.ui.ScreenGuard.Kind.MESSAGES
 
     private lateinit var toField: EditText
     private lateinit var bodyField: EditText
     private var selectedSim: Int = -1 // -1 = default SIM, 0 = SIM 1, 1 = SIM 2
+    /** Set on the first accepted tap. Each tap saves a new message with its own id, which the
+     *  companion's replay check can't tell apart, so a double tap would send two real SMS. */
+    internal var sending = false
+        private set
 
     /**
      * Pick a phone number directly (ACTION_PICK on the phone data type). The picker grants read
@@ -89,6 +94,7 @@ class ComposeActivity : ScreenActivity() {
     }
 
     private fun send() {
+        if (sending) return
         val to = toField.text?.toString()?.trim().orEmpty()
         val body = bodyField.text?.toString()?.trim().orEmpty()
         if (to.isEmpty() || body.isEmpty()) {
@@ -100,6 +106,8 @@ class ComposeActivity : ScreenActivity() {
             return
         }
         val sim = selectedSim
+        sending = true
+        findViewById<MaterialButton>(R.id.btn_send).isEnabled = false
         lifecycleScope.launch {
             val msgId = withContext(Dispatchers.IO) {
                 NotiDatabase.get(this@ComposeActivity).relayedMessageDao().insert(

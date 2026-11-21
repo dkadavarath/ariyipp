@@ -4,6 +4,10 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonObject
 
 /** Which role a device plays in the pair. Stored per-device; chosen at onboarding, switchable later. */
 @Serializable
@@ -63,6 +67,9 @@ sealed interface WireMessage {
     data class DeliveryAck(
         val msgId: Long = 0,
         val status: Int = 0,
+        /** Why, for a [FAILED] the companion refused (stale, clock skew); empty otherwise and then
+         *  omitted on the wire. Older Mains ignore it. */
+        val reason: String = "",
     ) : WireMessage {
         companion object {
             const val RECEIVED = 1
@@ -85,6 +92,18 @@ sealed interface WireMessage {
         val authHeaderPrefix: String = "",
         val authToken: String = "",
         val configVersion: Long = 0,
+    ) : WireMessage
+
+    /**
+     * Main → Companion: "re-send the SMS received since [sinceMs]" (the companion's clock, as it
+     * stamped the relays; 0 = its default look-back). Sent when FCM reports it dropped messages
+     * queued for Main (over 100 pending during an outage): the companion had already counted those
+     * relays as sent. Main's content dedup drops whatever it already holds.
+     */
+    @Serializable
+    @SerialName("catchup")
+    data class CatchUp(
+        val sinceMs: Long = 0,
     ) : WireMessage
 
     /** Companion → Main: the companion's current push endpoint, so Main can reach it with no copy-back. */
@@ -205,8 +224,52 @@ object Wire {
         encodeDefaults = false
     }
 
+    /** Plain form, for a copy kept on this phone (never sent). Pushes use [encodeFor]. */
     fun encode(message: WireMessage): String = json.encodeToString(message)
 
-    /** @throws Exception on malformed input or an unknown type. */
+    /** @throws Exception on malformed input or an unknown type. Pushes use [decodeFrom]. */
     fun decode(text: String): WireMessage = json.decodeFromString(text)
+
+    /**
+     * Which way a push travels. Both directions share one key, so without this a message could be
+     * captured and sent back to the phone that wrote it, and still decrypt: a Main token announce
+     * reflected to Main would point its sends at itself; a reflected heartbeat would fake the peer
+     * being alive. The tag sits inside the encrypted, authenticated payload, so it can't be changed
+     * without the key.
+     */
+    enum class Direction(val tag: String) { MAIN_TO_COMPANION("m2c"), COMPANION_TO_MAIN("c2m") }
+
+    private const val DIR_FIELD = "d"
+
+    /** [message] tagged as travelling [direction]: `{"t":..., "d":"m2c", ...}`. */
+    fun encodeFor(message: WireMessage, direction: Direction): String {
+        val obj = json.encodeToJsonElement(WireMessage.serializer(), message).jsonObject
+        return JsonObject(obj + (DIR_FIELD to JsonPrimitive(direction.tag))).toString()
+    }
+
+    /** A push that didn't carry the tag at all: from a peer on a version before tags. */
+    class UntaggedException : IllegalArgumentException("untagged push - the other phone needs updating")
+
+    /** A push tagged for the other direction: a reflected message. */
+    class WrongDirectionException : IllegalArgumentException("push tagged for the other direction")
+
+    /**
+     * Decodes a push that must be travelling [expected]. Untagged pushes are refused (a hard cut:
+     * both phones must run a version with tags), as is one tagged the other way.
+     * @throws UntaggedException, WrongDirectionException, or on malformed input.
+     */
+    fun decodeFrom(text: String, expected: Direction): WireMessage {
+        val obj = json.parseToJsonElement(text).jsonObject
+        val tag = (obj[DIR_FIELD] as? JsonPrimitive)?.contentOrNull ?: throw UntaggedException()
+        if (tag != expected.tag) throw WrongDirectionException()
+        return json.decodeFromJsonElement(WireMessage.serializer(), JsonObject(obj - DIR_FIELD))
+    }
+
+    /** True when [text] decodes as a wire message but carries no direction tag. */
+    fun isUntagged(text: String): Boolean = try {
+        val obj = json.parseToJsonElement(text).jsonObject
+        obj[DIR_FIELD] == null && obj["t"] != null
+    } catch (e: Exception) {
+        false
+    }
 }

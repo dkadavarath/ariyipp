@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         BillOccurrenceEntity::class,
         ParkingSessionEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = false,
 )
 abstract class NotiDatabase : RoomDatabase() {
@@ -245,17 +245,68 @@ abstract class NotiDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v13 → v14:
+         *  - due dates and rule anchor dates become plain dates (UTC midnight; see DueDates). The old
+         *    values were local midnight, read back in whatever zone the phone was in, so a move from
+         *    India to the UAE moved every date back a day. Each is converted once, read in the zone of
+         *    its currency's country ([zonesFor]), with the default currency for a blank one and
+         *    nearest-midnight rounding when the currency spans zones or is unknown;
+         *  - bills record which fields you edited (a rescan leaves those alone);
+         *  - parking sessions record which reminder time an alarm already rang for.
+         * [zonesFor] and [homeCurrency] are parameters so the migration test can pin them.
+         */
+        fun migration13To14(
+            homeCurrency: () -> String,
+            zonesFor: (String?) -> List<java.time.ZoneId> = { com.noti.logger.reminder.DueDates.zonesForCurrency(it) },
+            fallbackZone: java.time.ZoneId = java.time.ZoneId.systemDefault(),
+        ) = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE reminder_bills ADD COLUMN editedFields INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE reminder_parking ADD COLUMN rangFor INTEGER NOT NULL DEFAULT 0")
+                val home by lazy { homeCurrency() }
+                fun iso(currency: String): String? =
+                    com.noti.logger.reminder.FxRates.isoOf(currency, home)
+                fun convert(table: String, column: String, currencyColumn: String) {
+                    val rows = ArrayList<Triple<Long, Long, String>>()
+                    db.query("SELECT id, $column, $currencyColumn FROM $table WHERE $column > 0").use { c ->
+                        while (c.moveToNext()) rows.add(Triple(c.getLong(0), c.getLong(1), c.getString(2) ?: ""))
+                    }
+                    for ((id, ms, currency) in rows) {
+                        val converted = com.noti.logger.reminder.DueDates.legacyToMs(ms, zonesFor(iso(currency)), fallbackZone)
+                        db.execSQL("UPDATE $table SET $column = ? WHERE id = ?", arrayOf<Any>(converted, id))
+                    }
+                }
+                convert("reminder_bills", "dueAt", "currency")
+                convert("reminder_rules", "anchorDate", "defaultCurrency")
+            }
+        }
+
         fun get(context: Context): NotiDatabase {
             return INSTANCE ?: synchronized(this) {
-                INSTANCE ?: Room.databaseBuilder(
-                    context.applicationContext,
-                    NotiDatabase::class.java,
-                    "noti.db"
-                ).addMigrations(
-                    MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-                    MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13
-                ).build().also { INSTANCE = it }
+                INSTANCE ?: build(context.applicationContext).also { INSTANCE = it }
             }
+        }
+
+        /** Opens the encrypted database (see DbEncryption), encrypting a plaintext one first. */
+        private fun build(app: Context): NotiDatabase {
+            val key = DbEncryption.key(app)
+            val encrypted = try {
+                DbEncryption.prepare(app, key, onReset = { com.noti.logger.alert.Alerter.alertDatabaseReset(app) })
+                true
+            } catch (e: DbEncryption.EncryptionPending) {
+                false // the plaintext stays usable for this run; the next start tries again
+            }
+            return Room.databaseBuilder(app, NotiDatabase::class.java, DbEncryption.DB_NAME)
+                .apply {
+                    // A fresh array: the factory may wipe the one it's given once the database is open.
+                    if (encrypted) openHelperFactory(net.zetetic.database.sqlcipher.SupportOpenHelperFactory(DbEncryption.passphrase(key)))
+                }
+                .addMigrations(
+                    MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
+                    MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
+                    migration13To14({ com.noti.logger.reminder.FxRates.home(app) }),
+                ).build()
         }
     }
 }

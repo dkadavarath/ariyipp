@@ -45,7 +45,7 @@ class StatusPushHandlerTest {
     }
 
     private fun payload(msg: WireMessage, encKey: String = key): Map<String, String> =
-        mapOf(StatusPushHandler.PAYLOAD_KEY to MessageCrypto.encrypt(Wire.encode(msg), encKey))
+        mapOf(StatusPushHandler.PAYLOAD_KEY to MessageCrypto.encrypt(Wire.encodeFor(msg, Wire.Direction.MAIN_TO_COMPANION), encKey))
 
     @Test fun parses_a_status_request() {
         val req = WireMessage.StatusRequest(forSeconds = 60)

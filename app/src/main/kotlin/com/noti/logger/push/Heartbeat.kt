@@ -90,9 +90,12 @@ object Heartbeat {
         if (!enabled(context)) return false
         val p = peer(context) ?: return false
         return try {
-            val payload = MessageCrypto.encrypt(Wire.encode(WireMessage.Heartbeat(request)), p.key)
+            val payload = MessageCrypto.encrypt(Wire.encodeFor(WireMessage.Heartbeat(request), if (Settings.get(context).role == Role.COMPANION) com.noti.shared.Wire.Direction.COMPANION_TO_MAIN else com.noti.shared.Wire.Direction.MAIN_TO_COMPANION), p.key)
             val res = FcmSender.forServiceAccount(p.serviceAccountJson)
-                .send(p.token, mapOf("payload" to payload), label = p.label, highPriority = highPriority)
+                .send(
+                    p.token, mapOf("payload" to payload), label = p.label, highPriority = highPriority,
+                    collapseKey = HeartbeatPolicy.COLLAPSE_KEY, ttlSeconds = HeartbeatPolicy.TTL_SECONDS,
+                )
             // On success, the message id is what finds this beat in the BigQuery delivery export -
             // "accepted here, never delivered there" is otherwise invisible from either phone.
             val kind = if (request) " force-check" else if (highPriority) " answer" else ""

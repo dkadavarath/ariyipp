@@ -295,6 +295,32 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putString(KEY_LAST_UPLOAD_RESULT, value).apply()
         }
 
+    /** The database encryption key (base64, 32 bytes; see DbEncryption). Blank until first use. */
+    val dbKey: String
+        get() = prefs.getString(KEY_DB_KEY, "") ?: ""
+
+    /** Stores [dbKey] with a synchronous commit: the database is encrypted with it straight after,
+     *  and a key lost to a process death before an async write landed would lose the data too. */
+    var dbKeySync: String
+        get() = dbKey
+        set(value) { check(prefs.edit().putString(KEY_DB_KEY, value).commit()) { "couldn't store the database key" } }
+
+    /** Screenshot protection (see com.noti.sender.ui.ScreenGuard): pairing, key and backup screens
+     *  (on by default) and chats, messages and reminders (off by default). */
+    var protectKeyScreens: Boolean
+        get() = prefs.getBoolean(KEY_PROTECT_KEYS, true)
+        set(value) { prefs.edit().putBoolean(KEY_PROTECT_KEYS, value).apply() }
+
+    var protectMessages: Boolean
+        get() = prefs.getBoolean(KEY_PROTECT_MESSAGES, false)
+        set(value) { prefs.edit().putBoolean(KEY_PROTECT_MESSAGES, value).apply() }
+
+    /** The webhook URL for which "the endpoint isn't confirming records" was last notified, so it's
+     *  said once per endpoint rather than on every upload. */
+    var unconfirmedNotifiedUrl: String
+        get() = prefs.getString(KEY_UNCONFIRMED_NOTIFIED_URL, "") ?: ""
+        set(value) { prefs.edit().putString(KEY_UNCONFIRMED_NOTIFIED_URL, value).apply() }
+
     /** The Status screen's DB-status text as of the last time it was computed, so a cold app start
      *  can paint it immediately instead of showing nothing while Room re-queries. Blank = none yet. */
     var statusCacheLastUpload: String
@@ -567,6 +593,10 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_SNDI_TOKEN = "sndi_token"
         private const val KEY_LAST_UPLOAD_AT_MS = "last_upload_at_ms"
         private const val KEY_LAST_UPLOAD_RESULT = "last_upload_result"
+        private const val KEY_UNCONFIRMED_NOTIFIED_URL = "unconfirmed_notified_url"
+        private const val KEY_PROTECT_KEYS = "protect_key_screens"
+        private const val KEY_DB_KEY = "db_key"
+        private const val KEY_PROTECT_MESSAGES = "protect_messages"
         private const val KEY_STATUS_CACHE_LAST_UPLOAD = "status_cache_last_upload"
         private const val KEY_LAST_PEER_BEAT_MS = "last_peer_beat_ms"
         private const val KEY_HEARTBEAT_ENABLED = "heartbeat_enabled"

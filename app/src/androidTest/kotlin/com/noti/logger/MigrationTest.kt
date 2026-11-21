@@ -62,6 +62,7 @@ class MigrationTest {
                 NotiDatabase.MIGRATION_7_8, NotiDatabase.MIGRATION_8_9,
                 NotiDatabase.MIGRATION_9_10, NotiDatabase.MIGRATION_10_11,
                 NotiDatabase.MIGRATION_11_12, NotiDatabase.MIGRATION_12_13,
+                NotiDatabase.migration13To14({ "AED" }),
             )
             .build()
         runBlocking {

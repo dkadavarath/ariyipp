@@ -7,6 +7,13 @@ package com.noti.shared
  */
 object HeartbeatPolicy {
 
+    /** Every beat shares this FCM collapse slot: only the newest waits for an offline peer. */
+    const val COLLAPSE_KEY = "heartbeat"
+
+    /** A beat older than this says nothing about liveness now, so FCM may drop it. */
+    const val TTL_SECONDS = 30 * 60
+
+
     /** How often each device sends a beat to its peer. 15 min = WorkManager's periodic minimum. */
     const val INTERVAL_MINUTES = 15L
 

@@ -152,6 +152,10 @@ interface RelayedMessageDao {
     fun clearAll(): Int
 
     /** Retention purge: drops messages older than the cutoff (runs after inserts). */
+    /** Companion-clock time of the newest relayed SMS held (0 if none) - where a catch-up starts. */
+    @Query("SELECT IFNULL(MAX(receivedAt), 0) FROM relayed_messages WHERE outgoing = 0")
+    fun newestIncomingAt(): Long
+
     @Query("DELETE FROM relayed_messages WHERE receivedAt < :cutoff")
     fun purgeOlderThan(cutoff: Long): Int
 

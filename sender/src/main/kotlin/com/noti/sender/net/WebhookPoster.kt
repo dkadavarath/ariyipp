@@ -24,6 +24,10 @@ object WebhookPoster {
         // pool, so the next post skips DNS+TCP+TLS.
         return try {
             conn.requestMethod = "POST"
+            // Never follow a redirect: HttpURLConnection turns a 301/302 POST into a body-less GET
+            // (which then "succeeds"), and carries a custom auth header to the new host. A 3xx is
+            // returned as-is and the SMS is held (see SenderPipeline.classifyWebhook).
+            conn.instanceFollowRedirects = false
             conn.connectTimeout = 15_000
             conn.readTimeout = 20_000
             conn.doOutput = true

@@ -23,6 +23,7 @@ abstract class ScreenActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         Theming.applyDynamicColorIfEnabled(this)
         super.onCreate(savedInstanceState)
+        com.noti.sender.ui.ScreenGuard.apply(this, screenKind)
         Theming.applyAmoledIfEnabled(this) // after super so AppCompat doesn't reset the overlay
         Theming.applyPredictiveBackTransitions(this)
         setContentView(layoutRes)
@@ -44,6 +45,14 @@ abstract class ScreenActivity : AppCompatActivity() {
 
         onScreenCreated()
         Haptics.attachToToggles(root) // after subclasses have inflated their switches
+    }
+
+    /** Which screenshot-protection setting covers this screen (see ScreenGuard). */
+    protected open val screenKind: com.noti.sender.ui.ScreenGuard.Kind = com.noti.sender.ui.ScreenGuard.Kind.NONE
+
+    override fun onResume() {
+        super.onResume()
+        com.noti.sender.ui.ScreenGuard.apply(this, screenKind) // a setting changed meanwhile
     }
 
     /** Called after the toolbar/insets are set up. */

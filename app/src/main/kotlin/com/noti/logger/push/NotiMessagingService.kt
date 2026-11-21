@@ -3,7 +3,6 @@ package com.noti.logger.push
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.noti.logger.config.Settings
-import com.noti.sender.SenderPipeline
 import com.noti.sender.config.SenderSettings
 import com.noti.sender.sms.HeartbeatHandler
 import com.noti.sender.sms.SmsCommandHandler
@@ -34,22 +33,30 @@ class NotiMessagingService : FirebaseMessagingService() {
     }
 
     private fun handleCommand(message: RemoteMessage) {
+        // Direction tags (a hard cut): a push without one is from a Main on an older version, and
+        // every handler below will refuse it. Say so once rather than dropping pushes silently.
+        when (directionState(message.data)) {
+            DirectionState.UNTAGGED -> { com.noti.sender.PeerVersionNotice.onUntagged(applicationContext, peerIsMain = true); return }
+            DirectionState.TAGGED -> com.noti.sender.PeerVersionNotice.onTagged(applicationContext)
+            DirectionState.UNREADABLE -> Unit
+        }
         // A send-SMS command?
-        SmsCommandHandler.parse(applicationContext, message.data)?.let { cmd ->
-            Heartbeat.notePeerAlive(applicationContext)
-            if (cmd.msgId > 0) {
-                SenderPipeline.pushAckToIppu(applicationContext, cmd.msgId, WireMessage.DeliveryAck.RECEIVED)
-            }
-            try {
-                SmsSender.send(applicationContext, cmd.to, cmd.body, cmd.sim, cmd.msgId)
-                Diag.log("command → sent SMS to ${cmd.to} (slot ${cmd.sim}, ${cmd.body.length} chars)")
-            } catch (e: Exception) {
-                Diag.log("command → SMS send FAILED: ${e.message} (SEND_SMS granted?)")
-                if (cmd.msgId > 0) {
-                    SenderPipeline.pushAckToIppu(applicationContext, cmd.msgId, WireMessage.DeliveryAck.FAILED)
+        when (val outcome = SmsCommandHandler.check(applicationContext, message.data)) {
+            is SmsCommandHandler.Outcome.Rejected -> {
+                Heartbeat.notePeerAlive(applicationContext)
+                Diag.log("command REJECTED (msgId ${outcome.msgId}): ${outcome.reason}")
+                if (outcome.report) {
+                    com.noti.sender.AckWorker.enqueue(
+                        applicationContext, outcome.msgId, WireMessage.DeliveryAck.FAILED, outcome.reason,
+                    )
                 }
+                return
             }
-            return
+            is SmsCommandHandler.Outcome.Accepted -> {
+                sendCommand(outcome.cmd)
+                return
+            }
+            SmsCommandHandler.Outcome.NotCommand -> Unit
         }
         // A webhook-config push from Main?
         WebhookConfigHandler.parse(applicationContext, message.data)?.let { cfg ->
@@ -82,12 +89,69 @@ class NotiMessagingService : FirebaseMessagingService() {
             }
             return
         }
+        // Main lost relays in FCM's queue and wants them again?
+        com.noti.sender.sms.CatchUpHandler.parse(applicationContext, message.data)?.let { req ->
+            Heartbeat.notePeerAlive(applicationContext)
+            val from = com.noti.sender.sms.CatchUpHandler.startMs(req, System.currentTimeMillis())
+            if (androidx.core.content.ContextCompat.checkSelfPermission(applicationContext, android.Manifest.permission.READ_SMS) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                val afterId = com.noti.sender.sms.SmsInbox.lastIdBefore(applicationContext, from)
+                com.noti.sender.RepushWorker.startFrom(applicationContext, afterId)
+                Diag.log("catch-up requested by main - re-sending SMS after id $afterId")
+            }
+            return
+        }
         // A liveness heartbeat from Main?
         HeartbeatHandler.parse(applicationContext, message.data)?.let { hb ->
             Heartbeat.onBeatReceived(applicationContext, hb.request)
             return
         }
         Diag.log("push from main DROPPED (not accepted, wrong shared key, or unknown type)")
+    }
+
+    private enum class DirectionState { TAGGED, UNTAGGED, UNREADABLE }
+
+    /** Whether a push from Main decrypts, and carries a direction tag. */
+    private fun directionState(data: Map<String, String>): DirectionState {
+        val ciphertext = data["payload"]?.takeIf { it.isNotBlank() } ?: return DirectionState.UNREADABLE
+        val key = SenderSettings.get(applicationContext).relayKey.takeIf { it.isNotBlank() } ?: return DirectionState.UNREADABLE
+        val plain = try { com.noti.shared.MessageCrypto.decrypt(ciphertext, key) } catch (e: Exception) { return DirectionState.UNREADABLE }
+        return if (com.noti.shared.Wire.isUntagged(plain)) DirectionState.UNTAGGED else DirectionState.TAGGED
+    }
+
+    private fun sendCommand(cmd: WireMessage.Command) {
+        Heartbeat.notePeerAlive(applicationContext)
+        // The companion's own limits (send rate, optional allowlist) come before the SIM.
+        com.noti.sender.sms.SendGuard.check(applicationContext, cmd.to)?.let { reason ->
+            Diag.log("command REFUSED (msgId ${cmd.msgId}): $reason")
+            com.noti.sender.sms.SendGuard.notifyRefused(applicationContext, cmd.to, reason)
+            com.noti.sender.AckWorker.enqueue(applicationContext, cmd.msgId, WireMessage.DeliveryAck.FAILED, reason)
+            return
+        }
+        // The SMS first, then the acks from a background job: a blocking ack here could use up
+        // the push handler's time before the SMS went out (see AckWorker).
+        val status = try {
+            SmsSender.send(applicationContext, cmd.to, cmd.body, cmd.sim, cmd.msgId)
+            Diag.log("command → sent SMS to ${cmd.to} (slot ${cmd.sim}, ${cmd.body.length} chars)")
+            WireMessage.DeliveryAck.RECEIVED
+        } catch (e: Exception) {
+            Diag.log("command → SMS send FAILED: ${e.message} (SEND_SMS granted?)")
+            WireMessage.DeliveryAck.FAILED
+        }
+        com.noti.sender.AckWorker.enqueue(applicationContext, cmd.msgId, status)
+    }
+
+    /**
+     * FCM dropped messages queued for this device (over 100 pending, or held past their lifetime).
+     * On Main those were relays the companion already counted as sent, so ask for them again.
+     * Commands dropped on the companion's side need nothing: Main shows them unacknowledged.
+     */
+    override fun onDeletedMessages() {
+        Diag.log("FCM dropped messages queued for this phone while it was unreachable")
+        if (Settings.get(applicationContext).role != Role.COMPANION) {
+            com.noti.logger.work.CatchUpWorker.enqueue(applicationContext)
+        }
     }
 
     /** Cache the refreshed token in both stores and re-announce it to the peer: the companion's so

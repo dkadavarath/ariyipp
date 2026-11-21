@@ -12,6 +12,7 @@ import com.noti.sender.StatusWatchWorker
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+        if (!com.noti.sender.CompanionRole.active(context)) return
         KeepAliveService.ensureRunning(context)
         SmsSyncWorker.schedulePeriodic(context)
         SmsSyncWorker.scanNow(context)

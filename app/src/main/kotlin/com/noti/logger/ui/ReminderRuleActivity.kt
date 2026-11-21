@@ -53,6 +53,7 @@ class ReminderRuleActivity : ScreenActivity() {
 
     override val layoutRes = R.layout.activity_reminder_rule
     override val titleRes = R.string.title_reminder_rule
+    override val screenKind = com.noti.sender.ui.ScreenGuard.Kind.MESSAGES
 
     private var ruleId: Long = 0
     private var existing: ReminderRuleEntity? = null
@@ -775,6 +776,20 @@ class ReminderRuleActivity : ScreenActivity() {
         }
         if (payOn && payFromApp && payPackage.isBlank()) {
             Toast.makeText(this, R.string.rm_pay_needs_app, Toast.LENGTH_LONG).show()
+            return
+        }
+        // Payments arriving from the same place as the statements need the bill's own match
+        // pattern to tell the two apart: with it blank, every payment message would also be read
+        // as a new bill, and a statement saying "payment due" could settle itself.
+        val sameSource = if (payFromApp) {
+            sourceType() == SourceType.NOTIFICATION && payPackage == pickedPackage
+        } else {
+            val bill = text(R.id.et_sender); val pay = text(R.id.et_pay_sender)
+            sourceType() == SourceType.SMS && (bill.isBlank() || pay.isBlank() ||
+                bill.contains(pay, ignoreCase = true) || pay.contains(bill, ignoreCase = true))
+        }
+        if (payOn && !isParking() && sameSource && text(R.id.et_match).isBlank()) {
+            Toast.makeText(this, R.string.rm_pay_needs_bill_match, Toast.LENGTH_LONG).show()
             return
         }
         val rule = ReminderRuleEntity(

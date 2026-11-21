@@ -30,7 +30,7 @@ class HubTokenAnnounceWorker(ctx: Context, params: WorkerParameters) : Coroutine
         val token = s.fcmToken
         if (token.isBlank() || !s.peerPaired()) return@withContext Result.success()
         try {
-            val payload = MessageCrypto.encrypt(Wire.encode(WireMessage.Token(token)), s.relayKey)
+            val payload = MessageCrypto.encrypt(Wire.encodeFor(WireMessage.Token(token), com.noti.shared.Wire.Direction.MAIN_TO_COMPANION), s.relayKey)
             val res = FcmSender.forServiceAccount(s.serviceAccountJson).send(s.sndiFcmToken, mapOf("payload" to payload), label = com.noti.shared.FcmLabel.TOKEN_TO_COMPANION)
             when {
                 res.ok -> {

@@ -188,8 +188,14 @@ object ReminderScanner {
         )
 
         val dao = NotiDatabase.get(context).billOccurrenceDao()
-        val sourceKey = key("${rule.id}|$msgKey")
-        val existing = try { dao.bySourceKey(sourceKey) } catch (e: Exception) { null }
+        val messageKey = key("${rule.id}|$msgKey")
+        // The same message again, or - a bank re-sending the reminder - another message about the
+        // same cycle: same rule, same due date. Either way it's the bill already on file, not a
+        // second one that doubled the total and was left unpaid when the first was settled.
+        val existing = try {
+            dao.bySourceKey(messageKey) ?: due?.let { dao.byRuleAndDue(rule.id, midnightMs(it)) }
+        } catch (e: Exception) { null }
+        val sourceKey = existing?.sourceKey ?: messageKey
 
         // "Skip next" consumes itself here: the occurrence is still recorded, so history stays
         // honest about the statement having arrived, but it starts settled and never reminds.
@@ -226,8 +232,11 @@ object ReminderScanner {
                 dao.insert(row) > 0
             } else {
                 // A restated statement (banks re-send) can correct an amount or a date; keeping the
-                // user's status is the point - re-reading a message must never un-pay a bill.
-                dao.update(row)
+                // user's status is the point - re-reading a message must never un-pay a bill. Nor
+                // may it undo a correction you made by hand (see BillOccurrenceEntity.editedFields).
+                val merged = BillOccurrenceEntity.mergeRescan(existing, row)
+                if (merged == existing) return false
+                dao.update(merged)
                 false // updated, not new: don't count it as a fresh find
             }
         } catch (e: Exception) {
@@ -253,12 +262,12 @@ object ReminderScanner {
 
             val last = try { dao.lastSettledForRule(rule.id) } catch (e: Exception) { null }
             val recurrence = Recurrence.valueOf(rule.recurrence)
-            val lastDue = last?.dueAt?.takeIf { it > 0 }?.let { ReminderPolicy.fromEpochMillis(it).toLocalDate() }
+            val lastDue = last?.dueAt?.takeIf { it > 0 }?.let { DueDates.fromMs(it) }
 
             // Anchored rules carry their own start date; older rules (and any created before v10)
             // fall back to the day-of-month fields they were built with.
             val anchorStart = if (rule.anchorDate > 0) {
-                ReminderPolicy.fromEpochMillis(rule.anchorDate).toLocalDate()
+                DueDates.fromMs(rule.anchorDate)
             } else {
                 when (DueMode.valueOf(rule.dueMode)) {
                     DueMode.CALCULATED -> ReminderPolicy.nextDayOfMonth(rule.anchorDay, today)
@@ -371,6 +380,25 @@ object ReminderScanner {
      * message comes from where this rule's bills come from; one that the bill pattern itself matches
      * is the statement, not a payment ("payment due by..." would otherwise settle its own bill).
      */
+    /**
+     * Whether a message from the statement's own source is the statement rather than a payment.
+     * With a match pattern, that decides. Without one (blank matches everything), a message that
+     * produced a bill, or that the rule can read a due date out of, is the statement: a pay pattern
+     * as loose as "payment" would otherwise settle the bill from its own "payment due by ..." text.
+     */
+    private fun looksLikeStatement(context: Context, rule: ReminderRuleEntity, text: String, atMs: Long, msgKey: String): Boolean {
+        if (rule.matchPattern.isNotBlank()) return ReminderExtractor.matches(rule.matchPattern, text)
+        val becameBill = try {
+            NotiDatabase.get(context).billOccurrenceDao().bySourceKey(key("${rule.id}|$msgKey")) != null
+        } catch (e: Exception) { false }
+        if (becameBill) return true
+        return ReminderExtractor.extractBill(
+            text = text, matchPattern = null, amountPattern = null, currencyPattern = null,
+            datePattern = rule.datePattern, dateFormat = rule.dateFormat,
+            today = ReminderPolicy.fromEpochMillis(atMs).toLocalDate(),
+        )?.dueDate != null
+    }
+
     private fun applyPayment(
         context: Context,
         rule: ReminderRuleEntity,
@@ -380,7 +408,7 @@ object ReminderScanner {
         isStatement: Boolean,
     ): Boolean {
         if (!ReminderExtractor.matches(rule.payMatchPattern, text)) return false
-        if (isStatement && rule.matchPattern.isNotBlank() && ReminderExtractor.matches(rule.matchPattern, text)) return false
+        if (isStatement && looksLikeStatement(context, rule, text, atMs, msgKey)) return false
         val dao = NotiDatabase.get(context).billOccurrenceDao()
         val settleKey = key("pay|${rule.id}|$msgKey")
         return try {
@@ -413,13 +441,13 @@ object ReminderScanner {
             dateFormat = rule.dateFormat,
             now = ReminderPolicy.fromEpochMillis(atMs),
         ) ?: return false
-        return ParkingTracker.onMatch(context, rule, match.zone.orEmpty(), match.expiry)
+        return ParkingTracker.onMatch(context, rule, match.zone.orEmpty(), match.expiry, atMs)
     }
 
     // ---- Helpers ----
 
-    private fun midnightMs(date: LocalDate): Long =
-        date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    /** A due date as stored - zone-free, see [DueDates]. */
+    private fun midnightMs(date: LocalDate): Long = DueDates.toMs(date)
 
     /** Short stable hash - the same message seen twice must produce the same key. */
     private fun key(raw: String): String =

@@ -24,6 +24,7 @@ class PairingActivity : ScreenActivity() {
 
     override val layoutRes = R.layout.activity_pairing
     override val titleRes = R.string.title_pairing
+    override val screenKind = com.noti.sender.ui.ScreenGuard.Kind.KEYS
 
     private val importFiles = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         uris.forEach { onFilePicked(it) }
@@ -66,6 +67,13 @@ class PairingActivity : ScreenActivity() {
             )
         }
         findViewById<View>(R.id.btn_save).setOnClickListener {
+            // A new key starts Main's command ids afresh (a reinstalled Main counts from 1 again),
+            // so forget the old high-water mark or every command would be refused. Only a new key:
+            // with the same key, a cleared mark would reopen a 10-minute replay window, so a Main
+            // restored from a backup (same key, older counter) regenerates its key and re-pairs.
+            if (relayKey.text.toString().trim() != s.relayKey) {
+                s.lastCommandMsgId = -1L
+            }
             s.notiFcmToken = token.text.toString()
             s.relayKey = relayKey.text.toString()
             s.fcmEnabled = fcmEnabled.isChecked

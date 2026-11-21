@@ -17,6 +17,7 @@ class SmsReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
+        if (!com.noti.sender.CompanionRole.active(context)) return // this phone is Main now
         Diag.log("SMS received - scanning inbox to relay")
         SmsSyncWorker.scanSoon(context.applicationContext)
     }

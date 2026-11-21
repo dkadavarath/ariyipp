@@ -42,6 +42,8 @@ class FcmSender(serviceAccountJson: String) {
             validateOnly: Boolean,
             label: String?,
             highPriority: Boolean = true,
+            collapseKey: String? = null,
+            ttlSeconds: Int? = null,
         ): String =
             buildJsonObject {
                 put("validate_only", validateOnly)
@@ -54,7 +56,14 @@ class FcmSender(serviceAccountJson: String) {
                     // receiver's next maintenance window (the routine heartbeat): FCM deprioritises
                     // apps whose high-priority pushes never show anything, which would slow the
                     // pushes that do matter (relays, commands, force-checks).
-                    putJsonObject("android") { put("priority", if (highPriority) "high" else "normal") }
+                    putJsonObject("android") {
+                        put("priority", if (highPriority) "high" else "normal")
+                        // FCM keeps at most 100 undelivered non-collapsible messages per device and
+                        // drops them all past that. Housekeeping (heartbeats) shares one collapse
+                        // slot and expires, so a long outage can't fill the queue and cost relays.
+                        if (collapseKey != null) put("collapse_key", collapseKey)
+                        if (ttlSeconds != null) put("ttl", "${ttlSeconds}s")
+                    }
                     putJsonObject("data") { data.forEach { (k, v) -> put(k, v) } }
                     if (label != null && LABEL_RE.matches(label)) {
                         putJsonObject("fcm_options") { put("analytics_label", label) }
@@ -117,9 +126,11 @@ class FcmSender(serviceAccountJson: String) {
         validateOnly: Boolean = false,
         label: String? = null,
         highPriority: Boolean = true,
+        collapseKey: String? = null,
+        ttlSeconds: Int? = null,
     ): FcmSendResult {
         val token = accessToken()
-        val body = requestBody(targetToken, data, validateOnly, label, highPriority)
+        val body = requestBody(targetToken, data, validateOnly, label, highPriority, collapseKey, ttlSeconds)
 
         val (code, resp) = httpPost(
             url = "https://fcm.googleapis.com/v1/projects/${account.projectId}/messages:send",

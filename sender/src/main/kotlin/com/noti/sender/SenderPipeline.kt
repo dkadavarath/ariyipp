@@ -32,7 +32,7 @@ object SenderPipeline {
 
     /** The encrypted FCM data payload for ippu: AES-GCM over the serialized wire message. */
     fun encryptForFcm(message: WireMessage, keyBase64: String): String =
-        MessageCrypto.encrypt(Wire.encode(message), keyBase64)
+        MessageCrypto.encrypt(Wire.encodeFor(message, com.noti.shared.Wire.Direction.COMPANION_TO_MAIN), keyBase64)
 
     /**
      * FCM v1 caps a data message at 4096 bytes, and our envelope (token ~150-250 chars + JSON
@@ -115,11 +115,36 @@ object SenderPipeline {
      */
     enum class SendOutcome { DELIVERED, TRANSIENT, PERMANENT, BLOCKED, NOT_CONFIGURED }
 
-    /** FCM codes that mean the configuration, not the message, is at fault. */
-    private fun fcmBlocked(code: Int) = code == 401 || code == 403 || code == 404
+    /**
+     * How a failed FCM relay is handled. 401/403/404 are the setup (key, Main's token). So is a 400
+     * as a rule: FCM answers INVALID_ARGUMENT for a malformed or corrupted token, which fails every
+     * SMS alike, and skipping on it marked each one relayed and lost it. The one 400 that really is
+     * about a single message is a payload over FCM's size cap - only possible when even the
+     * part-split ([encryptedPayloads]) couldn't fit it - and only that one is skipped. Pure.
+     */
+    fun classifyFcm(code: Int, detail: String): SendOutcome = when {
+        code in 200..299 -> SendOutcome.DELIVERED
+        code == -1 || code == 429 || code in 500..599 -> SendOutcome.TRANSIENT
+        code == 400 && isTooBig(detail) -> SendOutcome.PERMANENT
+        code == 413 -> SendOutcome.PERMANENT
+        code in 400..499 -> SendOutcome.BLOCKED
+        else -> SendOutcome.TRANSIENT
+    }
 
-    /** Webhook codes that mean the URL/auth is wrong rather than this payload. */
-    private fun webhookBlocked(code: Int) = code == 401 || code == 403 || code == 404 || code == 405
+    private fun isTooBig(detail: String): Boolean =
+        detail.contains("too big", ignoreCase = true) || detail.contains("too large", ignoreCase = true)
+
+    /**
+     * How a webhook response is handled. 3xx is blocked too: redirects aren't followed (see
+     * [WebhookPoster]) because following one turns the POST into a body-less GET that looked
+     * delivered, so a moved URL means the setting needs fixing. Pure.
+     */
+    fun classifyWebhook(code: Int): SendOutcome = when {
+        code in 200..299 -> SendOutcome.DELIVERED
+        code == -1 || code == 408 || code == 429 || code in 500..599 -> SendOutcome.TRANSIENT
+        code in 300..399 || code == 401 || code == 403 || code == 404 || code == 405 -> SendOutcome.BLOCKED
+        else -> SendOutcome.PERMANENT
+    }
 
     /** Encrypted FCM push of one SMS to ippu. Logs a reason only on failure (quiet on success).
      *  Bodies too large for one FCM data message are sent as part-relays (see [encryptedPayloads]);
@@ -135,15 +160,13 @@ object SenderPipeline {
                 if (!res.ok) break
             }
             val r = res!!
-            when {
-                r.ok -> SendOutcome.DELIVERED
-                r.httpCode == -1 || r.httpCode == 429 || r.httpCode in 500..599 -> {
-                    Diag.log(fcmDiag(r.httpCode, r.detail)); SendOutcome.TRANSIENT
-                }
-                fcmBlocked(r.httpCode) -> {
-                    Diag.log(fcmDiag(r.httpCode, r.detail) + " - SMS held, will retry"); SendOutcome.BLOCKED
-                }
-                else -> { Diag.log(fcmDiag(r.httpCode, r.detail)); SendOutcome.PERMANENT }
+            if (r.ok) return SendOutcome.DELIVERED
+            classifyFcm(r.httpCode, r.detail).also { outcome ->
+                Diag.log(fcmDiag(r.httpCode, r.detail) + when (outcome) {
+                    SendOutcome.BLOCKED -> " - SMS held, will retry"
+                    SendOutcome.PERMANENT -> " - this SMS skipped"
+                    else -> ""
+                })
             }
         } catch (e: Exception) {
             Diag.log("FCM → ERROR: ${e.message}"); SendOutcome.TRANSIENT
@@ -160,7 +183,7 @@ object SenderPipeline {
             return SendOutcome.NOT_CONFIGURED
         }
         return try {
-            val payload = MessageCrypto.encrypt(Wire.encode(WireMessage.Token(s.myFcmToken)), s.relayKey)
+            val payload = MessageCrypto.encrypt(Wire.encodeFor(WireMessage.Token(s.myFcmToken), com.noti.shared.Wire.Direction.COMPANION_TO_MAIN), s.relayKey)
             val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload), label = FcmLabel.TOKEN_TO_MAIN)
             when {
                 res.ok -> { Diag.log("endpoint announced to main (id ${FcmLabel.messageId(res.detail)})"); SendOutcome.DELIVERED }
@@ -177,13 +200,13 @@ object SenderPipeline {
      * Main can update that message's ticks. Best-effort - a failure here just leaves the ticks
      * showing whatever the last successful ack said (or none), it doesn't retry or block sending.
      */
-    fun pushAckToIppu(context: Context, msgId: Long, status: Int): SendOutcome {
+    fun pushAckToIppu(context: Context, msgId: Long, status: Int, reason: String = ""): SendOutcome {
         val s = SenderSettings.get(context)
         if (s.serviceAccountJson.isBlank() || s.notiFcmToken.isBlank() || s.relayKey.isBlank()) {
             return SendOutcome.NOT_CONFIGURED
         }
         return try {
-            val payload = MessageCrypto.encrypt(Wire.encode(WireMessage.DeliveryAck(msgId, status)), s.relayKey)
+            val payload = MessageCrypto.encrypt(Wire.encodeFor(WireMessage.DeliveryAck(msgId, status, reason.take(200)), com.noti.shared.Wire.Direction.COMPANION_TO_MAIN), s.relayKey)
             val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload), label = FcmLabel.ACK)
             when {
                 res.ok -> SendOutcome.DELIVERED
@@ -202,15 +225,16 @@ object SenderPipeline {
         return try {
             val item = smsToUploadItem(sms, s.deviceId)
             val code = WebhookPoster.post(s.n8nUrl, s.n8nAuthHeaderName, s.n8nAuthValue(), UploadBatch(listOf(item)))
-            when {
-                code in 200..299 -> SendOutcome.DELIVERED
-                code == -1 || code == 429 || code in 500..599 -> {
-                    Diag.log("webhook → HTTP $code (will retry)"); SendOutcome.TRANSIENT
+            classifyWebhook(code).also { outcome ->
+                when (outcome) {
+                    SendOutcome.TRANSIENT -> Diag.log("webhook → HTTP $code (will retry)")
+                    SendOutcome.BLOCKED -> Diag.log(
+                        if (code in 300..399) "webhook → HTTP $code redirect (update the URL to where it points) - SMS held, will retry"
+                        else "webhook → HTTP $code (check URL/auth) - SMS held, will retry"
+                    )
+                    SendOutcome.PERMANENT -> Diag.log("webhook → HTTP $code (check URL/auth) - this SMS skipped")
+                    else -> Unit
                 }
-                webhookBlocked(code) -> {
-                    Diag.log("webhook → HTTP $code (check URL/auth) - SMS held, will retry"); SendOutcome.BLOCKED
-                }
-                else -> { Diag.log("webhook → HTTP $code (check URL/auth)"); SendOutcome.PERMANENT }
             }
         } catch (e: Exception) {
             Diag.log("webhook → ERROR: ${e.message}"); SendOutcome.TRANSIENT
@@ -243,7 +267,7 @@ object SenderPipeline {
     private fun fcmDiag(code: Int, detail: String): String = when {
         code == 401 || code == 403 -> "FCM → HTTP $code: service-account key rejected (regenerate/import the key; enable Cloud Messaging API)"
         code == 404 -> "FCM → HTTP 404: main token is stale/UNREGISTERED - re-pair (main reinstalled or data cleared)"
-        code == 400 -> "FCM → HTTP 400: bad request ($detail)"
+        code == 400 -> "FCM → HTTP 400: bad request - main's token may be corrupt, re-pair if this persists ($detail)"
         code == -1 -> "FCM → no network / connection failed"
         else -> "FCM → HTTP $code ($detail)"
     }

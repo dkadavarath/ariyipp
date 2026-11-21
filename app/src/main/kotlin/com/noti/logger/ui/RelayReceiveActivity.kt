@@ -31,6 +31,7 @@ class RelayReceiveActivity : ScreenActivity() {
 
     override val layoutRes = R.layout.activity_relay
     override val titleRes = R.string.title_relay
+    override val screenKind = com.noti.sender.ui.ScreenGuard.Kind.KEYS
 
     private var currentToken: String = ""
     private lateinit var qrView: ImageView
@@ -73,8 +74,13 @@ class RelayReceiveActivity : ScreenActivity() {
                 .setMessage(R.string.regen_key_msg)
                 .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(R.string.regen_key_yes) { _, _ ->
-                    keyField.setText(MessageCrypto.generateKeyBase64())
-                    refreshQr(qrView, keyField.text.toString())
+                    // Save it now, not on Save: the QR below shows this key, and a companion that
+                    // scans it while this phone still holds the old one can decrypt nothing.
+                    val fresh = MessageCrypto.generateKeyBase64()
+                    s.relayKey = fresh
+                    keyField.setText(fresh)
+                    refreshQr(qrView, fresh)
+                    Toast.makeText(this, R.string.regen_key_done, Toast.LENGTH_LONG).show()
                 }
                 .show()
         }

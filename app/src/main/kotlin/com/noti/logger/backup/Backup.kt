@@ -25,9 +25,16 @@ object Backup {
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
+    /**
+     * 3: due dates and rule anchor dates are plain dates (UTC midnight, see DueDates); before, they
+     * were the backing-up phone's local midnight and are converted on restore.
+     */
+    const val VERSION = 3
+
     @Serializable
     data class Payload(
-        val version: Int = 2,
+        /** Format version. Written explicitly by [export]; a file without one is the oldest kind. */
+        val version: Int = 1,
         val settings: SettingsData,
         val messages: List<MessageData>,
         /**
@@ -119,6 +126,7 @@ object Backup {
         val status: Int, val sourceKey: String, val createdAt: Long, val settledAt: Long,
         val notes: String = "", val category: String = "", val remindDaysBefore: Int = -1,
         val issuedAt: Long = 0, val settleKey: String = "", val autoSettled: Int = 0,
+        val editedFields: Int = 0,
     )
 
     @Serializable
@@ -137,6 +145,7 @@ object Backup {
         val parkingDao = db.parkingSessionDao()
         val rules = try { ruleDao.all() } catch (e: Exception) { emptyList() }
         val payload = Payload(
+            version = VERSION,
             settings = SettingsData(
                 webhookUrl = s.webhookUrl, bearerToken = s.bearerToken,
                 authHeaderName = s.authHeaderName, authHeaderPrefix = s.authHeaderPrefix, gzipEnabled = s.gzipEnabled,
@@ -191,6 +200,7 @@ object Backup {
                     sourceKey = b.sourceKey, createdAt = b.createdAt, settledAt = b.settledAt,
                     notes = b.notes, category = b.category, remindDaysBefore = b.remindDaysBefore,
                     issuedAt = b.issuedAt, settleKey = b.settleKey, autoSettled = b.autoSettled,
+                    editedFields = b.editedFields,
                 )
             },
             parking = (parkingDao.active() + parkingDao.history(limit = Int.MAX_VALUE)).map {
@@ -203,6 +213,17 @@ object Backup {
     /** Replaces settings + message history from a backup JSON string (call off the main thread). */
     fun import(context: Context, jsonText: String) {
         val payload = json.decodeFromString<Payload>(jsonText)
+        // Dates from a file older than VERSION 3 are the old phone's local midnight; convert them as
+        // the v13 → v14 database migration does (the currency's zone, else nearest midnight).
+        val home by lazy { com.noti.logger.reminder.FxRates.home(context) }
+        val legacy = payload.version < 3
+        fun legacyDate(ms: Long, currency: String): Long =
+            if (!legacy) ms
+            else com.noti.logger.reminder.DueDates.legacyToMs(
+                ms,
+                com.noti.logger.reminder.DueDates.zonesForCurrency(com.noti.logger.reminder.FxRates.isoOf(currency, home)),
+                java.time.ZoneId.systemDefault(),
+            )
         val s = Settings.get(context)
         with(payload.settings) {
             s.webhookUrl = webhookUrl; s.bearerToken = bearerToken
@@ -284,7 +305,7 @@ object Backup {
                         zonePattern = r.zonePattern, expiryPattern = r.expiryPattern,
                         dateFormat = r.dateFormat, dueMode = r.dueMode,
                         constantDay = r.constantDay, anchorDay = r.anchorDay, offsetDays = r.offsetDays,
-                        recurrence = r.recurrence, recurrenceEvery = r.recurrenceEvery, anchorDate = r.anchorDate,
+                        recurrence = r.recurrence, recurrenceEvery = r.recurrenceEvery, anchorDate = legacyDate(r.anchorDate, r.defaultCurrency),
                         defaultCurrency = r.defaultCurrency, skipNext = r.skipNext, createdAt = r.createdAt,
                         notes = r.notes, category = r.category, remindDaysBefore = r.remindDaysBefore,
                         defaultAmount = r.defaultAmount,
@@ -299,11 +320,12 @@ object Backup {
                 billDao.insert(
                     BillOccurrenceEntity(
                         ruleId = idByName[b.ruleName] ?: 0,
-                        name = b.name, dueAt = b.dueAt, amount = b.amount, currency = b.currency,
+                        name = b.name, dueAt = legacyDate(b.dueAt, b.currency), amount = b.amount, currency = b.currency,
                         amountRaw = b.amountRaw, dueRaw = b.dueRaw, status = b.status,
                         sourceKey = b.sourceKey, createdAt = b.createdAt, settledAt = b.settledAt,
                         notes = b.notes, category = b.category, remindDaysBefore = b.remindDaysBefore,
                         issuedAt = b.issuedAt, settleKey = b.settleKey, autoSettled = b.autoSettled,
+                        editedFields = b.editedFields,
                     )
                 )
             }

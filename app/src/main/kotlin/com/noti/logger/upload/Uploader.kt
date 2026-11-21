@@ -18,9 +18,17 @@ sealed interface UploadOutcome {
      * other uid in the batch is retried. [failures] are the raw error messages (for the user).
      */
     data class Parsed(val successUids: Set<String>, val failures: List<String>) : UploadOutcome
-    /** Transient (408/425/429, 5xx, network/timeout, unparseable 2xx) - retry silently. */
+    /** Transient (408/425/429, 5xx, network/timeout) - retry silently. */
     object Retry : UploadOutcome
-    /** 4xx transport rejection (auth/URL) - alert the user in-app, then retry. */
+    /**
+     * 2xx without the per-record body (e.g. n8n's default `{"message":"Workflow was started"}`).
+     * The endpoint took the batch, so the whole batch counts as delivered - the same rule the
+     * companion applies to its SMS on the same URL. Retrying instead re-posted the batch forever
+     * and, once the outbox filled, stopped notification capture.
+     */
+    object Unconfirmed : UploadOutcome
+    /** 3xx (redirects aren't followed) or 4xx transport rejection (auth/URL) - alert the user
+     *  in-app, then retry. */
     data class ClientError(val code: Int) : UploadOutcome
     /** The configured URL isn't https (and isn't the loopback/emulator-host exception the app's
      *  network security config also allows) - rejected before ever opening a connection, so a
@@ -55,6 +63,9 @@ class Uploader(
         val conn = URL(url).openConnection() as HttpURLConnection
         return try {
             conn.requestMethod = "POST"
+            // Never follow a redirect: HttpURLConnection turns a 301/302 POST into a body-less GET
+            // and carries a custom auth header to the new host. A 3xx is a ClientError instead.
+            conn.instanceFollowRedirects = false
             conn.connectTimeout = connectTimeoutMs
             conn.readTimeout = readTimeoutMs
             conn.doOutput = true
@@ -76,8 +87,8 @@ class Uploader(
                 }
                 // Transient: request timeout, too-early, rate-limit, and all server errors.
                 code == 408 || code == 425 || code == 429 || code in 500..599 -> UploadOutcome.Retry
-                // Other 4xx (400/401/403/404/…): transport-level rejection → alert + retry.
-                code in 400..499 -> UploadOutcome.ClientError(code)
+                // Other 4xx (400/401/403/404/…), or a redirect: the URL/auth needs fixing → alert + retry.
+                code in 300..499 -> UploadOutcome.ClientError(code)
                 else -> UploadOutcome.Retry
             }
         } catch (e: IOException) {
@@ -88,17 +99,18 @@ class Uploader(
     }
 
     /**
-     * Parse `[{"success":[...],"failure":[...]}]`, merging all entries. Returns [UploadOutcome.Retry]
-     * when the body can't be parsed - we must not delete records we can't confirm succeeded.
+     * Parse `[{"success":[...],"failure":[...]}]`, merging all entries. Anything else - another
+     * JSON shape, an empty array, plain text, no body - is [UploadOutcome.Unconfirmed].
      */
     private fun parseResponse(body: String): UploadOutcome {
         return try {
             val entries: List<UploadResponseEntry> = json.decodeFromString(body)
             val success = entries.flatMap { it.success }.toSet()
             val failures = entries.flatMap { it.failure }
-            UploadOutcome.Parsed(successUids = success, failures = failures)
+            if (entries.isEmpty()) UploadOutcome.Unconfirmed
+            else UploadOutcome.Parsed(successUids = success, failures = failures)
         } catch (e: Exception) {
-            UploadOutcome.Retry
+            UploadOutcome.Unconfirmed
         }
     }
 

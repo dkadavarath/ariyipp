@@ -24,6 +24,7 @@
 
         <activity android:name=".ui.PairingActivity" android:exported="false" />
         <activity android:name=".ui.SimNamesActivity" android:exported="false" />
+        <activity android:name=".ui.SecurityActivity" android:exported="false" />
         <activity android:name=".ui.DeviceStatusActivity" android:exported="false" />
         <activity android:name=".ui.WebhookActivity" android:exported="false" />
         <activity android:name=".ui.AppearanceActivity" android:exported="false" />

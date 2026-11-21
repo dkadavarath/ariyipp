@@ -18,7 +18,7 @@ class SenderPipelineTest {
 
         val payload = SenderPipeline.encryptForFcm(msg, key)
         val plain = MessageCrypto.decrypt(payload, key)
-        val decoded = Wire.decode(plain)
+        val decoded = Wire.decodeFrom(plain, Wire.Direction.COMPANION_TO_MAIN)
 
         assertEquals(msg, decoded)
     }
@@ -98,14 +98,14 @@ class SenderPipelineTest {
         for (p in payloads) {
             assertTrue(p.length <= SenderPipeline.MAX_PAYLOAD_CHARS)
 
-            val decoded = Wire.decode(MessageCrypto.decrypt(p, key)) as WireMessage.Relay
+            val decoded = Wire.decodeFrom(MessageCrypto.decrypt(p, key), Wire.Direction.COMPANION_TO_MAIN) as WireMessage.Relay
             assertEquals(payloads.size, decoded.parts)
             assertEquals(relay("").title, decoded.title)
             assertEquals(relay("").dedupe, decoded.dedupe)
         }
         // Parts arrive as 0..n-1 and reassemble to the exact original body.
         val reassembled = payloads
-            .map { Wire.decode(MessageCrypto.decrypt(it, key)) as WireMessage.Relay }
+            .map { Wire.decodeFrom(MessageCrypto.decrypt(it, key), Wire.Direction.COMPANION_TO_MAIN) as WireMessage.Relay }
             .sortedBy { it.part }
             .joinToString("") { it.body }
         assertEquals(body, reassembled)
@@ -128,12 +128,12 @@ class SenderPipelineTest {
         assertTrue(payloads.size > 1)
 
         val reassembled = payloads
-            .map { Wire.decode(MessageCrypto.decrypt(it, key)) as WireMessage.Relay }
+            .map { Wire.decodeFrom(MessageCrypto.decrypt(it, key), Wire.Direction.COMPANION_TO_MAIN) as WireMessage.Relay }
             .sortedBy { it.part }
             .joinToString("") { it.body }
         assertEquals(body, reassembled)
         // Every part is well-formed on its own too (no lone surrogates at a cut point).
-        for (decoded in payloads.map { Wire.decode(MessageCrypto.decrypt(it, key)) as WireMessage.Relay }) {
+        for (decoded in payloads.map { Wire.decodeFrom(MessageCrypto.decrypt(it, key), Wire.Direction.COMPANION_TO_MAIN) as WireMessage.Relay }) {
             val b = decoded.body
             for (i in b.indices) {
                 assertFalse("lone high surrogate at $i", Character.isHighSurrogate(b[i]) && (i + 1 >= b.length || !Character.isLowSurrogate(b[i + 1])))

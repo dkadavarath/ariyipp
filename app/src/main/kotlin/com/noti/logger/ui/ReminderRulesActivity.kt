@@ -32,6 +32,7 @@ class ReminderRulesActivity : ScreenActivity() {
 
     override val layoutRes = R.layout.activity_reminder_rules
     override val titleRes = R.string.title_reminder_rules
+    override val screenKind = com.noti.sender.ui.ScreenGuard.Kind.MESSAGES
 
     private val selected = LinkedHashSet<Long>()
     private var rules: List<ReminderRuleEntity> = emptyList()

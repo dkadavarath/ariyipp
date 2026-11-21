@@ -55,6 +55,7 @@ object DeviceMonitor {
 
     @Synchronized
     fun start(context: Context) {
+        if (!com.noti.sender.CompanionRole.active(context)) return
         val app = context.applicationContext
         if (batteryReceiver == null) {
             val r = object : BroadcastReceiver() {

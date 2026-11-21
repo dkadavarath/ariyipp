@@ -5,7 +5,6 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.YearMonth
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeFormatterBuilder
 import java.time.temporal.ChronoField
 import java.util.Locale
@@ -137,22 +136,32 @@ object ReminderPolicy {
         return if (todays.isBefore(now)) todays.plusDays(1) else todays
     }
 
+    /*
+     * Single-letter d / M / H / h take one *or* two digits, so "7 Feb 2026" and "5/1/2027" read as
+     * well as "07 Feb 2026" and "05/01/2027" - "dd" demanded two and silently failed them. Numeric
+     * dates are read day-first (dd/MM), as banks in the UAE and India write them. A four-digit year
+     * is tried before a two-digit one: "yy" can't take "2027", and the order keeps it from trying.
+     */
     private val FALLBACK_DATE_PATTERNS = listOf(
-        "dd/MM/yyyy", "dd-MM-yyyy", "dd.MM.yyyy", "yyyy-MM-dd", "dd/MM/yy", "dd-MM-yy",
-        "dd-MMM-yyyy", "dd MMM yyyy", "dd-MMM-yy", "dd MMM yy", "MMM dd, yyyy", "d MMMM yyyy",
+        "d/M/yyyy", "d-M-yyyy", "d.M.yyyy", "yyyy-M-d", "d/M/yy", "d-M-yy", "d.M.yy",
+        "d-MMM-yyyy", "d MMM yyyy", "d-MMM-yy", "d MMM yy", "MMM d, yyyy", "MMM d yyyy",
+        "d MMMM yyyy", "MMMM d, yyyy", "d MMM, yyyy",
         // Year-less, tried last: plenty of banks send "due by 07-Feb" and leave the year implied.
         // These come after the full forms so a dated message is never matched by a shorter pattern.
-        "dd-MMM", "dd MMM", "dd/MM", "dd-MM", "MMM dd", "d MMMM",
+        "d-MMM", "d MMM", "d/M", "d-M", "MMM d", "d MMMM", "MMMM d",
     )
 
     private val FALLBACK_DATETIME_PATTERNS = listOf(
-        "dd/MM/yyyy HH:mm", "dd-MM-yyyy HH:mm", "yyyy-MM-dd HH:mm", "dd/MM/yy HH:mm",
-        "dd-MMM-yyyy HH:mm", "dd MMM yyyy HH:mm", "dd/MM/yyyy hh:mm a", "dd MMM yyyy hh:mm a",
+        "d/M/yyyy H:mm", "d-M-yyyy H:mm", "yyyy-M-d H:mm", "d/M/yy H:mm",
+        "d-MMM-yyyy H:mm", "d MMM yyyy H:mm",
+        "d/M/yyyy h:mm a", "d-M-yyyy h:mm a", "d MMM yyyy h:mm a", "d-MMM-yyyy h:mm a",
+        "d/M/yyyy h:mma", "d MMM yyyy h:mma",
         // Year-less, last for the same reason as the date list above.
-        "dd/MM HH:mm", "dd-MM HH:mm", "dd-MMM HH:mm", "dd MMM HH:mm",
+        "d/M H:mm", "d-M H:mm", "d-MMM H:mm", "d MMM H:mm", "d MMM h:mm a", "d/M h:mm a",
     )
 
-    private val FALLBACK_TIME_PATTERNS = listOf("HH:mm", "hh:mm a", "h:mm a", "HH.mm")
+    /** "14:30", "2:30 pm", "02:30 PM", "2:30pm", "14.30". Case-insensitive (see [formatter]). */
+    private val FALLBACK_TIME_PATTERNS = listOf("H:mm", "h:mm a", "h:mma", "H.mm")
 
     /**
      * Parses [text] against [pattern], supplying a year when the pattern has none.
@@ -212,7 +221,7 @@ object ReminderPolicy {
     }
 
     private fun tryParseTime(text: String, pattern: String): LocalTime? = try {
-        LocalTime.parse(text, DateTimeFormatter.ofPattern(pattern, Locale.ENGLISH))
+        LocalTime.parse(text, formatter(pattern, null))
     } catch (e: Exception) {
         null
     }
@@ -274,6 +283,19 @@ object ReminderPolicy {
         }
     }
 
+    /** [start] stepped on by [n] × [every] units, computed from [start] each time so a clamped
+     *  month (31 → 28 Feb) doesn't carry into the months after it. Pure. */
+    fun nthRecurrence(start: LocalDate, recurrence: Recurrence, every: Int, n: Int): LocalDate {
+        val k = every.coerceAtLeast(1).toLong() * n
+        return when (recurrence) {
+            Recurrence.DAILY -> start.plusDays(k)
+            Recurrence.WEEKLY -> start.plusWeeks(k)
+            Recurrence.MONTHLY -> start.plusMonths(k)
+            Recurrence.YEARLY -> start.plusYears(k)
+            Recurrence.NEVER -> start
+        }
+    }
+
     /** Guards the search below against a rule that somehow cannot advance. */
     private const val MAX_PERIODS = 4_000
 
@@ -286,9 +308,15 @@ object ReminderPolicy {
      *    the due date follows it, which is the only way the two stay in step: stepping the due date
      *    directly would drift every time a month is short.
      *
-     * Returns the first occurrence that is both later than [after] - the last one already recorded,
-     * if any - and not in the past, so a rule set up months ago yields the next real due date
-     * rather than a backlog of missed ones. Null when no further occurrence exists.
+     * With no [after] (nothing recorded yet), returns the first occurrence not in the past, so a
+     * rule set up months ago yields the next real due date rather than a backlog of missed ones.
+     * With [after] - the last one recorded - an occurrence that is already overdue still counts: a
+     * bill paid late must not make the following cycle vanish. If several have passed (a rule left
+     * idle), only the most recent overdue one is returned, not a backlog to pay through one by one.
+     * Null when no further occurrence exists.
+     *
+     * Each occurrence is counted from [anchorStart] (start + n periods), never from the previous
+     * one: stepping 31 Jan → 28 Feb → 28 Mar would pin a month-end bill to the 28th for good.
      */
     fun nextManualDue(
         anchorStart: LocalDate,
@@ -298,18 +326,19 @@ object ReminderPolicy {
         after: LocalDate?,
         today: LocalDate,
     ): LocalDate? {
-        var anchor = anchorStart
         var periods = 0
+        var overdue: LocalDate? = null
         while (periods < MAX_PERIODS) {
+            val anchor = nthRecurrence(anchorStart, recurrence, every, periods)
             val due = anchor.plusDays(offsetDays.toLong().coerceAtLeast(0))
             val isNew = after == null || due.isAfter(after)
-            if (isNew && !due.isBefore(today)) return due
+            if (isNew && !due.isBefore(today)) return overdue ?: due
+            if (isNew && after != null) overdue = due
             if (recurrence == Recurrence.NEVER) {
                 // A one-off still counts the first time round even if its date has passed: an
                 // overdue bill has to show up, not be skipped for being late.
                 return if (isNew) due else null
             }
-            anchor = nextRecurrence(anchor, recurrence, every)
             periods++
         }
         return null
@@ -349,26 +378,48 @@ object ReminderPolicy {
     ): LocalDateTime =
         LocalDateTime.of(due.minusDays(daysBefore.toLong().coerceAtLeast(0)), LocalTime.of(hour.coerceIn(0, 23), minute.coerceIn(0, 59)))
 
+    /**
+     * When to actually ring for a parking session, or null for never. The reminder time itself
+     * while it's ahead; once it has passed but the session hasn't expired - a top-up shorter than
+     * the lead, or a reboot minutes before expiry - ring right away, since the warning is still
+     * worth having. Nothing once it has expired, or when an alarm already rang for this reminder
+     * time ([rangForMs]). Pure.
+     */
+    fun parkingFireAt(remindAtMs: Long, expiresAtMs: Long, nowMs: Long, rangForMs: Long = 0L): Long? = when {
+        expiresAtMs <= 0L || expiresAtMs <= nowMs -> null
+        rangForMs != 0L && rangForMs == remindAtMs -> null
+        remindAtMs > nowMs -> remindAtMs
+        else -> nowMs + PARKING_LATE_RING_DELAY_MS
+    }
+
+    /** How soon a late parking alarm rings: just enough for the scheduling call to complete. */
+    const val PARKING_LATE_RING_DELAY_MS = 5_000L
+
     /** When to remind about a parking session expiring at [expiry]. */
     fun parkingReminderAt(expiry: LocalDateTime, leadMinutes: Int = DEFAULT_PARKING_LEAD_MINUTES): LocalDateTime =
         expiry.minusMinutes(leadMinutes.toLong().coerceAtLeast(0))
 
     /**
-     * Pushes reminders that would collide onto their own minutes, [spacingMinutes] apart, keeping
-     * the given order. Only equal or already-too-close times are moved, so a day with one bill
-     * fires exactly when asked.
+     * Pushes reminders that would collide onto their own minutes, [spacingMinutes] apart. Only equal
+     * or already-too-close times are moved, so a day with one bill fires exactly when asked. The
+     * result lines up with [times] index for index.
+     *
+     * Spaced in time order whatever order [times] comes in: callers list bills by due date, and with
+     * per-bill leads that isn't reminder order - walking it as given pushed a 7-day warning behind
+     * a 2-day one, days late. Ties keep their given order.
      */
     fun spaceOut(times: List<LocalDateTime>, spacingMinutes: Int = DEFAULT_SPACING_MINUTES): List<LocalDateTime> {
         if (spacingMinutes <= 0) return times
-        val out = ArrayList<LocalDateTime>(times.size)
+        val out = ArrayList<LocalDateTime>(times)
         var last: LocalDateTime? = null
-        for (t in times) {
+        for (i in times.indices.sortedWith(compareBy { times[it] })) {
+            val t = times[i]
             val slot = if (last != null && t.isBefore(last.plusMinutes(spacingMinutes.toLong()))) {
                 last.plusMinutes(spacingMinutes.toLong())
             } else {
                 t
             }
-            out.add(slot)
+            out[i] = slot
             last = slot
         }
         return out

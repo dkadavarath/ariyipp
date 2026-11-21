@@ -56,4 +56,26 @@ class FcmLabelTest {
         assertEquals("high", prio(FcmSender.requestBody("tok", emptyMap(), false, null)))
         assertEquals("normal", prio(FcmSender.requestBody("tok", emptyMap(), false, null, highPriority = false)))
     }
+
+    @Test
+    fun collapse_key_and_ttl_go_in_the_android_block() {
+        val android = message(FcmSender.requestBody("tok", emptyMap(), false, null, highPriority = false,
+            collapseKey = HeartbeatPolicy.COLLAPSE_KEY, ttlSeconds = 1800))["android"]!!.jsonObject
+        assertEquals("heartbeat", android["collapse_key"]!!.jsonPrimitive.content)
+        assertEquals("1800s", android["ttl"]!!.jsonPrimitive.content)
+        assertEquals("normal", android["priority"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun relays_stay_non_collapsible() {
+        val android = message(FcmSender.requestBody("tok", emptyMap(), false, null))["android"]!!.jsonObject
+        assertNull(android["collapse_key"])
+        assertNull(android["ttl"])
+    }
+
+    @Test
+    fun catch_up_round_trips_on_the_wire() {
+        assertEquals(WireMessage.CatchUp(1234L), Wire.decode(Wire.encode(WireMessage.CatchUp(1234L))))
+        assertEquals(WireMessage.DeliveryAck(5, 4, "late"), Wire.decode(Wire.encode(WireMessage.DeliveryAck(5, 4, "late"))))
+    }
 }

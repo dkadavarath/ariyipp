@@ -37,7 +37,7 @@ object NotiCommandSender {
             return false
         }
         val payload = MessageCrypto.encrypt(
-            Wire.encode(WireMessage.Command(to, body, sim, msgId, issuedAt = System.currentTimeMillis())),
+            Wire.encodeFor(WireMessage.Command(to, body, sim, msgId, issuedAt = System.currentTimeMillis()), com.noti.shared.Wire.Direction.MAIN_TO_COMPANION),
             s.relayKey,
         )
         return try {

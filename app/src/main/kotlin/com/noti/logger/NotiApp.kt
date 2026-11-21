@@ -23,6 +23,21 @@ class NotiApp : Application() {
         // attempted while an activity is on screen (see AppForeground).
         com.noti.logger.reminder.AppForeground.register(this)
 
+        // Tell the :sender library which role this phone plays, before any of its receivers,
+        // services or workers can run in this process: they relay only while it's the companion.
+        com.noti.sender.CompanionRole.check = { Settings.get(it).role == Role.COMPANION }
+        // Screenshot protection reads the store of whichever role this phone plays.
+        com.noti.sender.ui.ScreenGuard.policy = { ctx, kind ->
+            if (Settings.get(ctx).role == Role.COMPANION) {
+                kind == com.noti.sender.ui.ScreenGuard.Kind.KEYS &&
+                    com.noti.sender.config.SenderSettings.get(ctx).protectKeyScreens
+            } else when (kind) {
+                com.noti.sender.ui.ScreenGuard.Kind.KEYS -> Settings.get(ctx).protectKeyScreens
+                com.noti.sender.ui.ScreenGuard.Kind.MESSAGES -> Settings.get(ctx).protectMessages
+                com.noti.sender.ui.ScreenGuard.Kind.NONE -> false
+            }
+        }
+
         // Everything below reads EncryptedSharedPreferences (Tink init + an AES decrypt per field),
         // which would otherwise sit on the critical path to the first frame. Every action it takes is
         // WorkManager bookkeeping - idempotent and thread-safe - so run it on a background thread.
@@ -43,6 +58,9 @@ class NotiApp : Application() {
 
         when (Settings.get(appContext).role) {
             Role.COMPANION -> {
+                // Main's own background work, in case this phone was Main before a switch.
+                UploadScheduler.cancelPeriodic(appContext)
+                com.noti.logger.work.ReminderScanWorker.cancelPeriodic(appContext)
                 // Keep the relay backstop scheduled and the high-water mark set from any process start.
                 SmsSyncWorker.baselineIfNeeded(appContext)
                 SmsSyncWorker.schedulePeriodic(appContext)
@@ -63,6 +81,9 @@ class NotiApp : Application() {
             // module. Reminders are MAIN-only - the rulebook reads captured notifications and the
             // relayed chat history, both of which only exist on this side of the pair.
             else -> {
+                // Leftovers from a switch away from Companion: WorkManager jobs survive the restart
+                // and the manifest receivers still wake, so stop the relay explicitly.
+                com.noti.sender.CompanionRole.stopAll(appContext)
                 // Re-announce our endpoint so the companion always has a live hub token. Ask
                 // Firebase for the current one rather than trusting the stored copy: a wipe can
                 // rotate it without onNewToken ever reaching us. Only sends when it changed.

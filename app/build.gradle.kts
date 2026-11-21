@@ -27,8 +27,8 @@ android {
         // (300+ from v1.4), so a public release always installs as an upgrade and the two never
         // collide. Bump by at least 1 each release; versionName is this public repo's own v1.x
         // sequence.
-        versionCode = 301
-        versionName = "1.5"
+        versionCode = 302
+        versionName = "1.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -56,6 +56,9 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            // SQLCipher ships native code for four CPU types; phones are ARM. Keeping x86/x86_64
+            // out of the release APK saves ~4.5 MB. Debug builds keep all four for the emulator.
+            ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -90,6 +93,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+    implementation(libs.sqlcipher.android)
 
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)

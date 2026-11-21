@@ -52,15 +52,23 @@ object PushMessageHandler {
             MessageCrypto.decrypt(ciphertext, key)
         } catch (e: Exception) {
             Diag.log("inbound push: DECRYPT FAILED - shared key doesn't match the companion's (re-pair)")
+            com.noti.logger.alert.Alerter.alertKeyMismatch(context)
             return false
         }
 
         val wire = try {
-            Wire.decode(plaintext)
+            Wire.decodeFrom(plaintext, com.noti.shared.Wire.Direction.COMPANION_TO_MAIN)
+        } catch (e: Wire.UntaggedException) {
+            com.noti.sender.PeerVersionNotice.onUntagged(context, peerIsMain = false)
+            return false
+        } catch (e: Wire.WrongDirectionException) {
+            Diag.log("inbound push REFUSED - tagged main → companion: a message reflected back to this phone")
+            return false
         } catch (e: Exception) {
             Diag.log("inbound push: unrecognized payload")
             return false
         }
+        com.noti.sender.PeerVersionNotice.onTagged(context)
 
         // It decrypted with the shared key, so the companion sent it: proof of life on its own.
         if (wire !is WireMessage.Heartbeat) Heartbeat.notePeerAlive(context)
@@ -95,7 +103,9 @@ object PushMessageHandler {
         } catch (e: Exception) {
             0
         }
-        Diag.log("delivery ack: msgId=${ack.msgId} status=${ack.status}" + if (changed == 0) " (no matching row)" else "")
+        Diag.log("delivery ack: msgId=${ack.msgId} status=${ack.status}" +
+            (if (ack.reason.isNotBlank()) " - companion refused: ${ack.reason}" else "") +
+            if (changed == 0) " (no matching row)" else "")
         return true
     }
 

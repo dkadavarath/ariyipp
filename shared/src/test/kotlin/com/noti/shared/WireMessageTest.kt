@@ -74,4 +74,31 @@ class WireMessageTest {
         assertThrows(Exception::class.java) { Wire.decode("not json") }
         assertThrows(Exception::class.java) { Wire.decode("""{"t":"nope"}""") }
     }
+
+    // ---- Direction tags (S5) ----
+
+    @Test
+    fun `a tagged push decodes in its own direction`() {
+        val msg = WireMessage.Token("endpoint-1")
+        val text = Wire.encodeFor(msg, Wire.Direction.COMPANION_TO_MAIN)
+        assertEquals(msg, Wire.decodeFrom(text, Wire.Direction.COMPANION_TO_MAIN))
+    }
+
+    @Test(expected = Wire.WrongDirectionException::class)
+    fun `a reflected push is refused`() {
+        val text = Wire.encodeFor(WireMessage.Token("main-endpoint"), Wire.Direction.MAIN_TO_COMPANION)
+        Wire.decodeFrom(text, Wire.Direction.COMPANION_TO_MAIN)
+    }
+
+    @Test(expected = Wire.UntaggedException::class)
+    fun `an untagged push from an older version is refused`() {
+        Wire.decodeFrom(Wire.encode(WireMessage.Heartbeat()), Wire.Direction.MAIN_TO_COMPANION)
+    }
+
+    @Test
+    fun `untagged is detected, tagged is not`() {
+        assertTrue(Wire.isUntagged(Wire.encode(WireMessage.Heartbeat())))
+        assertFalse(Wire.isUntagged(Wire.encodeFor(WireMessage.Heartbeat(), Wire.Direction.MAIN_TO_COMPANION)))
+        assertFalse(Wire.isUntagged("not json"))
+    }
 }

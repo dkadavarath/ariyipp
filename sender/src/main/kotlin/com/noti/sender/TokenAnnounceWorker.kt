@@ -20,6 +20,7 @@ import kotlinx.coroutines.withContext
 class TokenAnnounceWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        if (!CompanionRole.active(applicationContext)) return@withContext Result.success()
         val s = SenderSettings.get(applicationContext)
         when (SenderPipeline.announceToken(applicationContext)) {
             // Record it so process-start announces (enqueueIfNeeded) stay quiet until the token changes.

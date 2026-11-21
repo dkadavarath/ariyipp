@@ -21,6 +21,12 @@ object Alerter {
     private const val ALERT_UPLOAD_ERROR_ID = 1001
     private const val ALERT_FAILURES_ID = 1003
     private const val ALERT_INVALID_URL_ID = 1004
+    private const val ALERT_KEY_MISMATCH_ID = 1005
+    private const val ALERT_UNCONFIRMED_ID = 1006
+    private const val ALERT_DB_RESET_ID = 1007
+    /** A key mismatch fails every push (heartbeats included), so warn at most this often. */
+    private const val KEY_MISMATCH_EVERY_MS = 6 * 60 * 60_000L
+    @Volatile private var keyMismatchAtMs = 0L
 
     private fun ensureChannel(context: Context) {
         val mgr = context.getSystemService(NotificationManager::class.java)
@@ -96,4 +102,42 @@ object Alerter {
         )
     }
 
+    /** A push from the companion didn't decrypt: the two phones hold different shared keys (a key
+     *  regenerated without re-pairing, or a pairing code from another phone). Everything the
+     *  companion sends is unreadable until they're re-paired, so say so instead of failing quietly. */
+    fun alertKeyMismatch(context: Context, nowMs: Long = System.currentTimeMillis()) {
+        if (nowMs - keyMismatchAtMs in 0 until KEY_MISMATCH_EVERY_MS) return
+        keyMismatchAtMs = nowMs
+        post(
+            context,
+            ALERT_KEY_MISMATCH_ID,
+            "Can't read messages from the companion",
+            "The two phones have different shared keys, so relayed SMS can't be decrypted. " +
+                "Re-pair: on the companion, scan the code in Settings > Relay on this phone."
+        )
+    }
+
+    /** The webhook took a batch without listing records as stored (n8n's default immediate reply).
+     *  Counted as delivered; the caller shows this once per webhook URL. */
+    fun alertUploadUnconfirmed(context: Context) {
+        post(
+            context,
+            ALERT_UNCONFIRMED_ID,
+            "noti: webhook isn't confirming records",
+            "Your webhook accepts uploads without saying which records it stored, so they're counted " +
+                "as delivered. To confirm storage, have it reply with a JSON list of results (see the README)."
+        )
+    }
+
+    /** The database couldn't be decrypted (its key was lost with a keystore wipe) and was started
+     *  afresh; the unreadable file is kept. A backup restores the history. */
+    fun alertDatabaseReset(context: Context) {
+        post(
+            context,
+            ALERT_DB_RESET_ID,
+            "Local history couldn't be decrypted",
+            "This phone's secure storage was reset, so saved messages, notifications and reminders " +
+                "couldn't be read and the app started fresh. Restore a backup (Settings > Backup) to get them back."
+        )
+    }
 }

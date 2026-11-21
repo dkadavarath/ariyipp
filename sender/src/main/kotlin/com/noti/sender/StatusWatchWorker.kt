@@ -28,6 +28,10 @@ import java.util.concurrent.TimeUnit
 class StatusWatchWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        if (!CompanionRole.active(applicationContext)) {
+            CompanionRole.stopAll(applicationContext)
+            return@withContext Result.success()
+        }
         DeviceMonitor.evaluate(applicationContext)
         Result.success()
     }

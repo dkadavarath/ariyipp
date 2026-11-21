@@ -164,6 +164,36 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
     // ---- Keep-alive / missed-SMS sync ----
 
     /** Run the persistent foreground service to resist Doze / OEM app-standby. Default on. */
+    /** Screenshot protection for the pairing screen (it can show the relay key). See ScreenGuard. */
+    var protectKeyScreens: Boolean
+        get() = prefs.getBoolean(KEY_PROTECT_KEYS, true)
+        set(value) { prefs.edit().putBoolean(KEY_PROTECT_KEYS, value).apply() }
+
+    /** Most SMS Main may have this phone send in any rolling hour / day (SendLimiter). Set here, on
+     *  the companion only: if Main could change them, so could anyone holding Main's keys. */
+    var sendLimitPerHour: Int
+        get() = prefs.getInt(KEY_SEND_LIMIT_HOUR, DEFAULT_SEND_LIMIT_HOUR)
+        set(value) { prefs.edit().putInt(KEY_SEND_LIMIT_HOUR, value.coerceIn(1, 1000)).apply() }
+
+    var sendLimitPerDay: Int
+        get() = prefs.getInt(KEY_SEND_LIMIT_DAY, DEFAULT_SEND_LIMIT_DAY)
+        set(value) { prefs.edit().putInt(KEY_SEND_LIMIT_DAY, value.coerceIn(1, 10_000)).apply() }
+
+    /** Times (epoch ms) of recent command sends, newest last, for the rolling limits. */
+    var commandSendTimes: List<Long>
+        get() = (prefs.getString(KEY_SEND_TIMES, "") ?: "").split(',').mapNotNull { it.toLongOrNull() }
+        set(value) { prefs.edit().putString(KEY_SEND_TIMES, value.joinToString(",")).apply() }
+
+    /** The "other phone needs updating" notice is showing (see PeerVersionNotice). */
+    var peerOutdatedNotified: Boolean
+        get() = prefs.getBoolean(KEY_PEER_OUTDATED, false)
+        set(value) { prefs.edit().putBoolean(KEY_PEER_OUTDATED, value).apply() }
+
+    /** Only send to numbers that have texted this phone. Off by default; set here only. */
+    var allowlistOnly: Boolean
+        get() = prefs.getBoolean(KEY_ALLOWLIST_ONLY, false)
+        set(value) { prefs.edit().putBoolean(KEY_ALLOWLIST_ONLY, value).apply() }
+
     var keepAliveEnabled: Boolean
         get() = prefs.getBoolean(KEY_KEEPALIVE, true)
         set(value) { prefs.edit().putBoolean(KEY_KEEPALIVE, value).apply() }
@@ -178,6 +208,17 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
     var lastWebhookSmsId: Long
         get() = prefs.getLong(KEY_LAST_WEBHOOK_ID, -1L)
         set(value) { prefs.edit().putLong(KEY_LAST_WEBHOOK_ID, value).apply() }
+
+    /** The received time of the SMS at each mark (0 = unknown). The provider's `_id` has no
+     *  AUTOINCREMENT, so when the newest SMS is deleted the next one can get its id; a row at the
+     *  mark that is newer than this is that new message, not the one already relayed. */
+    var lastRelayedSmsDate: Long
+        get() = prefs.getLong(KEY_LAST_RELAYED_DATE, 0L)
+        set(value) { prefs.edit().putLong(KEY_LAST_RELAYED_DATE, value).apply() }
+
+    var lastWebhookSmsDate: Long
+        get() = prefs.getLong(KEY_LAST_WEBHOOK_DATE, 0L)
+        set(value) { prefs.edit().putLong(KEY_LAST_WEBHOOK_DATE, value).apply() }
 
     /** Replay-protection high-water mark: the highest [com.noti.shared.WireMessage.Command.msgId]
      *  accepted so far. -1 = none yet. Persisted so a captured/replayed command can't slip through
@@ -314,6 +355,8 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_KEEPALIVE = "keepalive"
         private const val KEY_LAST_RELAYED_ID = "last_relayed_sms_id"
         private const val KEY_LAST_WEBHOOK_ID = "last_webhook_sms_id"
+        private const val KEY_LAST_RELAYED_DATE = "last_relayed_sms_date"
+        private const val KEY_LAST_WEBHOOK_DATE = "last_webhook_sms_date"
         private const val KEY_LAST_COMMAND_MSG_ID = "last_command_msg_id"
         private const val KEY_LAST_WEBHOOK_CONFIG_VERSION = "last_webhook_config_version"
         private const val KEY_REPUSH_CURSOR = "repush_cursor_id"
@@ -329,6 +372,14 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_BATTERY_ARMED = "battery_alert_armed"
         private const val KEY_WIFI_LOST_AT = "wifi_lost_at_ms"
         private const val KEY_WIFI_ALERT_SENT = "wifi_alert_sent"
+        private const val KEY_PROTECT_KEYS = "protect_key_screens"
+        private const val KEY_SEND_LIMIT_HOUR = "send_limit_hour"
+        private const val KEY_SEND_LIMIT_DAY = "send_limit_day"
+        private const val KEY_SEND_TIMES = "command_send_times"
+        private const val KEY_ALLOWLIST_ONLY = "allowlist_only"
+        private const val KEY_PEER_OUTDATED = "peer_outdated_notified"
+        const val DEFAULT_SEND_LIMIT_HOUR = 20
+        const val DEFAULT_SEND_LIMIT_DAY = 50
 
         @Volatile private var INSTANCE: SenderSettings? = null
 

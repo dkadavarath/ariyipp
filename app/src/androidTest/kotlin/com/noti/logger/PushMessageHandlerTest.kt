@@ -59,7 +59,7 @@ class PushMessageHandlerTest {
     }
 
     private fun payload(title: String, body: String, encKey: String = key): Map<String, String> {
-        val plain = Wire.encode(WireMessage.Relay(title = title, body = body))
+        val plain = Wire.encodeFor(WireMessage.Relay(title = title, body = body), Wire.Direction.COMPANION_TO_MAIN)
         return mapOf(PushMessageHandler.PAYLOAD_KEY to MessageCrypto.encrypt(plain, encKey))
     }
 
@@ -124,11 +124,12 @@ class PushMessageHandlerTest {
     /** One encrypted push carrying the [i]th of [parts] body slices. Time is fresh - an old
      *  timestamp would be treated as a backfill (stored without a notification). */
     private fun partPayload(i: Int, parts: Int, slice: String, dedupe: String): Map<String, String> {
-        val plain = Wire.encode(
+        val plain = Wire.encodeFor(
             WireMessage.Relay(
                 title = "Chunk Sender", body = slice, dedupe = dedupe,
                 time = System.currentTimeMillis() - 60_000, part = i, parts = parts,
-            )
+            ),
+            Wire.Direction.COMPANION_TO_MAIN,
         )
         return mapOf(PushMessageHandler.PAYLOAD_KEY to MessageCrypto.encrypt(plain, key))
     }
@@ -227,7 +228,7 @@ class PushMessageHandlerTest {
     // ---- Chat retention (its own setting; default keeps everything) ----
 
     private fun relayAt(title: String, body: String, time: Long, dedupe: String): Map<String, String> {
-        val plain = Wire.encode(WireMessage.Relay(title = title, body = body, dedupe = dedupe, time = time))
+        val plain = Wire.encodeFor(WireMessage.Relay(title = title, body = body, dedupe = dedupe, time = time), Wire.Direction.COMPANION_TO_MAIN)
         return mapOf(PushMessageHandler.PAYLOAD_KEY to MessageCrypto.encrypt(plain, key))
     }
 
@@ -299,5 +300,34 @@ class PushMessageHandlerTest {
         Thread.sleep(300) // a post would have landed by now
         assertEquals(0, nm.activeNotifications.size)
         deleteConversation("+backfill")
+    }
+
+    // ---- Direction tags (S5) ----
+
+    @Test
+    fun untagged_push_from_an_old_companion_is_refused_and_noted_once() {
+        val c = com.noti.sender.config.SenderSettings.get(ctx)
+        c.peerOutdatedNotified = false
+        val old = mapOf(
+            PushMessageHandler.PAYLOAD_KEY to MessageCrypto.encrypt(Wire.encode(WireMessage.Relay(title = "Old", body = "x")), key),
+        )
+        assertFalse(PushMessageHandler.handle(ctx, old))
+        assertTrue(c.peerOutdatedNotified)
+        // A current message clears it, so a later regression is reported again.
+        PushMessageHandler.handle(ctx, payload("Current", "y"))
+        assertFalse(c.peerOutdatedNotified)
+    }
+
+    @Test
+    fun a_main_message_reflected_back_to_main_is_refused() {
+        val s = Settings.get(ctx)
+        val before = s.sndiFcmToken
+        val reflected = mapOf(
+            PushMessageHandler.PAYLOAD_KEY to MessageCrypto.encrypt(
+                Wire.encodeFor(WireMessage.Token("mains-own-token"), Wire.Direction.MAIN_TO_COMPANION), key,
+            ),
+        )
+        assertFalse(PushMessageHandler.handle(ctx, reflected))
+        assertEquals(before, s.sndiFcmToken)
     }
 }

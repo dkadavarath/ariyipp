@@ -15,6 +15,8 @@ object ReminderFormat {
     private val shortFmt = DateTimeFormatter.ofPattern("d MMM")
 
     /** "6 Oct" this year, "6 Oct 2027" otherwise - the year only when it is news. */
+    /** A moment (paid at, rates fetched at) as a short local date. Not for due dates - those are
+     *  stored zone-free, see [DueDates]. */
     fun shortDate(dateMs: Long, today: LocalDate = LocalDate.now()): String {
         val d = ReminderPolicy.fromEpochMillis(dateMs).toLocalDate()
         return d.format(if (d.year == today.year) shortFmt else dateFmt)
@@ -41,7 +43,7 @@ object ReminderFormat {
     /** "Due tomorrow", "Due in 3 days", "Overdue by 2 days" - relative, because that is the thing
      *  you actually want to know at a glance. */
     fun dueLabel(context: Context, dueAtMs: Long, today: LocalDate = LocalDate.now()): String {
-        val due = ReminderPolicy.fromEpochMillis(dueAtMs).toLocalDate()
+        val due = DueDates.fromMs(dueAtMs)
         val days = ChronoUnit.DAYS.between(today, due)
         return when {
             days == 0L -> context.getString(R.string.rm_due_today)
@@ -54,12 +56,12 @@ object ReminderFormat {
 
     /** [dueLabel] cut down for a one-line row: "Today", "Tomorrow", "6 Oct", "3d late". */
     fun dueShort(context: Context, dueAtMs: Long, today: LocalDate = LocalDate.now()): String {
-        val due = ReminderPolicy.fromEpochMillis(dueAtMs).toLocalDate()
+        val due = DueDates.fromMs(dueAtMs)
         val days = ChronoUnit.DAYS.between(today, due)
         return when {
             days == 0L -> context.getString(R.string.rm_short_today)
             days == 1L -> context.getString(R.string.rm_short_tomorrow)
-            days > 1L -> shortDate(dueAtMs, today)
+            days > 1L -> due.format(if (due.year == today.year) shortFmt else dateFmt)
             else -> context.getString(R.string.rm_short_overdue, (-days).toInt())
         }
     }

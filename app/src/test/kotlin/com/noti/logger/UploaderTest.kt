@@ -129,6 +129,7 @@ class UploaderTest {
             val bodyBytes = responseBody.toByteArray(Charsets.UTF_8)
             val response =
                 "HTTP/1.1 $responseCode \r\nContent-Type: application/json\r\n" +
+                    (if (responseCode in 300..399) "Location: /moved\r\n" else "") +
                     "Content-Length: ${bodyBytes.size}\r\nConnection: close\r\n\r\n"
             s.getOutputStream().let {
                 it.write(response.toByteArray(Charsets.ISO_8859_1))
@@ -255,11 +256,36 @@ class UploaderTest {
     }
 
     @Test
-    fun `server 200 with unparseable body returns Retry`() {
+    fun `server 200 with a non-list body is Unconfirmed, not an endless retry`() {
         withServer(200, "not json at all") { server ->
             val result = uploader().post("http://localhost:${server.port}/", "tok", sampleBatch())
-            assertEquals(UploadOutcome.Retry, result)
+            assertEquals(UploadOutcome.Unconfirmed, result)
         }
+    }
+
+    @Test
+    fun `n8n default immediate reply is Unconfirmed`() {
+        withServer(200, """{"message":"Workflow was started"}""") { server ->
+            val result = uploader().post("http://localhost:${server.port}/", "tok", sampleBatch())
+            assertEquals(UploadOutcome.Unconfirmed, result)
+        }
+    }
+
+    @Test
+    fun `server 200 with an empty list is Unconfirmed`() {
+        withServer(200, "[]") { server ->
+            val result = uploader().post("http://localhost:${server.port}/", "tok", sampleBatch())
+            assertEquals(UploadOutcome.Unconfirmed, result)
+        }
+    }
+
+    @Test
+    fun `redirect is not followed and is a ClientError`() = withServer(302) { server ->
+        val result = uploader().post("http://localhost:${server.port}/", "tok", sampleBatch())
+        assertEquals(UploadOutcome.ClientError(302), result)
+        assertEquals("POST", pollRequest(server).method)
+        // Followed, the client would have come back for /moved as a body-less GET.
+        assertEquals(null, server.requests.poll(500, TimeUnit.MILLISECONDS))
     }
 
     @Test

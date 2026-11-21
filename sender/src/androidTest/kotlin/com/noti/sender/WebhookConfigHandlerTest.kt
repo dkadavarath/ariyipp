@@ -36,7 +36,7 @@ class WebhookConfigHandlerTest {
     }
 
     private fun payload(cfg: WireMessage, encKey: String = key): Map<String, String> =
-        mapOf(WebhookConfigHandler.PAYLOAD_KEY to MessageCrypto.encrypt(Wire.encode(cfg), encKey))
+        mapOf(WebhookConfigHandler.PAYLOAD_KEY to MessageCrypto.encrypt(Wire.encodeFor(cfg, Wire.Direction.MAIN_TO_COMPANION), encKey))
 
     @Test fun parses_a_valid_config() {
         val cfg = WireMessage.WebhookConfig(

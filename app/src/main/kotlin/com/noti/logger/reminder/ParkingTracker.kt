@@ -29,7 +29,13 @@ object ParkingTracker {
      * A parking message matched. Returns true when this changed something (a new session, or an
      * extension) - a re-scan seeing the same ticket again returns false.
      */
-    fun onMatch(context: Context, rule: ReminderRuleEntity, zone: String, expiry: LocalDateTime?): Boolean {
+    fun onMatch(
+        context: Context,
+        rule: ReminderRuleEntity,
+        zone: String,
+        expiry: LocalDateTime?,
+        messageAtMs: Long = System.currentTimeMillis(),
+    ): Boolean {
         val dao = NotiDatabase.get(context).parkingSessionDao()
         val existing = try {
             dao.activeForZone(rule.id, zone) ?: if (zone.isBlank()) dao.latestActiveForRule(rule.id) else null
@@ -37,7 +43,23 @@ object ParkingTracker {
             null
         }
 
+        if (existing == null && !mayStart(expiry?.let { ReminderPolicy.toEpochMillis(it) }, messageAtMs, System.currentTimeMillis())) {
+            return false
+        }
         return if (existing == null) start(context, rule, zone, expiry) else extend(context, existing, zone, expiry)
+    }
+
+    /** A ticket with no unexpired expiry is this old, it is history rather than a car parked now. */
+    const val STALE_TICKET_MS = 12 * 60 * 60_000L
+
+    /**
+     * Whether a ticket may open a new session. Not when its expiry has already passed, nor when it
+     * has no readable expiry and is older than [STALE_TICKET_MS]: "Calculate now" rescans weeks of
+     * old tickets, and each one used to bring back a session you had already ended. Pure.
+     */
+    fun mayStart(expiresAtMs: Long?, messageAtMs: Long, nowMs: Long): Boolean = when {
+        expiresAtMs != null -> expiresAtMs > nowMs
+        else -> nowMs - messageAtMs <= STALE_TICKET_MS
     }
 
     private fun start(context: Context, rule: ReminderRuleEntity, zone: String, expiry: LocalDateTime?): Boolean {
@@ -64,7 +86,7 @@ object ParkingTracker {
 
         Diag.log("parking session started: ${rule.name}${if (zone.isBlank()) "" else " ($zone)"}")
         askForMissingDetails(context, id, rule.name, zone, expiry)
-        if (expiry != null) armAlarm(context, id, rule.name, zone, remindAt)
+        if (expiry != null) armAlarm(context, id, rule.name, zone, remindAt, expiresAt)
         return true
     }
 
@@ -93,7 +115,7 @@ object ParkingTracker {
         )
         try { dao.update(updated) } catch (e: Exception) { return false }
 
-        armAlarm(context, updated.id, updated.name, updated.zone, remindAt)
+        armAlarm(context, updated.id, updated.name, updated.zone, remindAt, updated.expiresAt)
         Diag.log("parking extended: ${updated.name} → ${expiry.toLocalTime()} (renewal ${updated.renewals})")
         return true
     }
@@ -122,7 +144,7 @@ object ParkingTracker {
         val updated = session.copy(zone = zone, expiresAt = expiresAt, remindAt = remindAt, incompleteNotified = 1)
         try { dao.update(updated) } catch (e: Exception) { return }
         ReminderNotifier.cancelParking(context, session.id)
-        armAlarm(context, updated.id, updated.name, updated.zone, remindAt)
+        armAlarm(context, updated.id, updated.name, updated.zone, remindAt, updated.expiresAt)
     }
 
     /** Start a session by hand, with no message behind it. */
@@ -144,13 +166,17 @@ object ParkingTracker {
         } catch (e: Exception) {
             return 0
         }
-        if (id > 0) armAlarm(context, id, name, zone, remindAt)
+        if (id > 0) armAlarm(context, id, name, zone, remindAt, ReminderPolicy.toEpochMillis(expiry))
         return id
     }
 
-    private fun armAlarm(context: Context, sessionId: Long, name: String, zone: String, remindAtMs: Long) {
-        if (remindAtMs <= System.currentTimeMillis()) return
-        ParkingAlarm.scheduleAt(context, sessionId, name, zone, ReminderPolicy.fromEpochMillis(remindAtMs))
+    private fun armAlarm(context: Context, sessionId: Long, name: String, zone: String, remindAtMs: Long, expiresAtMs: Long) {
+        val at = ReminderPolicy.parkingFireAt(remindAtMs, expiresAtMs, System.currentTimeMillis()) ?: return
+        ParkingAlarm.scheduleAt(context, sessionId, name, zone, ReminderPolicy.fromEpochMillis(at))
+        // A late ring (reminder time already past) is a one-off; see ParkingSessionEntity.rangFor.
+        if (at != remindAtMs) {
+            try { NotiDatabase.get(context).parkingSessionDao().markRang(sessionId, remindAtMs) } catch (e: Exception) { }
+        }
     }
 
     /**

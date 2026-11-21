@@ -20,6 +20,7 @@ import com.noti.logger.data.ReminderRuleEntity
 import com.noti.logger.reminder.DueMode
 import com.noti.logger.reminder.ParkingTracker
 import com.noti.logger.reminder.Recurrence
+import com.noti.logger.reminder.DueDates
 import com.noti.logger.reminder.ReminderPolicy
 import com.noti.logger.reminder.ReminderScanner
 import com.noti.logger.reminder.ReminderScheduler
@@ -56,6 +57,7 @@ class ReminderEditActivity : ScreenActivity() {
 
     override val layoutRes = R.layout.activity_reminder_edit
     override val titleRes = R.string.title_reminder_edit
+    override val screenKind = com.noti.sender.ui.ScreenGuard.Kind.MESSAGES
 
     private val dateFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy")
     private val dateTimeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm")
@@ -278,7 +280,7 @@ class ReminderEditActivity : ScreenActivity() {
             if (bill.remindDaysBefore >= 0) {
                 findViewById<EditText>(R.id.et_remind_days).setText(bill.remindDaysBefore.toString())
             }
-            if (bill.dueAt > 0) dueDate = ReminderPolicy.fromEpochMillis(bill.dueAt).toLocalDate()
+            if (bill.dueAt > 0) dueDate = DueDates.fromMs(bill.dueAt)
             // An occurrence is one instance; its rule owns the recurrence, so editing here edits
             // this instance only and the repeat controls stay out of the way.
             editingOccurrence = true
@@ -329,8 +331,8 @@ class ReminderEditActivity : ScreenActivity() {
         if (isParking()) saveParking(name) else saveBill(name)
     }
 
-    private fun midnight(date: LocalDate): Long =
-        date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    /** A date as stored on a bill or rule - zone-free, see [DueDates]. */
+    private fun midnight(date: LocalDate): Long = DueDates.toMs(date)
 
     private fun saveBill(name: String) {
         val anchor = dueDate
@@ -352,20 +354,22 @@ class ReminderEditActivity : ScreenActivity() {
                 val db = NotiDatabase.get(applicationContext)
                 if (existing != null) {
                     val dueAt = midnight(anchor)
+                    val edited = existing.copy(
+                        name = name,
+                        amount = amount,
+                        amountRaw = text(R.id.et_amount),
+                        currency = currency,
+                        category = category,
+                        notes = notes,
+                        remindDaysBefore = lead,
+                        dueAt = dueAt,
+                        // A corrected date deserves a fresh reminder even if the old one
+                        // already fired against the wrong day.
+                        notified = if (existing.dueAt != dueAt) 0 else existing.notified,
+                    )
+                    // Remember what was corrected, so a rescan of the statement leaves it alone.
                     db.billOccurrenceDao().update(
-                        existing.copy(
-                            name = name,
-                            amount = amount,
-                            amountRaw = text(R.id.et_amount),
-                            currency = currency,
-                            category = category,
-                            notes = notes,
-                            remindDaysBefore = lead,
-                            dueAt = dueAt,
-                            // A corrected date deserves a fresh reminder even if the old one
-                            // already fired against the wrong day.
-                            notified = if (existing.dueAt != dueAt) 0 else existing.notified,
-                        )
+                        edited.copy(editedFields = BillOccurrenceEntity.editedMask(existing, edited))
                     )
                     // A repeating manual bill: a changed amount is next month's amount too, or the
                     // following occurrence would come out with the old one (or none) again.

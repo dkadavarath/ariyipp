@@ -44,7 +44,7 @@ class SmsCommandHandlerTest {
         msgId: Long = 1L,
         issuedAt: Long = System.currentTimeMillis(),
     ): Map<String, String> {
-        val plain = Wire.encode(WireMessage.Command(to = to, body = body, msgId = msgId, issuedAt = issuedAt))
+        val plain = Wire.encodeFor(WireMessage.Command(to = to, body = body, msgId = msgId, issuedAt = issuedAt), Wire.Direction.MAIN_TO_COMPANION)
         return mapOf(SmsCommandHandler.PAYLOAD_KEY to MessageCrypto.encrypt(plain, encKey))
     }
 
@@ -107,5 +107,39 @@ class SmsCommandHandlerTest {
     fun future_issuedAt_returns_null() {
         val future = System.currentTimeMillis() + 3 * 60_000L
         assertNull(SmsCommandHandler.parse(ctx, payload("+1", "x", issuedAt = future)))
+    }
+
+    // ---- Rejections are reported, except a duplicate delivery ----
+
+    private fun rejected(p: Map<String, String>) = SmsCommandHandler.check(ctx, p) as SmsCommandHandler.Outcome.Rejected
+
+    @Test
+    fun late_command_is_reported_with_a_reason() {
+        val r = rejected(payload("+1", "x", msgId = 3L, issuedAt = System.currentTimeMillis() - 30 * 60_000L))
+        assertEquals(3L, r.msgId)
+        assertEquals(true, r.report)
+        assertEquals(true, r.reason.contains("late"))
+    }
+
+    @Test
+    fun clock_skew_is_reported_with_a_reason() {
+        val r = rejected(payload("+1", "x", issuedAt = System.currentTimeMillis() + 10 * 60_000L))
+        assertEquals(true, r.report)
+        assertEquals(true, r.reason.contains("clocks"))
+    }
+
+    @Test
+    fun duplicate_delivery_is_dropped_quietly() {
+        val p = payload("+1", "x", msgId = 5L)
+        SmsCommandHandler.check(ctx, p)
+        assertEquals(false, rejected(p).report)
+    }
+
+    @Test
+    fun ids_far_behind_the_mark_are_reported_as_a_reset_main() {
+        SenderSettings.get(ctx).lastCommandMsgId = 500L
+        val r = rejected(payload("+1", "x", msgId = 2L))
+        assertEquals(true, r.report)
+        assertEquals(true, r.reason.contains("regenerate the key"))
     }
 }

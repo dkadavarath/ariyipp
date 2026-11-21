@@ -48,6 +48,8 @@ class MainActivity : AppCompatActivity() {
         Theming.applyDynamicColorIfEnabled(this)
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        // Messages, chats and reminders: behind the "protect messages" screenshot setting.
+        com.noti.sender.ui.ScreenGuard.apply(this, com.noti.sender.ui.ScreenGuard.Kind.MESSAGES)
 
         val settings = Settings.get(this)
         var chosen = settings.role
@@ -132,6 +134,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        com.noti.sender.ui.ScreenGuard.apply(this, com.noti.sender.ui.ScreenGuard.Kind.MESSAGES)
         if (isFinishing) return // routed to onboarding; UI not built
         // The Appearance toggle lives in a sub-screen; if it changed while we were away, re-theme.
         if (Theming.amoledActive(this) != themedAmoled) {

@@ -49,7 +49,12 @@ class UploadFailureTest {
         NotiDatabase.get(ctx).clearAllTables()
     }
 
+    /** What the server answers; tests change it before running the worker. */
+    @Volatile private var replyCode = 404
+    @Volatile private var replyBody = ""
+
     private fun startServerReturning(code: Int) {
+        replyCode = code
         server = ServerSocket(0)
         port = server.localPort
         thread(isDaemon = true) {
@@ -58,11 +63,31 @@ class UploadFailureTest {
                     val sock = server.accept()
                     sock.use {
                         // drain request, then respond with the failure code
+                        // Read the whole request (headers, then Content-Length bytes) before
+                        // answering, or the client sees a reset instead of the response.
                         val input = it.getInputStream()
+                        var length = 0
+                        while (true) {
+                            val line = StringBuilder()
+                            while (true) {
+                                val b = input.read()
+                                if (b == -1 || b == '\n'.code) break
+                                if (b != '\r'.code) line.append(b.toChar())
+                            }
+                            if (line.isEmpty()) break
+                            if (line.startsWith("Content-Length:", ignoreCase = true)) {
+                                length = line.substring(15).trim().toIntOrNull() ?: 0
+                            }
+                        }
+                        var left = length
                         val buf = ByteArray(4096)
-                        // best-effort read of available bytes
-                        if (input.available() > 0) input.read(buf)
-                        val resp = "HTTP/1.1 $code Client Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                        while (left > 0) {
+                            val n = input.read(buf, 0, minOf(buf.size, left))
+                            if (n < 0) break
+                            left -= n
+                        }
+                        val body = replyBody
+                        val resp = "HTTP/1.1 $replyCode Status\r\nContent-Length: ${body.length}\r\nConnection: close\r\n\r\n$body"
                         it.getOutputStream().write(resp.toByteArray())
                         it.getOutputStream().flush()
                     }
@@ -94,5 +119,36 @@ class UploadFailureTest {
             "status should reflect the http error",
             Settings.get(ctx).lastUploadResult?.contains("http 404") == true
         )
+    }
+
+    @Test
+    fun n8n_default_reply_counts_the_batch_delivered_instead_of_retrying_forever() = runBlocking {
+        replyCode = 200
+        replyBody = """{"message":"Workflow was started"}"""
+        Settings.get(ctx).unconfirmedNotifiedUrl = ""
+        val dao = NotiDatabase.get(ctx).notificationDao()
+        val now = System.currentTimeMillis()
+        dao.insert(entity("n1", now))
+        dao.insert(entity("n2", now))
+
+        val result = TestListenableWorkerBuilder<UploadWorker>(ctx).build().doWork()
+
+        assertTrue("a 2xx must not retry: $result / ${Settings.get(ctx).lastUploadResult}", result is ListenableWorker.Result.Success)
+        assertEquals(0, dao.pendingCount())
+        assertTrue(Settings.get(ctx).lastUploadResult?.contains("didn't list") == true)
+        assertEquals("noted once for this endpoint", Settings.get(ctx).webhookUrl, Settings.get(ctx).unconfirmedNotifiedUrl)
+    }
+
+    @Test
+    fun redirect_is_not_followed_and_keeps_records() = runBlocking {
+        replyCode = 302
+        val dao = NotiDatabase.get(ctx).notificationDao()
+        dao.insert(entity("r1", System.currentTimeMillis()))
+
+        val result = TestListenableWorkerBuilder<UploadWorker>(ctx).build().doWork()
+
+        assertTrue(result is ListenableWorker.Result.Retry)
+        assertEquals(1, dao.pendingCount())
+        assertTrue(Settings.get(ctx).lastUploadResult?.contains("http 302") == true)
     }
 }

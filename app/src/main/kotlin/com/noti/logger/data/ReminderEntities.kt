@@ -148,7 +148,8 @@ data class BillOccurrenceEntity(
     /** Copied from the rule at creation so a renamed or deleted rule doesn't rewrite history. */
     val name: String,
 
-    /** Local date the bill is due, as epoch millis at local midnight. 0 = not captured yet. */
+    /** The date the bill is due, as epoch millis at that date's UTC midnight - a plain date that
+     *  no time zone change can move (see [com.noti.logger.reminder.DueDates]). 0 = not captured. */
     val dueAt: Long = 0,
 
     val amount: Double? = null,
@@ -194,7 +195,46 @@ data class BillOccurrenceEntity(
 
     /** 1 = marked paid by the payment resolver rather than by hand; shown in History. */
     val autoSettled: Int = 0,
-)
+
+    /** Which fields you corrected by hand ([EDITED_AMOUNT], [EDITED_DUE], [EDITED_CURRENCY],
+     *  [EDITED_NAME]): a
+     *  rescan of the statement never overwrites those, but may still fill in the rest. */
+    val editedFields: Int = 0,
+) {
+    companion object {
+        const val EDITED_AMOUNT = 1
+        const val EDITED_DUE = 2
+        const val EDITED_CURRENCY = 4
+        const val EDITED_NAME = 8
+
+        /** [editedFields] after saving [after] over [before] from the editor: every field that now
+         *  differs joins the ones already marked. Pure. */
+        fun editedMask(before: BillOccurrenceEntity, after: BillOccurrenceEntity): Int {
+            var m = before.editedFields
+            if (after.amount != before.amount) m = m or EDITED_AMOUNT
+            if (after.dueAt != before.dueAt) m = m or EDITED_DUE
+            if (after.currency != before.currency) m = m or EDITED_CURRENCY
+            if (after.name != before.name) m = m or EDITED_NAME
+            return m
+        }
+
+        /** What a rescan writes over [existing] given the freshly read [scanned]: the scan's values,
+         *  except for the fields you edited, which keep yours. Pure. */
+        fun mergeRescan(existing: BillOccurrenceEntity, scanned: BillOccurrenceEntity): BillOccurrenceEntity {
+            val m = existing.editedFields
+            fun has(bit: Int) = m and bit != 0
+            return scanned.copy(
+                amount = if (has(EDITED_AMOUNT)) existing.amount else scanned.amount,
+                amountRaw = if (has(EDITED_AMOUNT)) existing.amountRaw else scanned.amountRaw,
+                dueAt = if (has(EDITED_DUE)) existing.dueAt else scanned.dueAt,
+                dueRaw = if (has(EDITED_DUE)) existing.dueRaw else scanned.dueRaw,
+                currency = if (has(EDITED_CURRENCY)) existing.currency else scanned.currency,
+                name = if (has(EDITED_NAME)) existing.name else scanned.name,
+                editedFields = m,
+            )
+        }
+    }
+}
 
 /**
  * A live parking session. Unlike a bill this is not a recurring occurrence - it is one continuous
@@ -236,4 +276,9 @@ data class ParkingSessionEntity(
 
     val startedAt: Long = System.currentTimeMillis(),
     val endedAt: Long = 0,
+
+    /** The [remindAt] an alarm last rang for. A late alarm (reminder time already past, expiry not)
+     *  rings once on arming; this stops every later rebuild from ringing it again. A renewal moves
+     *  [remindAt], which arms the next one. */
+    val rangFor: Long = 0,
 )

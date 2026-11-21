@@ -106,6 +106,8 @@ class ChatActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         Theming.applyDynamicColorIfEnabled(this)
         super.onCreate(savedInstanceState)
+        // Messages, chats and reminders: behind the "protect messages" screenshot setting.
+        com.noti.sender.ui.ScreenGuard.apply(this, com.noti.sender.ui.ScreenGuard.Kind.MESSAGES)
         Theming.applyAmoledIfEnabled(this) // after super so AppCompat doesn't reset the overlay
         Theming.applyPredictiveBackTransitions(this)
         setContentView(R.layout.activity_chat)
@@ -268,6 +270,7 @@ class ChatActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        com.noti.sender.ui.ScreenGuard.apply(this, com.noti.sender.ui.ScreenGuard.Kind.MESSAGES)
         load()
     }
 
@@ -464,7 +467,15 @@ class ChatActivity : AppCompatActivity() {
 
     private fun copyText(text: String, confirmation: Int = R.string.msg_copied) {
         val clip = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clip.setPrimaryClip(ClipData.newPlainText("message", text))
+        val data = ClipData.newPlainText("message", text)
+        // Messages carry OTPs and balances: keep the OS clipboard preview from showing them, as the
+        // notification's "Copy code" action already does (Android 13+).
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            data.description.extras = android.os.PersistableBundle().apply {
+                putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true)
+            }
+        }
+        clip.setPrimaryClip(data)
         Toast.makeText(this, confirmation, Toast.LENGTH_SHORT).show()
     }
 

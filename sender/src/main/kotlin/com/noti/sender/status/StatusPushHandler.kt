@@ -33,7 +33,7 @@ object StatusPushHandler {
             return null
         }
         val wire = try {
-            Wire.decode(plaintext)
+            Wire.decodeFrom(plaintext, com.noti.shared.Wire.Direction.MAIN_TO_COMPANION)
         } catch (e: Exception) {
             return null
         }

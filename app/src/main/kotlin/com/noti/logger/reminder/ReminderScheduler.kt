@@ -121,7 +121,7 @@ object ReminderScheduler {
         val bills = try { db.billOccurrenceDao().schedulable() } catch (e: Exception) { emptyList() }
         val wanted = bills.map {
             ReminderPolicy.billReminderAt(
-                due = ReminderPolicy.fromEpochMillis(it.dueAt).toLocalDate(),
+                due = DueDates.fromMs(it.dueAt),
                 // An entry may carry its own lead; -1 defers to the global setting.
                 daysBefore = ReminderPolicy.effectiveLead(it.remindDaysBefore, settings.reminderDaysBefore),
                 hour = settings.reminderHour,
@@ -138,7 +138,7 @@ object ReminderScheduler {
             // the phone was off - used to be cancelled, so that bill never reminded at all. If the
             // bill isn't overdue yet (due today or later), deliver it now instead, a few seconds
             // apart so a backlog doesn't land as one burst.
-            val notYetOverdue = bill.dueAt + 86_400_000L > now
+            val notYetOverdue = !DueDates.fromMs(bill.dueAt).isBefore(java.time.LocalDate.now())
             val fireAt = if (atMs <= now && notYetOverdue) now + 5_000L + 2_000L * catchUp++ else atMs
             if (bill.notified == 0) scheduleBill(context, bill.id, fireAt) else cancelBill(context, bill.id)
             try { db.billOccurrenceDao().setRemindAt(bill.id, atMs) } catch (e: Exception) { }
@@ -146,11 +146,10 @@ object ReminderScheduler {
 
         val sessions = try { db.parkingSessionDao().active() } catch (e: Exception) { emptyList() }
         for (session in sessions) {
-            if (session.remindAt <= System.currentTimeMillis() || session.expiresAt == 0L) continue
-            ParkingAlarm.scheduleAt(
-                context, session.id, session.name, session.zone,
-                ReminderPolicy.fromEpochMillis(session.remindAt),
-            )
+            val at = ReminderPolicy.parkingFireAt(session.remindAt, session.expiresAt, System.currentTimeMillis(), session.rangFor) ?: continue
+            ParkingAlarm.scheduleAt(context, session.id, session.name, session.zone, ReminderPolicy.fromEpochMillis(at))
+            // A late ring is a one-off: record it now, since the clock-app route never reports back.
+            if (at != session.remindAt) try { db.parkingSessionDao().markRang(session.id, session.remindAt) } catch (e: Exception) { }
         }
         Diag.log("reminders rebuilt: ${bills.size} bill(s), ${sessions.size} parking session(s)")
     }

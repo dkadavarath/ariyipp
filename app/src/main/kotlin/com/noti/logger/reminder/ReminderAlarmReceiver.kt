@@ -73,6 +73,7 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
             context.getString(com.noti.logger.R.string.rm_no_expiry)
         }
         ReminderNotifier.showParkingExpiring(context, session.id, session.name, session.zone, whenLine)
+        try { dao.markRang(session.id, session.remindAt) } catch (e: Exception) { }
         Diag.log("reminder fired: parking \"${session.name}\"")
     }
 }
