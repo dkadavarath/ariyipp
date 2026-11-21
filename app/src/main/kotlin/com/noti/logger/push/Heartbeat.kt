@@ -48,11 +48,12 @@ object Heartbeat {
     }
 
     /** Coarse state for the Status screen. */
-    enum class Status { OK, DISABLED, FAILED, UNPAIRED }
+    enum class Status { OK, DISABLED, PEER_OFF, FAILED, UNPAIRED }
 
     fun status(context: Context): Status = when {
         !enabled(context) -> Status.DISABLED
         !paired(context) -> Status.UNPAIRED
+        peerOff(context) -> Status.PEER_OFF
         HeartbeatPolicy.isStale(lastBeatAtMs(context), System.currentTimeMillis()) -> Status.FAILED
         else -> Status.OK
     }
@@ -60,6 +61,19 @@ object Heartbeat {
     fun lastBeatAtMs(context: Context): Long = when (Settings.get(context).role) {
         Role.COMPANION -> SenderSettings.get(context).lastPeerBeatAtMs
         else -> Settings.get(context).lastPeerBeatAtMs
+    }
+
+    fun peerOff(context: Context): Boolean = when (Settings.get(context).role) {
+        Role.COMPANION -> SenderSettings.get(context).peerHeartbeatOff
+        else -> Settings.get(context).peerHeartbeatOff
+    }
+
+    private fun setPeerOff(context: Context, value: Boolean) {
+        if (peerOff(context) == value) return
+        when (Settings.get(context).role) {
+            Role.COMPANION -> SenderSettings.get(context).peerHeartbeatOff = value
+            else -> Settings.get(context).peerHeartbeatOff = value
+        }
     }
 
     private fun setLastBeatAtMs(context: Context, value: Long) = when (Settings.get(context).role) {
@@ -73,7 +87,8 @@ object Heartbeat {
     }
 
     fun isDisconnected(context: Context): Boolean =
-        enabled(context) && paired(context) && HeartbeatPolicy.isStale(lastBeatAtMs(context), System.currentTimeMillis())
+        enabled(context) && paired(context) && !peerOff(context) &&
+            HeartbeatPolicy.isStale(lastBeatAtMs(context), System.currentTimeMillis())
 
     /** Peer label for user-facing text, from this device's role. */
     fun peerLabel(context: Context): String =
@@ -86,11 +101,12 @@ object Heartbeat {
      * peer's next maintenance window, and every silent high-priority push counts against how FCM
      * treats the app's high-priority pushes. Force-checks and their answers stay high priority.
      */
-    fun send(context: Context, request: Boolean, highPriority: Boolean = request): Boolean {
-        if (!enabled(context)) return false
+    fun send(context: Context, request: Boolean, highPriority: Boolean = request, off: Boolean = false): Boolean {
+        // A phone with its heartbeat off still says so ([off]), and nothing else.
+        if (!enabled(context) && !off) return false
         val p = peer(context) ?: return false
         return try {
-            val payload = MessageCrypto.encrypt(Wire.encodeFor(WireMessage.Heartbeat(request), if (Settings.get(context).role == Role.COMPANION) com.noti.shared.Wire.Direction.COMPANION_TO_MAIN else com.noti.shared.Wire.Direction.MAIN_TO_COMPANION), p.key)
+            val payload = MessageCrypto.encrypt(Wire.encodeFor(WireMessage.Heartbeat(request && !off, off), if (Settings.get(context).role == Role.COMPANION) com.noti.shared.Wire.Direction.COMPANION_TO_MAIN else com.noti.shared.Wire.Direction.MAIN_TO_COMPANION), p.key)
             val res = FcmSender.forServiceAccount(p.serviceAccountJson)
                 .send(
                     p.token, mapOf("payload" to payload), label = p.label, highPriority = highPriority,
@@ -98,7 +114,7 @@ object Heartbeat {
                 )
             // On success, the message id is what finds this beat in the BigQuery delivery export -
             // "accepted here, never delivered there" is otherwise invisible from either phone.
-            val kind = if (request) " force-check" else if (highPriority) " answer" else ""
+            val kind = if (off) " (off)" else if (request) " force-check" else if (highPriority) " answer" else ""
             if (res.ok) Diag.log("heartbeat$kind → sent to ${peerLabel(context)} (id ${FcmLabel.messageId(res.detail)})")
             else Diag.log("heartbeat$kind → HTTP ${res.httpCode} (${res.detail.take(40)})")
             res.ok
@@ -113,8 +129,23 @@ object Heartbeat {
      * grants even under Doze - a WorkManager hop here could be deferred past the asker's wait, which
      * is exactly the false alarm the force-check exists to prevent. The worker is only the fallback.
      */
-    fun onBeatReceived(context: Context, request: Boolean) {
-        if (!enabled(context)) { clearNotification(context); return }
+    fun onBeatReceived(context: Context, request: Boolean, off: Boolean = false) {
+        if (off) {
+            // The peer is alive and has its heartbeat off: stop expecting beats from it.
+            setPeerOff(context, true)
+            setLastBeatAtMs(context, System.currentTimeMillis())
+            clearNotification(context)
+            Diag.log("heartbeat: ${peerLabel(context)} has its heartbeat off - not expecting beats")
+            return
+        }
+        setPeerOff(context, false)
+        if (!enabled(context)) {
+            clearNotification(context)
+            // Ours is off, but the peer is waiting on an answer: tell it, or it reports us as not
+            // responding. One small push, only when asked.
+            if (request) Thread { send(context, request = false, highPriority = true, off = true) }.start()
+            return
+        }
         setLastBeatAtMs(context, System.currentTimeMillis())
         clearNotification(context)
         Diag.log("heartbeat received from ${peerLabel(context)}${if (request) " (force-check)" else ""}")
@@ -127,6 +158,12 @@ object Heartbeat {
      * companion could be streaming status to the open Diagnostics screen while being reported as
      * not responding. Throttled; see [HeartbeatPolicy.ALIVE_WRITE_THROTTLE_MS].
      */
+    /** This phone's heartbeat was just switched off: tell the peer once, off the caller's thread. */
+    fun announceOff(context: Context) {
+        val app = context.applicationContext
+        Thread { send(app, request = false, highPriority = false, off = true) }.apply { name = "heartbeat-off" }.start()
+    }
+
     fun notePeerAlive(context: Context) {
         if (!enabled(context) || !paired(context)) return
         val now = System.currentTimeMillis()

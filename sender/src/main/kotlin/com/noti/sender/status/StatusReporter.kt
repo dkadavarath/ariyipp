@@ -62,13 +62,6 @@ object StatusReporter {
     /** True while Main is actively watching, so callers can skip redundant work. */
     fun streaming(): Boolean = DeviceStatusPolicy.subscriptionActive(deadlineMs, System.currentTimeMillis())
 
-    /** Fire one snapshot off the caller's thread - used by the alert paths, which run on
-     *  broadcast/callback threads that must not block on the network. */
-    fun sendAsync(context: Context, trigger: Int) {
-        val app = context.applicationContext
-        scope.launch { send(app, trigger) }
-    }
-
     /** Blocking send of one snapshot. Best-effort: a failure is logged, never retried - the next
      *  poll (or, for an alert, the periodic re-evaluation in [StatusWatchWorker]) is the retry. */
     fun send(context: Context, trigger: Int): Boolean {

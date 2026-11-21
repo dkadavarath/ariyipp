@@ -8,7 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.noti.logger.R
-import com.noti.logger.util.Haptics
+import com.noti.sender.util.Haptics
 import com.noti.logger.util.Theming
 
 /**
@@ -20,7 +20,13 @@ abstract class ScreenActivity : AppCompatActivity() {
     @get:LayoutRes protected abstract val layoutRes: Int
     @get:StringRes protected abstract val titleRes: Int
 
+    /** The state saved before a rotation or process death, or null on a fresh start. Screens that
+     *  fill their fields from the database check it so they don't overwrite what was restored. */
+    protected var savedState: Bundle? = null
+        private set
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        savedState = savedInstanceState
         Theming.applyDynamicColorIfEnabled(this)
         super.onCreate(savedInstanceState)
         com.noti.sender.ui.ScreenGuard.apply(this, screenKind)

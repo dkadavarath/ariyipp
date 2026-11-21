@@ -16,7 +16,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ParkingSessionEntity::class,
     ],
     version = 14,
-    exportSchema = false,
+    // Exported to app/schemas (committed) - MigrationTestHelper validates migrations against them.
+    exportSchema = true,
 )
 abstract class NotiDatabase : RoomDatabase() {
 

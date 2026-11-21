@@ -29,7 +29,7 @@ import com.noti.logger.data.ConversationSummary
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.util.Avatars
 import com.noti.logger.util.ChatTime
-import com.noti.logger.util.Haptics
+import com.noti.sender.util.Haptics
 import com.noti.logger.util.Motion
 import com.noti.logger.util.SoftItemAnimator
 import kotlinx.coroutines.Dispatchers

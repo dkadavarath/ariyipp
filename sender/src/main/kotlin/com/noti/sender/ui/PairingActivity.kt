@@ -67,18 +67,13 @@ class PairingActivity : ScreenActivity() {
             )
         }
         findViewById<View>(R.id.btn_save).setOnClickListener {
-            // A new key starts Main's command ids afresh (a reinstalled Main counts from 1 again),
-            // so forget the old high-water mark or every command would be refused. Only a new key:
-            // with the same key, a cleared mark would reopen a 10-minute replay window, so a Main
-            // restored from a backup (same key, older counter) regenerates its key and re-pairs.
-            if (relayKey.text.toString().trim() != s.relayKey) {
-                s.lastCommandMsgId = -1L
-            }
             s.notiFcmToken = token.text.toString()
             s.relayKey = relayKey.text.toString()
             s.fcmEnabled = fcmEnabled.isChecked
             s.acceptCommands = accept.isChecked
+            val switchedOff = s.heartbeatEnabled && !heartbeat.isChecked
             s.heartbeatEnabled = heartbeat.isChecked
+            if (switchedOff) com.noti.sender.HeartbeatHooks.onSwitchedOff(this)
             if (!heartbeat.isChecked) {
                 androidx.core.app.NotificationManagerCompat.from(this)
                     .cancel(com.noti.shared.HeartbeatPolicy.NOTIFICATION_ID)
@@ -115,11 +110,18 @@ class PairingActivity : ScreenActivity() {
     /** Reads one picked file and routes it by content: a google-services.json updates the Firebase
      *  config, a service-account key updates the send credential. Either can be re-imported alone. */
     private fun onFilePicked(uri: Uri) {
-        val content = try {
-            contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty()
-        } catch (e: Exception) {
-            ""
-        }
+        // Off the main thread: a picked file can live on a slow provider (cloud storage, USB).
+        Thread {
+            val content = try {
+                contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty()
+            } catch (e: Exception) {
+                ""
+            }
+            runOnUiThread { if (!isFinishing && !isDestroyed) onFileRead(content) }
+        }.apply { name = "file-import" }.start()
+    }
+
+    private fun onFileRead(content: String) {
         val s = SenderSettings.get(this)
         when {
             GoogleServices.looksLikeGoogleServices(content) -> {
@@ -128,9 +130,11 @@ class PairingActivity : ScreenActivity() {
                 } catch (e: Exception) {
                     false
                 }
+                val restart = valid && com.noti.sender.push.FirebaseInitCore.needsRestartFor(this, content)
                 if (valid) s.firebaseConfigJson = content
                 updateFbStatus(invalid = !valid)
-                if (valid) refreshMyToken()
+                if (restart) com.noti.sender.push.FirebaseInitCore.offerRestart(this)
+                else if (valid) refreshMyToken()
             }
             isServiceAccountKey(content) -> {
                 s.serviceAccountJson = content

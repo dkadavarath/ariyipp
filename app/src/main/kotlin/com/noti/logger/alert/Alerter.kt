@@ -26,7 +26,6 @@ object Alerter {
     private const val ALERT_DB_RESET_ID = 1007
     /** A key mismatch fails every push (heartbeats included), so warn at most this often. */
     private const val KEY_MISMATCH_EVERY_MS = 6 * 60 * 60_000L
-    @Volatile private var keyMismatchAtMs = 0L
 
     private fun ensureChannel(context: Context) {
         val mgr = context.getSystemService(NotificationManager::class.java)
@@ -106,8 +105,9 @@ object Alerter {
      *  regenerated without re-pairing, or a pairing code from another phone). Everything the
      *  companion sends is unreadable until they're re-paired, so say so instead of failing quietly. */
     fun alertKeyMismatch(context: Context, nowMs: Long = System.currentTimeMillis()) {
-        if (nowMs - keyMismatchAtMs in 0 until KEY_MISMATCH_EVERY_MS) return
-        keyMismatchAtMs = nowMs
+        val s = com.noti.logger.config.Settings.get(context)
+        if (nowMs - s.keyMismatchAlertAtMs in 0 until KEY_MISMATCH_EVERY_MS) return
+        s.keyMismatchAlertAtMs = nowMs
         post(
             context,
             ALERT_KEY_MISMATCH_ID,

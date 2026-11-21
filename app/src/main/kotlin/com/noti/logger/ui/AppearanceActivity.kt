@@ -35,6 +35,7 @@ class AppearanceActivity : ScreenActivity() {
             }
             if (mode != s.themeMode) {
                 s.themeMode = mode
+                Theming.syncCache(this)
                 Theming.applyNightMode(this) // triggers recreate for the new night mode
             }
         }
@@ -43,6 +44,7 @@ class AppearanceActivity : ScreenActivity() {
             val dynamic = id == R.id.rb_color_material
             if (dynamic != s.dynamicColor) {
                 s.dynamicColor = dynamic
+                Theming.syncCache(this)
                 recreate() // re-run onCreate → applies/removes the dynamic-color overlay
             }
         }
@@ -52,6 +54,7 @@ class AppearanceActivity : ScreenActivity() {
         amoled.setOnCheckedChangeListener { _, checked ->
             if (checked != s.amoled) {
                 s.amoled = checked
+                Theming.syncCache(this)
                 recreate() // re-run onCreate → applies/removes the AMOLED overlay (dark mode only)
             }
         }

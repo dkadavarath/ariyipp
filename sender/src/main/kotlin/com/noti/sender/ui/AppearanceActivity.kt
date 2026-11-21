@@ -38,6 +38,7 @@ class AppearanceActivity : ScreenActivity() {
             }
             if (mode != s.themeMode) {
                 s.themeMode = mode
+                com.noti.sender.AppearanceHooks.onChanged(this)
                 Theming.applyNightMode(s) // triggers recreate for the new night mode
             }
         }
@@ -46,6 +47,7 @@ class AppearanceActivity : ScreenActivity() {
             val dynamic = id == R.id.rb_color_material
             if (dynamic != s.dynamicColor) {
                 s.dynamicColor = dynamic
+                com.noti.sender.AppearanceHooks.onChanged(this)
                 recreate()
             }
         }
@@ -53,6 +55,7 @@ class AppearanceActivity : ScreenActivity() {
         amoled.setOnCheckedChangeListener { _, checked ->
             if (checked != s.amoled) {
                 s.amoled = checked
+                com.noti.sender.AppearanceHooks.onChanged(this)
                 recreate()
             }
         }

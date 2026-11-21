@@ -25,6 +25,7 @@ class RoleOnboardingActivity : AppCompatActivity() {
 
     private fun choose(role: Role) {
         Settings.get(this).role = role
+        com.noti.logger.util.Theming.syncCache(this)
         startActivity(
             Intent(this, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)

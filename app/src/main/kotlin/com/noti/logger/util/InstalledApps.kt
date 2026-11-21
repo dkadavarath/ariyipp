@@ -37,7 +37,7 @@ object InstalledApps {
             val activity = ri.activityInfo ?: continue
             val pkg = activity.packageName ?: continue
             if (pkg == self || byPackage.containsKey(pkg)) continue
-            val label = ri.loadLabel(pm)?.toString().orEmpty().ifBlank { pkg }
+            val label = ri.loadLabel(pm).toString().orEmpty().ifBlank { pkg }
             byPackage[pkg] = AppInfo(pkg, label, ComponentName(pkg, activity.name))
         }
         byPackage.values.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.label })

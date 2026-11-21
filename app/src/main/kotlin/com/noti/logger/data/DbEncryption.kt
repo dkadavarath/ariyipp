@@ -1,11 +1,9 @@
 package com.noti.logger.data
 
 import android.content.Context
-import com.noti.logger.config.Settings
 import com.noti.shared.Diag
 import net.zetetic.database.sqlcipher.SQLiteDatabase
 import java.io.File
-import java.security.SecureRandom
 
 /**
  * Encryption at rest for the app's database (SQLCipher, AES-256): captured notifications, chats,
@@ -43,14 +41,12 @@ object DbEncryption {
         }
     }
 
-    /** This install's database key, created on first use. */
-    fun key(context: Context): ByteArray {
-        val s = Settings.get(context)
-        s.dbKey.takeIf { it.isNotBlank() }?.let { return android.util.Base64.decode(it, android.util.Base64.NO_WRAP) }
-        val fresh = ByteArray(32).also { SecureRandom().nextBytes(it) }
-        s.dbKeySync = android.util.Base64.encodeToString(fresh, android.util.Base64.NO_WRAP)
-        return fresh
-    }
+    /** This install's database key (see DbKeyStore: its own keystore-wrapped file, not only the
+     *  settings store, which can reset itself). */
+    fun key(context: Context): ByteArray = DbKeyStore.key(context)
+
+    /** A file set aside as unreadable is deleted after this long if it still doesn't open. */
+    const val ASIDE_KEEP_MS = 30L * 24 * 60 * 60_000L
 
     /**
      * What SQLCipher is given to open the database: the key as a raw-key literal, `x'<64 hex>'`.
@@ -96,13 +92,70 @@ object DbEncryption {
             }
             return
         }
-        if (db.exists() && !opens(db, key)) {
+        readoptOrCleanAside(db, key)
+        // Only a genuine wrong key ("file is not a database") counts as a lost key. Any other
+        // failure - I/O, a locked file, low storage - is left alone: Room tries again, and so does
+        // the next start, rather than an ordinary hiccup costing the history.
+        if (db.exists() && probe(db, key) == Probe.WRONG_KEY) {
             val aside = sibling(db, UNREADABLE_SUFFIX + System.currentTimeMillis())
             db.renameTo(aside)
             listOf("-wal", "-shm", "-journal").forEach { sibling(db, it).delete() }
             Diag.log("database: couldn't be decrypted (key lost) - started empty; old file kept as ${aside.name}")
             onReset()
         }
+    }
+
+    /**
+     * Files set aside as unreadable get another chance on every start: one that now opens with the
+     * key (the key came back - say the settings copy was restored) is moved back in place, as long as
+     * the current database holds nothing yet; the empty one goes aside instead. One that still
+     * doesn't open after [ASIDE_KEEP_MS] is deleted.
+     */
+    private fun readoptOrCleanAside(db: File, key: ByteArray) {
+        val dir = db.parentFile ?: return
+        val aside = dir.listFiles { f -> f.name.startsWith(db.name + UNREADABLE_SUFFIX) && !f.name.endsWith("-wal") && !f.name.endsWith("-shm") }
+            ?.sortedByDescending { it.lastModified() } ?: return
+        val now = System.currentTimeMillis()
+        for (f in aside) {
+            when (probe(f, key)) {
+                Probe.OK -> if (!db.exists() || isEmpty(db, key)) {
+                    if (db.exists()) db.renameTo(sibling(db, "-empty-$now"))
+                    listOf("-wal", "-shm", "-journal").forEach { sibling(db, it).delete() }
+                    if (f.renameTo(db)) {
+                        Diag.log("database: an earlier set-aside copy opens again - restored it")
+                        sibling(db, "-empty-$now").delete()
+                        return
+                    }
+                }
+                Probe.WRONG_KEY -> if (now - f.lastModified() > ASIDE_KEEP_MS) f.delete()
+                Probe.OTHER -> Unit
+            }
+        }
+    }
+
+    internal enum class Probe { OK, WRONG_KEY, OTHER }
+
+    /** Opens [db] with [key] and reads its schema: OK, the wrong key, or some other failure. */
+    internal fun probe(db: File, key: ByteArray): Probe = try {
+        SQLiteDatabase.openDatabase(db.path, passphrase(key), null, SQLiteDatabase.OPEN_READONLY, null, null).use { d ->
+            d.rawQuery("SELECT COUNT(*) FROM sqlite_master", null).use { it.moveToFirst() }
+        }
+        Probe.OK
+    } catch (e: net.zetetic.database.sqlcipher.SQLiteNotADatabaseException) {
+        Probe.WRONG_KEY
+    } catch (e: android.database.sqlite.SQLiteDatabaseCorruptException) {
+        Probe.WRONG_KEY
+    } catch (e: Exception) {
+        Probe.OTHER
+    }
+
+    /** True when [db] has no rows in any of its user tables. */
+    private fun isEmpty(db: File, key: ByteArray): Boolean = try {
+        SQLiteDatabase.openDatabase(db.path, passphrase(key), null, SQLiteDatabase.OPEN_READONLY, null, null).use { d ->
+            rowCounts(d).filterKeys { it != "room_master_table" && it != "android_metadata" }.values.all { it == 0L }
+        }
+    } catch (e: Exception) {
+        false
     }
 
     /** Thrown when the plaintext file couldn't be encrypted this time; the caller opens it as is. */
@@ -183,16 +236,6 @@ object DbEncryption {
         return tables.associateWith { t ->
             db.rawQuery("SELECT COUNT(*) FROM \"$t\"", null).use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
         }
-    }
-
-    /** Whether [db] opens with [key]. */
-    private fun opens(db: File, key: ByteArray): Boolean = try {
-        SQLiteDatabase.openDatabase(db.path, passphrase(key), null, SQLiteDatabase.OPEN_READONLY, null, null).use { d ->
-            d.rawQuery("SELECT COUNT(*) FROM sqlite_master", null).use { it.moveToFirst() }
-        }
-        true
-    } catch (e: Exception) {
-        false
     }
 
     private fun sibling(db: File, suffix: String) = File(db.path + suffix)

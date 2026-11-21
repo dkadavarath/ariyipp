@@ -101,6 +101,31 @@ interface RelayedMessageDao {
     )
     fun messagesPage(sender: String, limit: Int, offset: Int): List<RelayedMessageEntity>
 
+    /** The [limit] messages just older than (beforeAt, beforeId), oldest first: the page above the
+     *  oldest one shown. Keyed on the last row rather than an offset, so messages arriving in the
+     *  meantime can't shift the page into duplicates or a gap. */
+    @Query(
+        """
+        SELECT * FROM (
+            SELECT * FROM relayed_messages WHERE sender = :sender
+              AND (receivedAt < :beforeAt OR (receivedAt = :beforeAt AND id < :beforeId))
+            ORDER BY receivedAt DESC, id DESC LIMIT :limit
+        ) ORDER BY receivedAt ASC, id ASC
+        """
+    )
+    fun messagesBefore(sender: String, beforeAt: Long, beforeId: Long, limit: Int): List<RelayedMessageEntity>
+
+    /** Everything from (fromAt, fromId) to the newest, oldest first: the whole window already shown,
+     *  for a live refresh that keeps every loaded page. */
+    @Query(
+        """
+        SELECT * FROM relayed_messages WHERE sender = :sender
+          AND (receivedAt > :fromAt OR (receivedAt = :fromAt AND id >= :fromId))
+        ORDER BY receivedAt ASC, id ASC
+        """
+    )
+    fun messagesFrom(sender: String, fromAt: Long, fromId: Long): List<RelayedMessageEntity>
+
     @Query("DELETE FROM relayed_messages WHERE sender = :sender")
     fun deleteConversation(sender: String)
 
@@ -111,11 +136,6 @@ interface RelayedMessageDao {
 
     @Query("DELETE FROM relayed_messages WHERE id = :id")
     fun deleteMessage(id: Long)
-
-    /** Deletes all received (inbound) messages, keeping ones composed here. Returns rows removed.
-     *  Used before a full repush from ariy so the rebuilt history has no pre-hash duplicates. */
-    @Query("DELETE FROM relayed_messages WHERE outgoing = 0")
-    fun deleteInbound(): Int
 
     /** Marks every incoming message in a conversation as read. Returns rows changed. */
     @Query("UPDATE relayed_messages SET read = 1 WHERE sender = :sender AND outgoing = 0 AND read = 0")
@@ -138,6 +158,13 @@ interface RelayedMessageDao {
     /** Total unread incoming messages across all conversations (for the tab badge). */
     @Query("SELECT COUNT(*) FROM relayed_messages WHERE outgoing = 0 AND read = 0")
     fun totalUnread(): Int
+
+    /** Stored copies of one SMS: same content key *and* the same received time. The key is sender,
+     *  text and sent time, and sent times are only to the second - two genuinely separate identical
+     *  SMS (a repeated OTP, "OK" twice) shared it and the second was dropped. The received time is
+     *  the companion's to the millisecond, and a re-sent copy (repush, catch-up) carries the same. */
+    @Query("SELECT COUNT(*) FROM relayed_messages WHERE dedupe = :key AND receivedAt = :receivedAt")
+    fun countCopies(key: String, receivedAt: Long): Int
 
     /** How many stored messages carry this content-dedupe key (for missed-SMS dedup). */
     @Query("SELECT COUNT(*) FROM relayed_messages WHERE dedupe = :key")

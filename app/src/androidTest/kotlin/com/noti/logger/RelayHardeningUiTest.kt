@@ -65,7 +65,8 @@ class RelayHardeningUiTest {
         CompanionRole.stopAll(ctx)
 
         assertEquals(WorkInfo.State.CANCELLED, state("sms-scan-periodic"))
-        assertEquals(WorkInfo.State.CANCELLED, state("status-watch-periodic"))
+        // The status backstop no longer has a job of its own (it rides on sms-scan-periodic).
+        state("status-watch-periodic").let { assertTrue("$it", it == null || it == WorkInfo.State.CANCELLED) }
     }
 
     @Test
@@ -94,5 +95,15 @@ class RelayHardeningUiTest {
         assertEquals(1, created.size)
         assertEquals(before + 1, dao.allMessages().count { it.outgoing == 1 })
         created.forEach { dao.deleteMessage(it.id) }
+    }
+
+    @Test
+    fun the_status_backstop_rides_on_the_sms_sync_job() {
+        Settings.get(ctx).role = Role.COMPANION
+        SenderSettings.get(ctx).statusSharingEnabled = true
+        StatusWatchWorker.schedule(ctx)
+        assertEquals(WorkInfo.State.ENQUEUED, state("sms-scan-periodic"))
+        val own = state("status-watch-periodic")
+        assertTrue("no separate 15-minute status job: $own", own == null || own == WorkInfo.State.CANCELLED)
     }
 }

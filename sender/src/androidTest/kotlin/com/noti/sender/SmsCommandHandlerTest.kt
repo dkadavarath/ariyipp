@@ -27,6 +27,7 @@ class SmsCommandHandlerTest {
         s.relayKey = key
         s.acceptCommands = true
         s.lastCommandMsgId = -1L
+        s.recentCommands = emptyMap()
     }
 
     @After
@@ -35,6 +36,7 @@ class SmsCommandHandlerTest {
         s.relayKey = ""
         s.acceptCommands = false
         s.lastCommandMsgId = -1L
+        s.recentCommands = emptyMap()
     }
 
     private fun payload(
@@ -91,10 +93,11 @@ class SmsCommandHandlerTest {
     }
 
     @Test
-    fun lower_msgId_than_high_water_mark_returns_null() {
-        SenderSettings.get(ctx).lastCommandMsgId = 10L
-        assertNull(SmsCommandHandler.parse(ctx, payload("+1", "x", msgId = 10L)))
-        assertNull(SmsCommandHandler.parse(ctx, payload("+1", "x", msgId = 9L)))
+    fun a_fresh_command_below_the_last_id_is_accepted() {
+        // Out of order, or a Main restored from an older backup: its ids sit below the old mark.
+        SenderSettings.get(ctx).lastCommandMsgId = 500L
+        assertEquals("+1", SmsCommandHandler.parse(ctx, payload("+1", "x", msgId = 9L))?.to)
+        assertEquals("+1", SmsCommandHandler.parse(ctx, payload("+1", "x", msgId = 7L))?.to)
     }
 
     @Test
@@ -136,10 +139,10 @@ class SmsCommandHandlerTest {
     }
 
     @Test
-    fun ids_far_behind_the_mark_are_reported_as_a_reset_main() {
-        SenderSettings.get(ctx).lastCommandMsgId = 500L
-        val r = rejected(payload("+1", "x", msgId = 2L))
-        assertEquals(true, r.report)
-        assertEquals(true, r.reason.contains("regenerate the key"))
+    fun a_duplicate_out_of_order_command_is_still_quiet() {
+        SmsCommandHandler.check(ctx, payload("+1", "x", msgId = 12L))
+        SmsCommandHandler.check(ctx, payload("+1", "x", msgId = 10L))
+        val r = rejected(payload("+1", "x", msgId = 10L))
+        assertEquals(false, r.report)
     }
 }

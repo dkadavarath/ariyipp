@@ -39,6 +39,11 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
             CompanionRole.stopAll(ctx)
             return@withContext Result.success()
         }
+        // The periodic run also re-checks device status (low battery, wifi lost) - the backstop the
+        // separate StatusWatchWorker used to be. One wakeup every 15 minutes instead of two.
+        if (inputData.getBoolean(KEY_PERIODIC, false) && SenderSettings.get(ctx).statusSharingEnabled) {
+            com.noti.sender.status.DeviceMonitor.evaluate(ctx)
+        }
         if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
             return@withContext Result.success() // can't read the provider
         }
@@ -122,6 +127,7 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         // cancel that scan.
         private const val FOLLOW_UP = "sms-scan-follow-up"
         private const val KEY_FOLLOW_UP = "follow_up"
+        private const val KEY_PERIODIC = "periodic"
         /** Re-check delays after a broadcast scan that found no new row yet. */
         private val FOLLOW_UP_DELAYS_S = longArrayOf(5, 15)
         private const val PERIODIC = "sms-scan-periodic"
@@ -175,10 +181,13 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
                 .build()
 
         fun schedulePeriodic(context: Context) {
+            // UPDATE, not KEEP: an install from before the status check moved here holds a request
+            // without the periodic flag; UPDATE swaps it in place and keeps the schedule.
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                PERIODIC, ExistingPeriodicWorkPolicy.KEEP,
+                PERIODIC, ExistingPeriodicWorkPolicy.UPDATE,
                 PeriodicWorkRequestBuilder<SmsSyncWorker>(15, TimeUnit.MINUTES)
                     .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                    .setInputData(androidx.work.workDataOf(KEY_PERIODIC to true))
                     .build(),
             )
         }

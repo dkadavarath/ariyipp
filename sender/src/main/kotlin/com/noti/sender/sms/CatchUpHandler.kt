@@ -14,6 +14,13 @@ object CatchUpHandler {
     const val DEFAULT_LOOKBACK_MS = 3 * 24 * 60 * 60_000L
     /** Never further back than this, whatever Main asks: bounds the work one push can cause. */
     const val MAX_LOOKBACK_MS = 30 * 24 * 60 * 60_000L
+    /** A second catch-up request within this long of the last one acted on is ignored. FCM's
+     *  onDeletedMessages can fire more than once for one gap, and a captured request replayed
+     *  over and over would otherwise keep the companion repushing. */
+    const val REPEAT_WINDOW_MS = 10 * 60_000L
+
+    /** Whether a catch-up may run now, given when the last one did. Pure. */
+    fun mayRun(lastAtMs: Long, now: Long): Boolean = now - lastAtMs !in 0 until REPEAT_WINDOW_MS
 
     fun parse(context: Context, data: Map<String, String>): WireMessage.CatchUp? {
         val ciphertext = data[HeartbeatHandler.PAYLOAD_KEY]?.takeIf { it.isNotBlank() } ?: return null

@@ -14,6 +14,13 @@ import com.noti.shared.Role
 class NotiApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        // Debug builds only: log main-thread disk and network access, so jank-causing I/O shows up
+        // in logcat ("StrictMode policy violation") during development and on the emulator.
+        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            android.os.StrictMode.setThreadPolicy(
+                android.os.StrictMode.ThreadPolicy.Builder().detectDiskReads().detectDiskWrites().detectNetwork().penaltyLog().build()
+            )
+        }
 
         // Apply the user's light/dark/system choice. Color (Default blue vs Material You) is applied
         // per-activity via Theming.applyDynamicColorIfEnabled().
@@ -26,6 +33,8 @@ class NotiApp : Application() {
         // Tell the :sender library which role this phone plays, before any of its receivers,
         // services or workers can run in this process: they relay only while it's the companion.
         com.noti.sender.CompanionRole.check = { Settings.get(it).role == Role.COMPANION }
+        com.noti.sender.HeartbeatHooks.onSwitchedOff = { com.noti.logger.push.Heartbeat.announceOff(it) }
+        com.noti.sender.AppearanceHooks.onChanged = { Theming.syncCache(it) }
         // Screenshot protection reads the store of whichever role this phone plays.
         com.noti.sender.ui.ScreenGuard.policy = { ctx, kind ->
             if (Settings.get(ctx).role == Role.COMPANION) {
@@ -52,6 +61,10 @@ class NotiApp : Application() {
     }
 
     private fun initialize(appContext: Context) {
+        // The theme cache read at launch (see Theming): refresh it now the settings are open anyway.
+        if (Theming.syncCache(appContext)) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post { Theming.applyNightMode(appContext) }
+        }
         // BYO-FCM: init Firebase from the user-imported google-services.json, if any. No-op (and no
         // crash) before it's imported; FCM-touching calls elsewhere guard on this too.
         FirebaseInit.ensureInitialized(appContext)

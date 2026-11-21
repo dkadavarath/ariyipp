@@ -1,18 +1,13 @@
 package com.noti.sender
 
 import android.content.Context
-import androidx.work.Constraints
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.noti.sender.config.SenderSettings
 import com.noti.sender.status.DeviceMonitor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.concurrent.TimeUnit
 
 /**
  * The backstop under [DeviceMonitor]: re-evaluates the battery and wifi alert conditions on
@@ -39,16 +34,14 @@ class StatusWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
     companion object {
         private const val NAME = "status-watch-periodic"
 
+        /**
+         * The status backstop now rides on the SMS sync's periodic run (see SmsSyncWorker), so this
+         * only makes sure that one is scheduled, and retires this worker's own 15-minute job left by
+         * earlier versions - one wakeup instead of two.
+         */
         fun schedule(context: Context) {
-            if (!SenderSettings.get(context).statusSharingEnabled) {
-                cancel(context)
-                return
-            }
-            val request = PeriodicWorkRequestBuilder<StatusWatchWorker>(15, TimeUnit.MINUTES)
-                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-                .build()
-            WorkManager.getInstance(context)
-                .enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
+            cancel(context)
+            if (SenderSettings.get(context).statusSharingEnabled) com.noti.sender.SmsSyncWorker.schedulePeriodic(context)
         }
 
         fun cancel(context: Context) {

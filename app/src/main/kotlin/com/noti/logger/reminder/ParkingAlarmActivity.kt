@@ -2,7 +2,6 @@ package com.noti.logger.reminder
 
 import android.app.KeyguardManager
 import android.media.AudioAttributes
-import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.os.Build
@@ -182,7 +181,4 @@ class ParkingAlarmActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-
-    /** Unused, but keeps the audio-stream intent obvious next to the player setup above. */
-    private fun alarmStream(): Int = AudioManager.STREAM_ALARM
 }

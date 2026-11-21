@@ -19,7 +19,7 @@ import com.noti.logger.R
 import com.noti.logger.config.Settings
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.util.BackToExit
-import com.noti.logger.util.Haptics
+import com.noti.sender.util.Haptics
 import com.noti.logger.util.Motion
 import com.noti.logger.util.Theming
 import com.noti.shared.Role

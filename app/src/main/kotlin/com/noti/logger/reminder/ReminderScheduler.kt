@@ -168,7 +168,4 @@ object ReminderScheduler {
 
     internal fun isBill(action: String?) = action == ACTION_BILL
     internal fun isParking(action: String?) = action == ACTION_PARKING
-
-    /** Kept so the receiver and this file can't drift apart on the SDK guard for exactness. */
-    internal fun exactSupported(): Boolean = true // minSdk 26: exact alarms (API 23+) always exist
 }

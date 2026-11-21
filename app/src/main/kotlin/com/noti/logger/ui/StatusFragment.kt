@@ -189,6 +189,7 @@ class StatusFragment : Fragment(R.layout.fragment_status) {
             Heartbeat.Status.OK -> Triple(DesignR.string.st_connected, seen, Tone.GOOD)
             Heartbeat.Status.FAILED -> Triple(DesignR.string.st_unreachable, seen, Tone.BAD)
             Heartbeat.Status.DISABLED -> Triple(DesignR.string.st_off, getString(DesignR.string.st_hb_off_detail), Tone.NEUTRAL)
+            Heartbeat.Status.PEER_OFF -> Triple(DesignR.string.st_off, getString(DesignR.string.st_hb_peer_off_detail), Tone.NEUTRAL)
             Heartbeat.Status.UNPAIRED -> Triple(DesignR.string.st_not_paired, getString(DesignR.string.st_unpaired_detail), Tone.WARN)
         }
         rowCompanion.bind(com.noti.sender.R.drawable.ic_connection, getString(DesignR.string.st_heartbeat_title), detail, getString(badge), tone)

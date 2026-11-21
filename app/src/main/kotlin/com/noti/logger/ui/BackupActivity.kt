@@ -12,7 +12,7 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.noti.logger.R
 import com.noti.logger.backup.Backup
-import com.noti.logger.util.Haptics
+import com.noti.sender.util.Haptics
 import com.noti.shared.BackupCrypto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -40,7 +40,19 @@ class BackupActivity : ScreenActivity() {
     override val titleRes = R.string.menu_backup_title
     override val screenKind = com.noti.sender.ui.ScreenGuard.Kind.KEYS
 
-    private var pendingPassphrase: String? = null
+    /** Holds the passphrase across the file picker. A ViewModel, not a field: the picker is a
+     *  separate screen, and a rotation while it was open recreated this one and lost the field -
+     *  the picker had already created the file, so the backup came out as 0 bytes, silently. Not
+     *  saved instance state either: that can be written out by the system, and this is a secret. */
+    class PassHolder : androidx.lifecycle.ViewModel() {
+        var pending: String? = null
+        override fun onCleared() { pending = null }
+    }
+
+    private val holder by lazy { androidx.lifecycle.ViewModelProvider(this)[PassHolder::class.java] }
+    private var pendingPassphrase: String?
+        get() = holder.pending
+        set(value) { holder.pending = value }
 
     private val createDoc = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream")
@@ -64,7 +76,15 @@ class BackupActivity : ScreenActivity() {
     }
 
     private fun writeBackup(uri: Uri) {
-        val pass = pendingPassphrase ?: return
+        val pass = pendingPassphrase
+        if (pass == null) {
+            // The app was closed while the picker was open, taking the passphrase with it. Don't
+            // leave the empty file the picker made behind as if it were a backup.
+            try { android.provider.DocumentsContract.deleteDocument(contentResolver, uri) } catch (e: Exception) { }
+            val msg = getString(R.string.backup_interrupted)
+            setStatus(msg); toast(msg); feedback(false)
+            return
+        }
         pendingPassphrase = null
         setStatus(getString(R.string.backup_working))
         lifecycleScope.launch(Dispatchers.IO) {
@@ -84,15 +104,16 @@ class BackupActivity : ScreenActivity() {
     }
 
     private fun readBackup(uri: Uri) {
-        val blob = try {
-            contentResolver.openInputStream(uri)?.use { it.readBytes() }
-        } catch (e: Exception) {
-            null
+        lifecycleScope.launch {
+            // Off the main thread: the file may sit on a slow provider (cloud storage, USB).
+            val blob = withContext(Dispatchers.IO) {
+                try { contentResolver.openInputStream(uri)?.use { it.readBytes() } } catch (e: Exception) { null }
+            }
+            if (blob == null) {
+                toast(getString(R.string.restore_read_failed)); return@launch
+            }
+            askPassphrase(confirm = false) { pass -> decryptThenConfirm(blob, pass) }
         }
-        if (blob == null) {
-            toast(getString(R.string.restore_read_failed)); return
-        }
-        askPassphrase(confirm = false) { pass -> decryptThenConfirm(blob, pass) }
     }
 
     private fun decryptThenConfirm(blob: ByteArray, pass: String) {

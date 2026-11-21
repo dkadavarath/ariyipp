@@ -78,9 +78,12 @@ class NotiListenerService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val flags = sbn.notification.flags
-        // Skip ongoing events and group summaries - transient/redundant noise
-        if ((flags and Notification.FLAG_ONGOING_EVENT) != 0) return
+        // Skip group summaries - redundant with their children.
         if ((flags and Notification.FLAG_GROUP_SUMMARY) != 0) return
+        // Ongoing events are mostly noise (media, timers, the keep-alive of other apps) and are
+        // skipped - except from an app a reminder rule reads, decided off this thread below:
+        // a parking app shows the running session as exactly such a notification.
+        val ongoing = (flags and Notification.FLAG_ONGOING_EVENT) != 0
         // Skip notifications from our own app
         if (sbn.packageName == applicationContext.packageName) return
 
@@ -96,6 +99,7 @@ class NotiListenerService : NotificationListenerService() {
         val subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
 
         scope.launch {
+            if (ongoing && !com.noti.logger.reminder.ReminderTrigger.watchesApp(applicationContext, packageName)) return@launch
             val settings = Settings.get(applicationContext)
             val raw = RawNotification(
                 packageName = packageName,

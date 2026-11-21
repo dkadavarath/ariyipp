@@ -27,8 +27,8 @@ android {
         // (300+ from v1.4), so a public release always installs as an upgrade and the two never
         // collide. Bump by at least 1 each release; versionName is this public repo's own v1.x
         // sequence.
-        versionCode = 302
-        versionName = "1.6"
+        versionCode = 303
+        versionName = "1.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -79,6 +79,16 @@ android {
 
     // Kotlin is built into AGP 9: jvmTarget follows compileOptions.targetCompatibility, and
     // src/<set>/kotlin is a default source root, so no kotlinOptions / sourceSets needed.
+
+    // The exported Room schemas, for MigrationTestHelper in the instrumented tests.
+    sourceSets.getByName("androidTest").assets.directories.add("$projectDir/schemas")
+}
+
+// Room writes each database version's schema here (committed), and the migration tests read them
+// back through MigrationTestHelper, so a migration is checked against the schema Room really
+// generated rather than a hand-written copy.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {
@@ -94,6 +104,7 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.sqlcipher.android)
+    implementation(libs.re2j)
 
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)

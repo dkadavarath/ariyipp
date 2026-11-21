@@ -48,6 +48,37 @@ object ReminderTrigger {
                 (r.paySender.isBlank() || sender.contains(r.paySender, ignoreCase = true)))
     }
 
+    // ---- Which apps the rulebook watches, for capture's ongoing-notification exception ----
+
+    private const val WATCHED_TTL_MS = 60_000L
+    @Volatile private var watched: Set<String> = emptySet()
+    @Volatile private var watchedAtMs = 0L
+
+    /**
+     * Whether an enabled rule reads notifications from [pkg]. Capture skips ongoing notifications as
+     * noise (media players, timers), but a parking app shows its running session as exactly that, so
+     * those apps are let through. Cached for a minute: ongoing notifications update constantly, and
+     * this is asked for every update. Blocking on a cache miss - call off the main thread.
+     */
+    fun watchesApp(context: Context, pkg: String): Boolean {
+        val now = System.currentTimeMillis()
+        if (now - watchedAtMs !in 0 until WATCHED_TTL_MS) {
+            watched = if (!Settings.get(context).reminderEnabled) emptySet() else try {
+                NotiDatabase.get(context).reminderRuleDao().enabled().flatMap { r ->
+                    listOfNotNull(
+                        r.sourcePackage.takeIf { r.source == SourceType.NOTIFICATION.name && it.isNotBlank() },
+                        r.payPackage.takeIf { paysWatched(r) && r.paySource == SourceType.NOTIFICATION.name && it.isNotBlank() },
+                    )
+                }.toSet()
+            } catch (e: Exception) { emptySet() }
+            watchedAtMs = now
+        }
+        return pkg in watched
+    }
+
+    /** A rule changed: re-read the watched apps on the next ask. */
+    fun invalidateWatched() { watchedAtMs = 0L }
+
     private fun paysWatched(r: ReminderRuleEntity) =
         r.payEnabled == 1 && r.payMatchPattern.isNotBlank() && r.type == RuleType.BILL.name
 }

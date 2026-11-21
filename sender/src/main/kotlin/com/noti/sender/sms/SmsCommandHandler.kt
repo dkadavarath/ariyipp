@@ -23,10 +23,9 @@ object SmsCommandHandler {
     private const val MAX_AGE_MS = 10 * 60_000L
     private const val MAX_FUTURE_SKEW_MS = 2 * 60_000L
 
-    /** Below the last accepted id by at most this much: a duplicate FCM delivery of a command
-     *  already handled, dropped quietly. Further below: Main's ids restarted (reinstall, cleared
-     *  data), which needs a re-pair and is reported. */
-    private const val DUPLICATE_WINDOW = 50L
+    /** How long an accepted command is remembered for the replay check: longer than
+     *  [MAX_AGE_MS] + [MAX_FUTURE_SKEW_MS], so a copy can't outlive its record and slip through. */
+    const val RECENT_WINDOW_MS = 15 * 60_000L
 
     /** What [check] made of a push. */
     sealed interface Outcome {
@@ -60,20 +59,15 @@ object SmsCommandHandler {
         }
         val cmd = (wire as? WireMessage.Command)?.takeIf { it.to.isNotBlank() } ?: return Outcome.NotCommand
 
-        // Replay protection: msgId is Main's own Room autoincrement id, so a genuine command only
-        // ever arrives with a higher value than the last one accepted. issuedAt additionally bounds
-        // the replay window for a command that's never been seen yet (e.g. right after re-pairing,
-        // when the high-water mark alone wouldn't help).
+        // Replay protection is two checks that together leave no gap: a command older than
+        // MAX_AGE_MS is refused outright, and every command accepted within RECENT_WINDOW_MS (longer
+        // than that) is remembered by id. So a copy is either too old or a known duplicate. There is
+        // deliberately no "must be higher than the last id": that silently refused commands that
+        // arrived out of order, and every command from a Main restored from an older backup (its ids
+        // restart below the old mark).
         if (cmd.msgId <= 0) return Outcome.Rejected(cmd.msgId, "no message id", report = false)
-        val last = settings.lastCommandMsgId
-        if (cmd.msgId <= last) {
-            return if (last - cmd.msgId < DUPLICATE_WINDOW) {
-                Outcome.Rejected(cmd.msgId, "already handled", report = false)
-            } else {
-                Outcome.Rejected(cmd.msgId, "message id ${cmd.msgId} is behind the last one seen ($last) - " +
-                    "main was reinstalled or restored from a backup; on main, regenerate the key (Settings > Relay) and re-scan it here", report = true)
-            }
-        }
+        val recent = settings.recentCommands.filterValues { now - it in 0 until RECENT_WINDOW_MS }
+        if (cmd.msgId in recent) return Outcome.Rejected(cmd.msgId, "already handled", report = false)
         if (cmd.issuedAt <= 0) return Outcome.Rejected(cmd.msgId, "no send time", report = true)
         val age = now - cmd.issuedAt
         if (age > MAX_AGE_MS) {
@@ -86,7 +80,8 @@ object SmsCommandHandler {
 
         // Record before the caller initiates the SMS send, so a duplicate delivery of the same push
         // arriving while the first send is still in flight can't slip through.
-        settings.lastCommandMsgId = cmd.msgId
+        settings.recentCommands = recent + (cmd.msgId to now)
+        if (cmd.msgId > settings.lastCommandMsgId) settings.lastCommandMsgId = cmd.msgId
         return Outcome.Accepted(cmd)
     }
 }

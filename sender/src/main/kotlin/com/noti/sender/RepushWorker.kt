@@ -115,12 +115,18 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
         private const val UNIQUE = "sms-repush"
 
         /** Kick off a fresh full repush of the entire inbox (resets the resume cursor). */
-        fun start(context: Context) = startFrom(context, 0L)
+        fun start(context: Context) { startFrom(context, 0L, force = true) }
 
-        /** Re-send the SMS after row [afterId] - a catch-up Main asked for (see CatchUpHandler). */
-        fun startFrom(context: Context, afterId: Long) {
+        /** Re-send the SMS after row [afterId] - a catch-up Main asked for (see CatchUpHandler).
+         *  A repush already running from at or before [afterId] covers it, and is left alone rather
+         *  than cut short and restarted. Returns false when that's the case. */
+        fun startFrom(context: Context, afterId: Long, force: Boolean = false): Boolean {
             val s = SenderSettings.get(context)
+            val running = WorkManager.getInstance(context).getWorkInfosForUniqueWork(UNIQUE).get()
+                .any { !it.state.isFinished }
+            if (!force && running && s.repushStartId <= afterId) return false
             s.repushCursorId = afterId.coerceAtLeast(0L)
+            s.repushStartId = afterId.coerceAtLeast(0L)
             s.repushTotal = 0 // recounted from the cursor on the first run
             WorkManager.getInstance(context).enqueueUniqueWork(
                 UNIQUE, ExistingWorkPolicy.REPLACE,
@@ -128,6 +134,7 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                     .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                     .build(),
             )
+            return true
         }
     }
 }

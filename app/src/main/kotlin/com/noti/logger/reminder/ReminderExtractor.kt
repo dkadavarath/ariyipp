@@ -40,58 +40,146 @@ object ReminderExtractor {
         val expiry: LocalDateTime?,
     )
 
+    /**
+     * A user-written pattern, compiled. Most run on RE2/J, a linear-time engine: however the
+     * pattern is written, matching costs time proportional to the text, so a careless `(a+)+$` can't
+     * hang the scan that runs every rule over every arriving message. (Android's own regex engine is
+     * native ICU, which backtracks exponentially and can't be interrupted.) A pattern using what RE2
+     * leaves out - lookarounds, backreferences - falls back to the platform engine, run on a worker
+     * thread with a time limit ([MATCH_BUDGET_MS]); past it the match counts as failed and the
+     * pattern is remembered as slow.
+     */
+    sealed interface Compiled {
+        class Linear(val p: com.google.re2j.Pattern) : Compiled
+        class Backtracking(val r: Regex) : Compiled
+    }
+
+    private object Invalid : Compiled
+
     /** Compiled patterns by source text. A scan applies every rule's 2-4 patterns to every message
      *  in the window, so without this the same handful of regexes were recompiled thousands of
      *  times per rescan. Access-ordered and capped, so the rule editor's live typing can't grow it;
-     *  failures are cached too (as [INVALID]) so a broken pattern isn't re-parsed per message. */
-    private val INVALID = Regex("(?!)")
-    private val cache = object : LinkedHashMap<String, Regex>(32, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Regex>?) = size > 64
+     *  failures are cached too (as [Invalid]) so a broken pattern isn't re-parsed per message. */
+    private val cache = object : LinkedHashMap<String, Compiled>(32, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Compiled>?) = size > 64
     }
 
     /** Compiles [pattern], or returns null if it is blank or invalid. */
-    fun compile(pattern: String?): Regex? {
+    fun compile(pattern: String?): Compiled? {
         if (pattern.isNullOrBlank()) return null
-        val regex = synchronized(cache) {
+        val c = synchronized(cache) {
             cache.getOrPut(pattern) {
                 try {
-                    Regex(pattern, setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+                    Compiled.Linear(com.google.re2j.Pattern.compile(
+                        pattern, com.google.re2j.Pattern.CASE_INSENSITIVE or com.google.re2j.Pattern.DOTALL,
+                    ))
                 } catch (e: Exception) {
-                    INVALID
+                    try {
+                        Compiled.Backtracking(Regex(pattern, setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)))
+                    } catch (e2: Exception) {
+                        Invalid
+                    }
                 }
             }
         }
-        return regex.takeIf { it !== INVALID }
+        return c.takeIf { it !== Invalid }
+    }
+
+    /** How long a fallback (backtracking) pattern may spend on one message. */
+    const val MATCH_BUDGET_MS = 250L
+
+    /** Patterns that ran out of time, so the editor can say which; persisted for the process. */
+    private val slow = java.util.Collections.synchronizedSet(HashSet<String>())
+
+    fun isSlow(pattern: String?): Boolean = pattern != null && pattern in slow
+
+    /** Fallback matching off the caller's thread, bounded. A runaway native match can't be
+     *  stopped, only abandoned, so a slow pattern is skipped from then on rather than retried. */
+    private val pool = java.util.concurrent.Executors.newCachedThreadPool { r ->
+        Thread(r, "reminder-regex").apply { isDaemon = true; priority = Thread.MIN_PRIORITY }
+    }
+
+    private fun <T> timed(pattern: String, block: () -> T): T? {
+        if (pattern in slow) return null
+        val f = pool.submit<T> { block() }
+        return try {
+            f.get(MATCH_BUDGET_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+        } catch (e: java.util.concurrent.TimeoutException) {
+            f.cancel(true)
+            if (slow.add(pattern)) com.noti.shared.Diag.log("reminders: a pattern took over ${MATCH_BUDGET_MS} ms and was stopped - simplify it")
+            null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /** Whether [pattern] is found in [text]; false for a blank/invalid/slow pattern. */
+    private fun find(pattern: String, text: String): Boolean = when (val c = compile(pattern)) {
+        is Compiled.Linear -> c.p.matcher(text).find()
+        is Compiled.Backtracking -> timed(pattern) { c.r.containsMatchIn(text) } ?: false
+        else -> false
+    }
+
+    /** The match's groups (0 = whole match), or null. */
+    private fun groups(pattern: String, text: String): List<String>? = when (val c = compile(pattern)) {
+        is Compiled.Linear -> c.p.matcher(text).let { m -> if (m.find()) (0..m.groupCount()).map { m.group(it).orEmpty() } else null }
+        is Compiled.Backtracking -> timed(pattern) { c.r.find(text)?.groupValues }
+        else -> null
+    }
+
+    /** True when [pattern] finishes within budget on [sample]. Linear patterns always do. */
+    fun finishesInTime(pattern: String?, sample: String): Boolean {
+        if (pattern.isNullOrBlank()) return true
+        return when (val c = compile(pattern)) {
+            is Compiled.Backtracking -> timed(pattern) { c.r.containsMatchIn(sample) } != null
+            else -> true
+        }
     }
 
     /** Why a pattern won't compile, for the editor's inline error. Null when it's fine (or blank). */
     fun patternError(pattern: String?): String? {
         if (pattern.isNullOrBlank()) return null
-        return try {
-            Regex(pattern); null
+        val c = compile(pattern) ?: return try {
+            Regex(pattern); "invalid regular expression"
         } catch (e: Exception) {
             e.message ?: "invalid regular expression"
         }
+        // Only a fallback pattern can run away. Long runs of one kind of character with a mismatch
+        // at the end are what make nested repetition backtrack exponentially.
+        if (c is Compiled.Backtracking && (isSlow(pattern) || probesFor(pattern).any { !finishesInTime(pattern, it) })) {
+            return SLOW_MESSAGE
+        }
+        return null
     }
+
+    const val SLOW_MESSAGE = "takes too long on long messages - simplify repeated groups like (a+)+"
+
+    private val SLOW_PROBES = listOf(
+        "a".repeat(2_000) + "!", "1".repeat(2_000) + "x", " ".repeat(2_000) + "x", "aA1 -.,".repeat(300) + "\u0000",
+    )
+
+    /** The generic probes, plus a long run of each character the pattern itself names: a nested
+     *  group only runs away on text it can keep matching, and that's text made of its own letters. */
+    private fun probesFor(pattern: String): List<String> =
+        SLOW_PROBES + pattern.filter { it.isLetterOrDigit() }.toSet().take(6).map { ch -> ch.toString().repeat(2_000) + "\u0000" }
 
     /** First capture group if the pattern has one, else the whole match, else null. */
     fun capture(pattern: String?, text: String): String? {
-        val regex = compile(pattern) ?: return null
-        val match = regex.find(text) ?: return null
-        // groupValues[0] is always the full match. If the pattern *has* a group, that group is the
-        // answer even when it matched empty - falling back to the whole match there would hand back
-        // the surrounding text ("INR ") as if it were the amount. Only a pattern with no group at
-        // all falls back to what it matched.
-        if (match.groupValues.size > 1) return match.groupValues[1].takeIf { it.isNotBlank() }
-        return match.value.takeIf { it.isNotBlank() }
+        if (pattern.isNullOrBlank()) return null
+        val g = groups(pattern, text) ?: return null
+        // groups[0] is always the full match. If the pattern *has* a group, that group is the answer
+        // even when it matched empty - falling back to the whole match there would hand back the
+        // surrounding text ("INR ") as if it were the amount. Only a pattern with no group at all
+        // falls back to what it matched.
+        if (g.size > 1) return g[1].takeIf { it.isNotBlank() }
+        return g[0].takeIf { it.isNotBlank() }
     }
 
     /** Does this message belong to this rule at all? A blank match pattern matches everything from
      *  the configured source, which is a legitimate setup for an app that only ever sends bills. */
     fun matches(matchPattern: String?, text: String): Boolean {
         if (matchPattern.isNullOrBlank()) return true
-        val regex = compile(matchPattern) ?: return false // a broken pattern matches nothing
-        return regex.containsMatchIn(text)
+        return find(matchPattern, text) // a broken pattern matches nothing
     }
 
     /**

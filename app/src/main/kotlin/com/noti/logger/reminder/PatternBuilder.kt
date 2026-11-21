@@ -166,7 +166,7 @@ object PatternBuilder {
     }
 
     private fun matchesSomewhere(pattern: String, sample: String): Boolean =
-        ReminderExtractor.compile(pattern)?.containsMatchIn(sample) == true
+        !pattern.isNullOrBlank() && ReminderExtractor.compile(pattern) != null && ReminderExtractor.matches(pattern, sample)
 
     // ---- Date formats ----
 

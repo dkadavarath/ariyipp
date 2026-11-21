@@ -184,6 +184,26 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         get() = (prefs.getString(KEY_SEND_TIMES, "") ?: "").split(',').mapNotNull { it.toLongOrNull() }
         set(value) { prefs.edit().putString(KEY_SEND_TIMES, value.joinToString(",")).apply() }
 
+    /** Commands accepted recently, as msgId → when (epoch ms), for the replay check (see
+     *  SmsCommandHandler). Pruned to the last [SmsCommandHandler.RECENT_WINDOW_MS]. */
+    var recentCommands: Map<Long, Long>
+        get() = (prefs.getString(KEY_RECENT_COMMANDS, "") ?: "").split(',').mapNotNull { e ->
+            val (id, at) = e.split(':').takeIf { it.size == 2 } ?: return@mapNotNull null
+            (id.toLongOrNull() ?: return@mapNotNull null) to (at.toLongOrNull() ?: return@mapNotNull null)
+        }.toMap()
+        set(value) { prefs.edit().putString(KEY_RECENT_COMMANDS, value.entries.joinToString(",") { "${it.key}:${it.value}" }).commit() }
+
+    /** The inbox id the current or last repush started after (0 = a full repush). */
+    var repushStartId: Long
+        get() = prefs.getLong(KEY_REPUSH_START, 0L)
+        set(value) { prefs.edit().putLong(KEY_REPUSH_START, value).apply() }
+
+    /** When a catch-up request from Main was last acted on, so a repeat (or a replayed copy) within
+     *  [com.noti.sender.sms.CatchUpHandler.REPEAT_WINDOW_MS] is ignored. */
+    var lastCatchUpAtMs: Long
+        get() = prefs.getLong(KEY_LAST_CATCH_UP, 0L)
+        set(value) { prefs.edit().putLong(KEY_LAST_CATCH_UP, value).apply() }
+
     /** The "other phone needs updating" notice is showing (see PeerVersionNotice). */
     var peerOutdatedNotified: Boolean
         get() = prefs.getBoolean(KEY_PEER_OUTDATED, false)
@@ -248,6 +268,11 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
     // ---- Heartbeat ----
 
     /** When we last heard a heartbeat from the peer (Main). 0 = not baselined / not paired. */
+    /** The peer said its heartbeat is off (WireMessage.Heartbeat.off); cleared by its next beat. */
+    var peerHeartbeatOff: Boolean
+        get() = prefs.getBoolean(KEY_PEER_HB_OFF, false)
+        set(value) { prefs.edit().putBoolean(KEY_PEER_HB_OFF, value).apply() }
+
     var lastPeerBeatAtMs: Long
         get() = prefs.getLong(KEY_LAST_PEER_BEAT_MS, 0L)
         set(value) { prefs.edit().putLong(KEY_LAST_PEER_BEAT_MS, value).apply() }
@@ -330,6 +355,7 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         }
 
     companion object {
+        private const val KEY_PEER_HB_OFF = "peer_heartbeat_off"
         private const val PREFS_NAME = "noti_sender_settings"
 
         private const val KEY_SA_JSON = "sa_json"
@@ -378,6 +404,9 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_SEND_TIMES = "command_send_times"
         private const val KEY_ALLOWLIST_ONLY = "allowlist_only"
         private const val KEY_PEER_OUTDATED = "peer_outdated_notified"
+        private const val KEY_RECENT_COMMANDS = "recent_commands"
+        private const val KEY_REPUSH_START = "repush_start_id"
+        private const val KEY_LAST_CATCH_UP = "last_catch_up_at"
         const val DEFAULT_SEND_LIMIT_HOUR = 20
         const val DEFAULT_SEND_LIMIT_DAY = 50
 

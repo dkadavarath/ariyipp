@@ -180,17 +180,19 @@ class RemindersFragment : Fragment(R.layout.fragment_reminders) {
     private fun markPaid(bill: BillOccurrenceEntity) {
         val ctx = requireContext().applicationContext
         viewLifecycleOwner.lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
-                NotiDatabase.get(ctx).billOccurrenceDao()
+            val changed = withContext(Dispatchers.IO) {
+                val n = NotiDatabase.get(ctx).billOccurrenceDao()
                     .setStatus(bill.id, BillStatus.PAID, System.currentTimeMillis())
+                if (n == 0) return@withContext false
                 ReminderScheduler.cancelBill(ctx, bill.id)
                 ReminderNotifier.cancelBill(ctx, bill.id)
                 // A manual rule's next occurrence only appears once this one is settled, so top it
                 // up now rather than making the user wait for tomorrow's scan.
                 com.noti.logger.reminder.ReminderScanner.rollManualRules(ctx)
                 ReminderScheduler.rebuildAll(ctx)
+                true
             }
-            Toast.makeText(requireContext(), R.string.rm_marked_paid, Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), if (changed) R.string.rm_marked_paid else R.string.rm_already_settled, Toast.LENGTH_SHORT).show()
             reload()
         }
     }
@@ -202,9 +204,9 @@ class RemindersFragment : Fragment(R.layout.fragment_reminders) {
                 // Settle this one *and* arm the rule to pass over the following occurrence: "skip
                 // next" is what you press when you've already paid ahead, which is a statement
                 // about the one after this as much as about this one.
-                NotiDatabase.get(ctx).billOccurrenceDao()
+                val n = NotiDatabase.get(ctx).billOccurrenceDao()
                     .setStatus(bill.id, BillStatus.SKIPPED, System.currentTimeMillis())
-                if (bill.ruleId > 0) NotiDatabase.get(ctx).reminderRuleDao().setSkipNext(bill.ruleId, 1)
+                if (n > 0 && bill.ruleId > 0) NotiDatabase.get(ctx).reminderRuleDao().setSkipNext(bill.ruleId, 1)
                 ReminderScheduler.cancelBill(ctx, bill.id)
                 ReminderNotifier.cancelBill(ctx, bill.id)
                 ReminderScheduler.rebuildAll(ctx)
@@ -630,7 +632,7 @@ class RemindersFragment : Fragment(R.layout.fragment_reminders) {
             if (selectionMode) holder.actions.visibility = View.GONE
             // Long-press starts selecting with this row ticked (or toggles it once selecting).
             holder.card.setOnLongClickListener {
-                com.noti.logger.util.Haptics.longPress(it)
+                com.noti.sender.util.Haptics.longPress(it)
                 if (selectionMode) toggleSelection(row) else enterSelectionMode(row)
                 true
             }

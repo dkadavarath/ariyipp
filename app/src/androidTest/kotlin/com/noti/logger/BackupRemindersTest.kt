@@ -230,4 +230,24 @@ class BackupRemindersTest {
             Thread.sleep(3000)
         }
     }
+
+    @Test fun a_restore_that_fails_part_way_changes_nothing() {
+        seed()
+        val json = Backup.export(ctx)
+        // The phone now holds something different from the backup.
+        wipe()
+        db.reminderRuleDao().insert(ReminderRuleEntity(name = "Current rule", type = "BILL", source = "SMS"))
+        val s = com.noti.logger.config.Settings.get(ctx)
+        val keyBefore = s.relayKey
+        s.relayKey = "current-key"
+        try {
+            Backup.failInsideTransactionForTest = true
+            try { Backup.import(ctx, json); org.junit.Assert.fail("should have thrown") } catch (e: IllegalStateException) { }
+        } finally {
+            Backup.failInsideTransactionForTest = false
+        }
+        assertEquals("data untouched", listOf("Current rule"), db.reminderRuleDao().all().map { it.name })
+        assertEquals("settings untouched", "current-key", s.relayKey)
+        s.relayKey = keyBefore
+    }
 }

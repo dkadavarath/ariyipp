@@ -30,6 +30,12 @@ interface ReminderRuleDao {
     @Query("UPDATE reminder_rules SET skipNext = :skip WHERE id = :id")
     fun setSkipNext(id: Long, skip: Int)
 
+    /** Consumes a pending "skip next": 1 for the one caller that gets it, 0 for everyone after.
+     *  A plain read-then-clear let every bill in a burst (several statements in one scan) see the
+     *  flag still set, so "skip next" skipped them all. */
+    @Query("UPDATE reminder_rules SET skipNext = 0 WHERE id = :id AND skipNext = 1")
+    fun claimSkipNext(id: Long): Int
+
     /** For restore, which replaces the rulebook wholesale rather than merging into it. */
     @Query("DELETE FROM reminder_rules")
     fun deleteAll()
@@ -60,9 +66,9 @@ interface BillOccurrenceDao {
     @Query("SELECT * FROM reminder_bills WHERE sourceKey = :key LIMIT 1")
     fun bySourceKey(key: String): BillOccurrenceEntity?
 
-    /** A rule's bill for the cycle due on [dueAt], whatever its status. */
-    @Query("SELECT * FROM reminder_bills WHERE ruleId = :ruleId AND dueAt = :dueAt ORDER BY id LIMIT 1")
-    fun byRuleAndDue(ruleId: Long, dueAt: Long): BillOccurrenceEntity?
+    /** A rule's bills due on [dueAt], whatever their status. */
+    @Query("SELECT * FROM reminder_bills WHERE ruleId = :ruleId AND dueAt = :dueAt ORDER BY id")
+    fun forRuleAndDue(ruleId: Long, dueAt: Long): List<BillOccurrenceEntity>
 
     /** Active bills whose reminder is due to be (re)scheduled. */
     @Query("SELECT * FROM reminder_bills WHERE status = 0 AND dueAt > 0 ORDER BY dueAt")
@@ -74,8 +80,11 @@ interface BillOccurrenceDao {
     @Update
     fun update(bill: BillOccurrenceEntity)
 
-    @Query("UPDATE reminder_bills SET status = :status, settledAt = :at WHERE id = :id")
-    fun setStatus(id: Long, status: Int, at: Long)
+    /** Settles an outstanding bill by hand (paid or skipped). A bill already settled - by hand, or
+     *  automatically by a payment - is left as it is: re-marking used to overwrite when and how it
+     *  was paid. Returns rows changed (0 = it was already settled). */
+    @Query("UPDATE reminder_bills SET status = :status, settledAt = :at WHERE id = :id AND status = 0")
+    fun setStatus(id: Long, status: Int, at: Long): Int
 
     /** Outstanding bills of one rule - the candidates a payment message could settle. */
     @Query("SELECT * FROM reminder_bills WHERE ruleId = :ruleId AND status = 0")

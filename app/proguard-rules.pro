@@ -29,7 +29,9 @@
 -keep,includedescriptorclasses class com.noti.logger.upload.**$$serializer { *; }
 
 # ---- Tink / androidx.security.crypto (EncryptedSharedPreferences) ----
-# Tink loads key-type managers reflectively; keep them to avoid keyset failures under R8.
--keep class com.google.crypto.tink.** { *; }
--keep class com.google.crypto.tink.shaded.protobuf.** { *; }
+# No blanket keep: Tink ships consumer rules covering what it loads reflectively (its protobuf
+# messages' fields). The old "-keep class com.google.crypto.tink.** { *; }" stopped R8 removing any
+# of it - 1.2 MB, over half the app's code - though EncryptedSharedPreferences uses one AEAD and one
+# deterministic AEAD. Verified on a release build: fresh install, an upgrade over existing encrypted
+# settings, and a restart all read and write them.
 -dontwarn com.google.crypto.tink.**

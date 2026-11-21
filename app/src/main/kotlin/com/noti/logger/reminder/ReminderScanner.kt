@@ -190,19 +190,20 @@ object ReminderScanner {
         val dao = NotiDatabase.get(context).billOccurrenceDao()
         val messageKey = key("${rule.id}|$msgKey")
         // The same message again, or - a bank re-sending the reminder - another message about the
-        // same cycle: same rule, same due date. Either way it's the bill already on file, not a
-        // second one that doubled the total and was left unpaid when the first was settled.
+        // same bill: same rule, same due date and the same amount (see sameCycle). Either way it's
+        // the bill already on file, not a second one that doubled the total. Two cards from one
+        // bank both due on the 5th differ in amount, and stay two bills.
         val existing = try {
-            dao.bySourceKey(messageKey) ?: due?.let { dao.byRuleAndDue(rule.id, midnightMs(it)) }
+            dao.bySourceKey(messageKey) ?: due?.let { d ->
+                dao.forRuleAndDue(rule.id, midnightMs(d)).firstOrNull { sameCycle(it.amount, match.amount) }
+            }
         } catch (e: Exception) { null }
         val sourceKey = existing?.sourceKey ?: messageKey
 
         // "Skip next" consumes itself here: the occurrence is still recorded, so history stays
         // honest about the statement having arrived, but it starts settled and never reminds.
-        val skip = existing == null && rule.skipNext == 1
-        if (skip) {
-            try { NotiDatabase.get(context).reminderRuleDao().setSkipNext(rule.id, 0) } catch (e: Exception) { }
-        }
+        val skip = existing == null && rule.skipNext == 1 &&
+            try { NotiDatabase.get(context).reminderRuleDao().claimSkipNext(rule.id) == 1 } catch (e: Exception) { false }
 
         val row = BillOccurrenceEntity(
             id = existing?.id ?: 0,
@@ -284,10 +285,8 @@ object ReminderScanner {
                 today = today,
             ) ?: continue
 
-            val skip = rule.skipNext == 1
-            if (skip) {
-                try { db.reminderRuleDao().setSkipNext(rule.id, 0) } catch (e: Exception) { }
-            }
+            val skip = rule.skipNext == 1 &&
+                try { db.reminderRuleDao().claimSkipNext(rule.id) == 1 } catch (e: Exception) { false }
             try {
                 dao.insert(
                     BillOccurrenceEntity(
@@ -380,6 +379,11 @@ object ReminderScanner {
      * message comes from where this rule's bills come from; one that the bill pattern itself matches
      * is the statement, not a payment ("payment due by..." would otherwise settle its own bill).
      */
+    /** Whether a bill on file with [onFile] and a new message reading [incoming] are the same bill
+     *  (given the same rule and due date): equal amounts to the cent, or no amount on one side. */
+    internal fun sameCycle(onFile: Double?, incoming: Double?): Boolean =
+        onFile == null || incoming == null || kotlin.math.abs(onFile - incoming) < 0.005
+
     /**
      * Whether a message from the statement's own source is the statement rather than a payment.
      * With a match pattern, that decides. Without one (blank matches everything), a message that

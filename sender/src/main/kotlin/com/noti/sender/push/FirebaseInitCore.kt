@@ -32,4 +32,36 @@ object FirebaseInitCore {
             false
         }
     }
+
+    /**
+     * Firebase is initialized once per process, so a google-services.json imported after that -
+     * for a different project - had no effect until the app happened to restart. True when [configJson]
+     * names a different project or app than the one running now, so the caller should restart.
+     */
+    fun needsRestartFor(context: Context, configJson: String): Boolean = try {
+        val running = FirebaseApp.getApps(context).firstOrNull()?.options ?: return false
+        val cfg = GoogleServices.parse(configJson, context.packageName)
+        running.projectId != cfg.projectId || running.applicationId != cfg.applicationId
+    } catch (e: Exception) {
+        false
+    }
+
+    /** Relaunches the app in a fresh process, so Firebase starts from the newly imported config. */
+    fun restartApp(activity: android.app.Activity) {
+        val launch = activity.packageManager.getLaunchIntentForPackage(activity.packageName) ?: return
+        launch.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        activity.startActivity(launch)
+        activity.finishAffinity()
+        android.os.Process.killProcess(android.os.Process.myPid())
+    }
+
+    /** Offers the restart [needsRestartFor] calls for. */
+    fun offerRestart(activity: android.app.Activity) {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
+            .setTitle(com.noti.sender.R.string.fb_restart_title)
+            .setMessage(com.noti.sender.R.string.fb_restart_msg)
+            .setNegativeButton(com.noti.sender.R.string.fb_restart_later, null)
+            .setPositiveButton(com.noti.sender.R.string.fb_restart_now) { _, _ -> restartApp(activity) }
+            .show()
+    }
 }

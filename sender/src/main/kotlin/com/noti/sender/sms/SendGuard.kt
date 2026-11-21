@@ -27,7 +27,7 @@ object SendGuard {
     private const val HOUR_MS = 60 * 60_000L
     private const val DAY_MS = 24 * HOUR_MS
     private const val CHANNEL = "ariy_send_guard"
-    private const val NOTIF_ID = 4712
+    private const val NOTIF_ID = 4714 // 4712 is the webhook-config notice, 4713 the peer-version one
 
     /** Why a send over the limits is refused, or null when it may go. Pure. */
     fun limitReason(sentAt: List<Long>, now: Long, perHour: Int, perDay: Int): String? {

@@ -83,13 +83,8 @@ class NotificationActionReceiver : BroadcastReceiver() {
                             )
                         )
                         dao.markRead(sender)
-                        val ok = NotiCommandSender.send(app, sender, text, msgId = msgId)
-                        if (ok) {
-                            NotificationManagerCompat.from(app).cancel(notifId)
-                        } else {
-                            // Clear the spinner and tell the user it didn't go through.
-                            MessageNotifier.showReplyFailed(app, sender, notifId, text)
-                        }
+                        // The send itself goes to a job: it can take longer than a receiver may run.
+                        com.noti.logger.work.ReplyWorker.enqueue(app, sender, text, msgId, notifId)
                     } finally {
                         pending.finish()
                     }

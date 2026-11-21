@@ -295,6 +295,12 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putString(KEY_LAST_UPLOAD_RESULT, value).apply()
         }
 
+    /** When the "can't read messages from the companion" alert last fired. Persisted: every failed
+     *  push wakes a fresh process, so an in-memory throttle let it fire on each one. */
+    var keyMismatchAlertAtMs: Long
+        get() = prefs.getLong(KEY_KEY_MISMATCH_AT, 0L)
+        set(value) { prefs.edit().putLong(KEY_KEY_MISMATCH_AT, value).apply() }
+
     /** The database encryption key (base64, 32 bytes; see DbEncryption). Blank until first use. */
     val dbKey: String
         get() = prefs.getString(KEY_DB_KEY, "") ?: ""
@@ -330,6 +336,11 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         }
 
     /** When we last heard a heartbeat from the peer (companion). 0 = not baselined / not paired. */
+    /** The peer said its heartbeat is off (WireMessage.Heartbeat.off); cleared by its next beat. */
+    var peerHeartbeatOff: Boolean
+        get() = prefs.getBoolean(KEY_PEER_HB_OFF, false)
+        set(value) { prefs.edit().putBoolean(KEY_PEER_HB_OFF, value).apply() }
+
     var lastPeerBeatAtMs: Long
         get() = prefs.getLong(KEY_LAST_PEER_BEAT_MS, 0L)
         set(value) {
@@ -560,6 +571,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
     // ---- Singleton ----
 
     companion object {
+        private const val KEY_PEER_HB_OFF = "peer_heartbeat_off"
         private const val PREFS_NAME = "noti_settings"
         private const val KEYWORD_DELIMITER = "\n"
 
@@ -596,6 +608,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_UNCONFIRMED_NOTIFIED_URL = "unconfirmed_notified_url"
         private const val KEY_PROTECT_KEYS = "protect_key_screens"
         private const val KEY_DB_KEY = "db_key"
+        private const val KEY_KEY_MISMATCH_AT = "key_mismatch_alert_at"
         private const val KEY_PROTECT_MESSAGES = "protect_messages"
         private const val KEY_STATUS_CACHE_LAST_UPLOAD = "status_cache_last_upload"
         private const val KEY_LAST_PEER_BEAT_MS = "last_peer_beat_ms"

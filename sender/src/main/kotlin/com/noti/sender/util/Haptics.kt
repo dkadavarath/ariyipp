@@ -19,7 +19,10 @@ object Haptics {
     /** Up / back navigation - a light tick. */
     fun navUp(v: View) = v.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
 
-    /** A successful action (saved, paired). */
+    /** Long-press that opens a context menu. */
+    fun longPress(v: View) = v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+
+    /** A successful action (saved, sent, paired). */
     fun confirm(v: View) = v.performHapticFeedback(
         if (Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.CONTEXT_CLICK
     )

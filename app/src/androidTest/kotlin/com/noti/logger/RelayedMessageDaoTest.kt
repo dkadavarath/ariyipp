@@ -202,4 +202,20 @@ class RelayedMessageDaoTest {
         assertEquals(listOf("late"), rows.map { it.body })
         assertTrue(rows.none { it.id == out })
     }
+
+    // ---- Keyset pages for the chat (no jumps when messages arrive mid-scroll) ----
+
+    @Test
+    fun older_page_is_keyed_on_the_oldest_shown_so_new_arrivals_cant_shift_it() {
+        for (i in 1..10) dao.insert(msg("+1", "m$i", i * 1000L))
+        val newest = dao.messagesPage("+1", 4, 0)                 // m7..m10
+        assertEquals(listOf("m7", "m8", "m9", "m10"), newest.map { it.body })
+        // Two messages arrive while the user scrolls up.
+        dao.insert(msg("+1", "m11", 11_000L)); dao.insert(msg("+1", "m12", 12_000L))
+        val older = dao.messagesBefore("+1", newest.first().receivedAt, newest.first().id, 4)
+        assertEquals("no duplicates, no gap", listOf("m3", "m4", "m5", "m6"), older.map { it.body })
+        // A live refresh of the shown window keeps every loaded row and adds the new ones.
+        val window = dao.messagesFrom("+1", older.first().receivedAt, older.first().id)
+        assertEquals((3..12).map { "m$it" }, window.map { it.body })
+    }
 }

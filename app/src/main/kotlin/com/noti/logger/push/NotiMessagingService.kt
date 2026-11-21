@@ -96,15 +96,25 @@ class NotiMessagingService : FirebaseMessagingService() {
             if (androidx.core.content.ContextCompat.checkSelfPermission(applicationContext, android.Manifest.permission.READ_SMS) ==
                 android.content.pm.PackageManager.PERMISSION_GRANTED
             ) {
+                val s = SenderSettings.get(applicationContext)
+                val now = System.currentTimeMillis()
+                if (!com.noti.sender.sms.CatchUpHandler.mayRun(s.lastCatchUpAtMs, now)) {
+                    Diag.log("catch-up requested by main - ignored, one ran in the last 10 minutes")
+                    return
+                }
+                s.lastCatchUpAtMs = now
                 val afterId = com.noti.sender.sms.SmsInbox.lastIdBefore(applicationContext, from)
-                com.noti.sender.RepushWorker.startFrom(applicationContext, afterId)
-                Diag.log("catch-up requested by main - re-sending SMS after id $afterId")
+                if (com.noti.sender.RepushWorker.startFrom(applicationContext, afterId)) {
+                    Diag.log("catch-up requested by main - re-sending SMS after id $afterId")
+                } else {
+                    Diag.log("catch-up requested by main - a repush already running covers it")
+                }
             }
             return
         }
         // A liveness heartbeat from Main?
         HeartbeatHandler.parse(applicationContext, message.data)?.let { hb ->
-            Heartbeat.onBeatReceived(applicationContext, hb.request)
+            Heartbeat.onBeatReceived(applicationContext, hb.request, hb.off)
             return
         }
         Diag.log("push from main DROPPED (not accepted, wrong shared key, or unknown type)")

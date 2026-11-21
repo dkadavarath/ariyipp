@@ -50,7 +50,13 @@ import java.time.format.DateTimeFormatter
  */
 class ReminderEditActivity : ScreenActivity() {
 
+    /** Set once a save has started; see save(). */
+    private var saving = false
+
     companion object {
+        private const val STATE_DUE = "due_epoch_day"
+        private const val STATE_EXPIRY = "expiry_ms"
+        private const val STATE_REPEAT = "repeat"
         const val EXTRA_BILL_ID = "bill_id"
         const val EXTRA_PARKING_ID = "parking_id"
     }
@@ -105,13 +111,23 @@ class ReminderEditActivity : ScreenActivity() {
         findViewById<EditText>(R.id.et_offset_days).doAfterTextChanged { refreshDueUi() }
         findViewById<View>(R.id.btn_save).setOnClickListener { save() }
 
+        val restored = savedState
+        if (restored != null) {
+            // Rotated (or recreated): the fields restored themselves; the picked dates and the
+            // repeat choice live outside them.
+            dueDate = restored.getLong(STATE_DUE, Long.MIN_VALUE).takeIf { it != Long.MIN_VALUE }?.let { LocalDate.ofEpochDay(it) }
+            expiry = restored.getLong(STATE_EXPIRY, 0L).takeIf { it > 0 }?.let { ReminderPolicy.fromEpochMillis(it) }
+            recurrence = runCatching { Recurrence.valueOf(restored.getString(STATE_REPEAT, "")!!) }.getOrDefault(Recurrence.NEVER)
+        }
+        val fill = restored == null
         when {
-            billId > 0 -> loadBill()
-            parkingId > 0 -> loadParking()
-            else -> {
+            billId > 0 -> loadBill(fill)
+            parkingId > 0 -> loadParking(fill)
+            fill -> {
                 findViewById<MaterialButtonToggleGroup>(R.id.toggle_kind).check(R.id.btn_kind_bill)
                 updateKindUi()
             }
+            else -> updateKindUi()
         }
         refreshDueUi()
     }
@@ -265,22 +281,33 @@ class ReminderEditActivity : ScreenActivity() {
 
     // ---- Load ----
 
-    private fun loadBill() {
-        findViewById<MaterialButtonToggleGroup>(R.id.toggle_kind).check(R.id.btn_kind_bill)
+    override fun onSaveInstanceState(outState: android.os.Bundle) {
+        super.onSaveInstanceState(outState)
+        dueDate?.let { outState.putLong(STATE_DUE, it.toEpochDay()) }
+        expiry?.let { outState.putLong(STATE_EXPIRY, ReminderPolicy.toEpochMillis(it)) }
+        outState.putString(STATE_REPEAT, recurrence.name)
+    }
+
+    /** [fill] = false after a rotation: fetch the bill (save needs it) but leave the fields, which
+     *  already hold the edit in progress, alone. */
+    private fun loadBill(fill: Boolean = true) {
+        if (fill) findViewById<MaterialButtonToggleGroup>(R.id.toggle_kind).check(R.id.btn_kind_bill)
         lifecycleScope.launch {
             val bill = withContext(Dispatchers.IO) {
                 try { NotiDatabase.get(applicationContext).billOccurrenceDao().byId(billId) } catch (e: Exception) { null }
             } ?: return@launch
             existingBill = bill
-            findViewById<EditText>(R.id.et_name).setText(bill.name)
-            findViewById<EditText>(R.id.et_amount).setText(bill.amount?.toString() ?: bill.amountRaw)
-            findViewById<EditText>(R.id.et_currency).setText(bill.currency)
-            findViewById<EditText>(R.id.et_category).setText(bill.category)
-            findViewById<EditText>(R.id.et_notes).setText(bill.notes)
-            if (bill.remindDaysBefore >= 0) {
-                findViewById<EditText>(R.id.et_remind_days).setText(bill.remindDaysBefore.toString())
+            if (fill) {
+                findViewById<EditText>(R.id.et_name).setText(bill.name)
+                findViewById<EditText>(R.id.et_amount).setText(bill.amount?.toString() ?: bill.amountRaw)
+                findViewById<EditText>(R.id.et_currency).setText(bill.currency)
+                findViewById<EditText>(R.id.et_category).setText(bill.category)
+                findViewById<EditText>(R.id.et_notes).setText(bill.notes)
+                if (bill.remindDaysBefore >= 0) {
+                    findViewById<EditText>(R.id.et_remind_days).setText(bill.remindDaysBefore.toString())
+                }
+                if (bill.dueAt > 0) dueDate = DueDates.fromMs(bill.dueAt)
             }
-            if (bill.dueAt > 0) dueDate = DueDates.fromMs(bill.dueAt)
             // An occurrence is one instance; its rule owns the recurrence, so editing here edits
             // this instance only and the repeat controls stay out of the way.
             editingOccurrence = true
@@ -304,7 +331,8 @@ class ReminderEditActivity : ScreenActivity() {
         }
     }
 
-    private fun loadParking() {
+    private fun loadParking(fill: Boolean = true) {
+        if (!fill) { updateKindUi(); return }
         findViewById<MaterialButtonToggleGroup>(R.id.toggle_kind).check(R.id.btn_kind_parking)
         lifecycleScope.launch {
             val s = withContext(Dispatchers.IO) {
@@ -349,6 +377,9 @@ class ReminderEditActivity : ScreenActivity() {
         val existing = existingBill
         val repeats = recurrence != Recurrence.NEVER && existing == null
 
+        // One save per tap: a double tap used to insert the rule (or bill) twice.
+        if (saving) return
+        saving = true
         lifecycleScope.launch {
             withContext(Dispatchers.IO) {
                 val db = NotiDatabase.get(applicationContext)
@@ -433,6 +464,9 @@ class ReminderEditActivity : ScreenActivity() {
             return
         }
         val zone = text(R.id.et_zone)
+        // One save per tap: a double tap used to insert the rule (or bill) twice.
+        if (saving) return
+        saving = true
         lifecycleScope.launch {
             withContext(Dispatchers.IO) {
                 if (parkingId > 0) {

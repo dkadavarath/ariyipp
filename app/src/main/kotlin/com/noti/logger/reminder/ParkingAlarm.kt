@@ -1,7 +1,6 @@
 package com.noti.logger.reminder
 
 import android.app.AlarmManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -68,10 +67,6 @@ object ParkingAlarm {
         val where = if (zone.isBlank()) name else "$name - $zone"
         return "$where [ariyipp#$sessionId]"
     }
-
-    /** Is a label one of ours, and for which session? */
-    fun sessionIdOf(label: String?): Long? =
-        Regex("""\[ariyipp#(\d+)]""").find(label.orEmpty())?.groupValues?.get(1)?.toLongOrNull()
 
     fun mode(context: Context): ParkingAlarmMode = ParkingAlarmMode.of(Settings.get(context).parkingAlarmMode)
 
@@ -197,12 +192,6 @@ object ParkingAlarm {
         ParkingAlarmMode.IN_APP -> { ReminderScheduler.cancelParkingRing(context, 0L); true }
     }
 
-    /** What the settings screen warns about for the clock backend: it works while you are looking
-     *  at the app, and not otherwise. Stated as a fact of the platform, because it is one. */
-    fun clockBackgroundCaveat(): String =
-        "Android blocks this from the background, so an alarm is only handed to the Clock app while " +
-            "ariyipp is open. Renewals that arrive in your pocket will use the in-app alarm instead."
-
     /**
      * Withdraw every clock-app alarm we are holding for a running session.
      *
@@ -243,7 +232,4 @@ object ParkingAlarm {
         } else {
             null
         }
-
-    /** Unused here, but kept next to the PendingIntent code it mirrors so the two stay in step. */
-    internal fun pendingFlags(): Int = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 }

@@ -14,7 +14,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.noti.logger.R
 import com.noti.logger.config.Settings
 import com.noti.logger.push.FirebaseInit
-import com.noti.logger.push.QrCodes
+import com.noti.sender.ui.QrCodes
 import com.noti.shared.GoogleServices
 import com.noti.shared.MessageCrypto
 import com.noti.shared.PairingPayload
@@ -102,7 +102,9 @@ class RelayReceiveActivity : ScreenActivity() {
             s.pushInboundEnabled = enabled.isChecked
             s.otpCopyEnabled = otpCopy.isChecked
             s.suppressSystemNotifActions = suppressSystem.isChecked
+            val switchedOff = s.heartbeatEnabled && !heartbeat.isChecked
             s.heartbeatEnabled = heartbeat.isChecked
+            if (switchedOff) com.noti.logger.push.Heartbeat.announceOff(this)
             s.chatRetentionDays = chatRetention.text.toString().toIntOrNull() ?: s.chatRetentionDays
             s.relayKey = keyField.text.toString()
             // Don't touch sndiFcmToken - it's set automatically when the companion announces itself.
@@ -174,11 +176,18 @@ class RelayReceiveActivity : ScreenActivity() {
     /** Reads one picked file and routes it by content: a google-services.json updates the Firebase
      *  config, a service-account key updates the send credential. Either can be re-imported alone. */
     private fun onFilePicked(uri: Uri) {
-        val content = try {
-            contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty()
-        } catch (e: Exception) {
-            ""
-        }
+        // Off the main thread: a picked file can live on a slow provider (cloud storage, USB).
+        Thread {
+            val content = try {
+                contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty()
+            } catch (e: Exception) {
+                ""
+            }
+            runOnUiThread { if (!isFinishing && !isDestroyed) onFileRead(content) }
+        }.apply { name = "file-import" }.start()
+    }
+
+    private fun onFileRead(content: String) {
         val s = Settings.get(this)
         when {
             GoogleServices.looksLikeGoogleServices(content) -> {
@@ -187,9 +196,11 @@ class RelayReceiveActivity : ScreenActivity() {
                 } catch (e: Exception) {
                     false
                 }
+                val restart = valid && com.noti.sender.push.FirebaseInitCore.needsRestartFor(this, content)
                 if (valid) s.firebaseConfigJson = content
                 updateFbStatus(invalid = !valid)
-                if (valid) refreshToken()
+                if (restart) com.noti.sender.push.FirebaseInitCore.offerRestart(this)
+                else if (valid) refreshToken()
             }
             isServiceAccountKey(content) -> {
                 s.serviceAccountJson = content

@@ -73,4 +73,12 @@ class RelayHardeningTest {
         assertEquals(now - CatchUpHandler.MAX_LOOKBACK_MS, CatchUpHandler.startMs(WireMessage.CatchUp(1L), now))
         assertEquals(now, CatchUpHandler.startMs(WireMessage.CatchUp(now + 999_999L), now))
     }
+
+    @Test
+    fun `a repeat catch-up within ten minutes is ignored`() {
+        val now = 50L * 60_000L
+        assertFalse(CatchUpHandler.mayRun(now - 5 * 60_000L, now))
+        assertTrue(CatchUpHandler.mayRun(now - 11 * 60_000L, now))
+        assertTrue(CatchUpHandler.mayRun(0L, now))
+    }
 }

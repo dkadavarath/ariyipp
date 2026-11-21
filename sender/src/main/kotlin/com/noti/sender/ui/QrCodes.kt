@@ -5,7 +5,8 @@ import android.graphics.Color
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 
-/** Renders text as a QR bitmap (used to show ariy's own token for ippu to scan). */
+/** Renders text as a QR bitmap - the pairing code on Main, the token on the companion. Shared by
+ *  both roles (the app's own copy was identical). */
 object QrCodes {
 
     fun encode(text: String, size: Int): Bitmap {

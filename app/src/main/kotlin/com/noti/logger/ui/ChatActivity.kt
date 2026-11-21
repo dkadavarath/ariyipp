@@ -184,13 +184,13 @@ class ChatActivity : AppCompatActivity() {
                     .distinctUntilChanged()
                     .drop(1) // onCreate's/onResume's load() covers the initial state
                     .collect {
-                        // Respect deep pagination: don't yank the user back to the newest page.
-                        if (loadedCount <= PAGE_SIZE) {
-                            val lm = recycler.layoutManager as LinearLayoutManager
-                            val last = lm.findLastVisibleItemPosition()
-                            val atBottom = last == RecyclerView.NO_POSITION || last >= adapter.itemCount - 1
-                            load(scrollToEnd = atBottom)
-                        }
+                        // Refresh the whole window shown, however deep: it used to reload only the
+                        // newest page (dropping its oldest row each time) or, once older pages
+                        // were loaded, skip live updates altogether.
+                        val lm = recycler.layoutManager as LinearLayoutManager
+                        val last = lm.findLastVisibleItemPosition()
+                        val atBottom = last == RecyclerView.NO_POSITION || last >= adapter.itemCount - 1
+                        load(scrollToEnd = atBottom, keepWindow = true)
                     }
             }
         }
@@ -274,16 +274,22 @@ class ChatActivity : AppCompatActivity() {
         load()
     }
 
-    private fun load(scrollToEnd: Boolean = false) {
+    /** The oldest message shown, as the key for the next page and for live refreshes. */
+    private var oldestShown: com.noti.logger.data.RelayedMessageEntity? = null
+
+    private fun load(scrollToEnd: Boolean = false, keepWindow: Boolean = false) {
         lifecycleScope.launch {
+            val from = oldestShown.takeIf { keepWindow }
             val messages = withContext(Dispatchers.IO) {
                 val dao = NotiDatabase.get(this@ChatActivity).relayedMessageDao()
-                val msgs = dao.messagesPage(sender, PAGE_SIZE, 0)
+                val msgs = if (from != null) dao.messagesFrom(sender, from.receivedAt, from.id)
+                else dao.messagesPage(sender, PAGE_SIZE, 0)
                 dao.markRead(sender) // viewing the conversation clears its unread state
                 msgs
             }
             loadedCount = messages.size
-            allLoaded = messages.size < PAGE_SIZE
+            oldestShown = messages.firstOrNull()
+            if (from == null) allLoaded = messages.size < PAGE_SIZE
             adapter.submit(messages)
             if (highlightId > 0) {
                 val index = adapter.rowIndexOfMessage(highlightId)
@@ -308,9 +314,11 @@ class ChatActivity : AppCompatActivity() {
         if (first in 0..LOAD_OLDER_THRESHOLD) {
             loadingOlder = true
             lifecycleScope.launch {
+                val oldest = oldestShown
                 val older = withContext(Dispatchers.IO) {
-                    NotiDatabase.get(this@ChatActivity).relayedMessageDao()
-                        .messagesPage(sender, PAGE_SIZE, loadedCount)
+                    val dao = NotiDatabase.get(this@ChatActivity).relayedMessageDao()
+                    if (oldest != null) dao.messagesBefore(sender, oldest.receivedAt, oldest.id, PAGE_SIZE)
+                    else dao.messagesPage(sender, PAGE_SIZE, loadedCount)
                 }
                 if (older.isEmpty()) {
                     allLoaded = true
@@ -318,15 +326,19 @@ class ChatActivity : AppCompatActivity() {
                     return@launch
                 }
                 loadedCount += older.size
+                oldestShown = older.first()
                 if (older.size < PAGE_SIZE) allLoaded = true
 
-                // The diff prepends rows; shift the viewport by the added count so the content the
-                // user was looking at stays put instead of jumping.
+                // The diff prepends rows; shift the viewport by the added count *and* keep the
+                // anchor row's pixel offset, so the content the user was looking at stays exactly
+                // put (scrollToPosition alone snapped it to the top edge - a visible jump).
                 val before = adapter.itemCount
-                val anchor = (recycler.layoutManager as LinearLayoutManager).findFirstVisibleItemPosition()
+                val lm = recycler.layoutManager as LinearLayoutManager
+                val anchor = lm.findFirstVisibleItemPosition()
+                val anchorTop = lm.findViewByPosition(anchor)?.top ?: 0
                 adapter.prepend(older)
                 recycler.post {
-                    (recycler.layoutManager as LinearLayoutManager).scrollToPosition(anchor + (adapter.itemCount - before))
+                    lm.scrollToPositionWithOffset(anchor + (adapter.itemCount - before), anchorTop)
                     updateStickyDate()
                     updateScrollBottomVisibility()
                 }
@@ -395,7 +407,7 @@ class ChatActivity : AppCompatActivity() {
                 })
                 add(getString(R.string.rm_use_as_payment) to { useAsPayment(m) })
             }
-            add(getString(R.string.msg_delete) to { deleteMessage(m.id) })
+            add(getString(R.string.msg_delete) to { confirmDelete(m.id) })
         }
         MaterialAlertDialogBuilder(this)
             .setItems(actions.map { it.first }.toTypedArray()) { _, which -> actions[which].second() }
@@ -491,6 +503,15 @@ class ChatActivity : AppCompatActivity() {
             .setTitle(R.string.msg_select_text)
             .setView(tv)
             .setPositiveButton(R.string.chat_close, null)
+            .show()
+    }
+
+    /** One message, but still asked: it's gone for good, and the menu item sits under a thumb. */
+    private fun confirmDelete(id: Long) {
+        MaterialAlertDialogBuilder(this)
+            .setMessage(R.string.msg_delete_confirm)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.msg_delete) { _, _ -> deleteMessage(id) }
             .show()
     }
 
@@ -618,7 +639,7 @@ class ChatActivity : AppCompatActivity() {
                 val next = messages.getOrNull(i + 1)
                 val newDay = prev == null || !ChatTime.sameDay(prev.receivedAt, m.receivedAt)
                 if (newDay) newRows.add(Row.Separator(ChatTime.daySeparator(this@ChatActivity, m.receivedAt), m.id))
-                val firstInGroup = newDay || prev!!.outgoing != m.outgoing
+                val firstInGroup = newDay || prev.outgoing != m.outgoing
                 val lastInGroup = next == null || !ChatTime.sameDay(m.receivedAt, next.receivedAt) || next.outgoing != m.outgoing
                 newRows.add(Row.Msg(m, firstInGroup, lastInGroup))
             }
@@ -728,7 +749,7 @@ class ChatActivity : AppCompatActivity() {
         }
         holder.body.setOnClickListener { ChatLinks.linkAt(holder.body, touchX, touchY)?.let { openLink(it) } }
         holder.body.setOnLongClickListener {
-            com.noti.logger.util.Haptics.longPress(it)
+            com.noti.sender.util.Haptics.longPress(it)
             onMessageLongPress(m, ChatLinks.linkAt(holder.body, touchX, touchY))
             true
         }

@@ -198,4 +198,41 @@ class DbEncryptionTest {
         val queryMs = (System.nanoTime() - t1) / 1_000_000
         return insertMs to queryMs
     }
+
+    // ---- v1.6 regressions ----
+
+    @Test
+    fun a_settings_reset_no_longer_loses_the_database_key() {
+        val first = DbEncryption.key(ctx)
+        // What Settings.openPrefs does when it can't read its store: everything in it is gone.
+        com.noti.logger.config.Settings.get(ctx).dbKeySync = ""
+        com.noti.logger.data.DbKeyStore.clearCache()
+        assertTrue("the key file still has it", first.contentEquals(DbEncryption.key(ctx)))
+        // ...and the settings copy is restored from it.
+        assertTrue(com.noti.logger.config.Settings.get(ctx).dbKey.isNotBlank())
+    }
+
+    @Test
+    fun only_a_wrong_key_counts_as_lost() {
+        seedV13()
+        DbEncryption.prepare(ctx, key, name)
+        val other = ByteArray(32).also { SecureRandom().nextBytes(it) }
+        assertEquals(DbEncryption.Probe.WRONG_KEY, DbEncryption.probe(file(), other))
+        assertEquals(DbEncryption.Probe.OK, DbEncryption.probe(file(), key))
+        // A path that can't be opened at all is "something else", not a lost key.
+        assertEquals(DbEncryption.Probe.OTHER, DbEncryption.probe(File(dir, "no-such-dir/x.db"), key))
+    }
+
+    @Test
+    fun a_set_aside_database_comes_back_when_its_key_does() {
+        seedV13()
+        DbEncryption.prepare(ctx, key, name)
+        val other = ByteArray(32).also { SecureRandom().nextBytes(it) }
+        DbEncryption.prepare(ctx, other, name) // key "lost": set aside
+        assertFalse(file().exists())
+        DbEncryption.prepare(ctx, key, name)   // key back: re-adopted
+        assertTrue(file().exists())
+        assertFalse(dir.listFiles()!!.any { it.name.startsWith("$name-unreadable-") })
+        openRoom().also { assertEverythingThere(it) }.close()
+    }
 }

@@ -26,9 +26,18 @@ object MessageNotifier {
 
     private const val CHANNEL_ID = "noti_relayed"
 
-    // Distinct from Alerter's 100x ids, and unique per message so notifications stack rather than
-    // replace one another. Resets per process, which is fine - already-shown ones keep their ids.
-    private val nextId = AtomicInteger(2000)
+    // Unique per message so notifications stack rather than replace one another. Derived from the
+    // stored message's row id: a counter restarted at 2000 with every process, so after a restart a
+    // new notification took the id of one still showing and replaced it. The range starts well clear
+    // of every fixed id in the app (Alerter's 100x, the companion's 47xx).
+    private const val ID_BASE = 100_000
+    private const val ID_SPAN = 1_000_000_000
+
+    /** The notification id for stored message [messageId]. Pure. */
+    fun idFor(messageId: Long): Int = ID_BASE + (messageId % ID_SPAN).toInt()
+
+    // Messages that couldn't be stored have no row id: these take ids below the derived range.
+    private val fallbackId = AtomicInteger(10_000 + (System.currentTimeMillis() % 50_000).toInt())
 
     /**
      * Posts [title]/[body] as a heads-up notification; returns the notification id used. When
@@ -44,7 +53,7 @@ object MessageNotifier {
     ): Int {
         ensureChannel(context)
         val settings = Settings.get(context)
-        val id = nextId.getAndIncrement()
+        val id = if (messageId > 0) idFor(messageId) else fallbackId.getAndIncrement()
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)

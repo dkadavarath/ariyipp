@@ -79,10 +79,15 @@ object ReminderPolicy {
         val digitsAfterComma = if (lastComma >= 0) cleaned.length - lastComma - 1 else -1
         val commaIsDecimal = cleaned.count { it == ',' } == 1 && lastComma > lastDot &&
             (lastDot >= 0 || digitsAfterComma != 3)
-        val normalised = if (commaIsDecimal) {
-            cleaned.replace(".", "").replace(',', '.')
-        } else {
-            cleaned.replace(",", "")
+        // More than one dot can only be grouping ("1.234.567", or "1.234.567,89" handled above).
+        // A single dot before three digits ("12.480") is left as a decimal point on purpose: that's
+        // twelve thousand in much of Europe but 12.480 in the 3-decimal dinars (KWD, BHD, OMR), and
+        // reading a dinar bill as a thousand times larger is the worse mistake.
+        val dotsAreGrouping = !commaIsDecimal && cleaned.count { it == '.' } > 1
+        val normalised = when {
+            commaIsDecimal -> cleaned.replace(".", "").replace(',', '.')
+            dotsAreGrouping -> cleaned.replace(".", "").replace(",", "")
+            else -> cleaned.replace(",", "")
         }
         return normalised.toDoubleOrNull()
     }

@@ -330,4 +330,53 @@ class PushMessageHandlerTest {
         assertFalse(PushMessageHandler.handle(ctx, reflected))
         assertEquals(before, s.sndiFcmToken)
     }
+
+    // ---- Duplicates are copies, not look-alikes ----
+
+    private fun relay(sender: String, body: String, dedupe: String, time: Long) = mapOf(
+        PushMessageHandler.PAYLOAD_KEY to MessageCrypto.encrypt(
+            Wire.encodeFor(WireMessage.Relay(title = sender, body = body, dedupe = dedupe, time = time), Wire.Direction.COMPANION_TO_MAIN), key,
+        ),
+    )
+
+    @Test
+    fun two_identical_sms_are_both_kept_but_a_resent_copy_is_not() {
+        val sender = uniq("+1555")
+        val now = System.currentTimeMillis()
+        // Same sender, text and sent second - the content key matches - but received apart.
+        PushMessageHandler.handle(ctx, relay(sender, "OK", "same-key-$sender", now - 2_000))
+        PushMessageHandler.handle(ctx, relay(sender, "OK", "same-key-$sender", now - 1_000))
+        assertEquals(2, rowsFor(sender).size)
+        // A repush of the first one: same key, same received time.
+        PushMessageHandler.handle(ctx, relay(sender, "OK", "same-key-$sender", now - 2_000))
+        assertEquals(2, rowsFor(sender).size)
+        deleteConversation(sender)
+    }
+
+    // ---- Heartbeat off on the other phone ----
+
+    @Test
+    fun a_peer_with_heartbeat_off_is_not_reported_as_unreachable() {
+        val s = Settings.get(ctx)
+        val saved = Triple(s.heartbeatEnabled, s.lastPeerBeatAtMs, s.peerHeartbeatOff)
+        try {
+            s.heartbeatEnabled = true
+            s.lastPeerBeatAtMs = 1L // long stale
+            com.noti.logger.push.Heartbeat.onBeatReceived(ctx, request = false, off = true)
+            assertTrue(s.peerHeartbeatOff)
+            assertFalse(com.noti.logger.push.Heartbeat.isDisconnected(ctx))
+            // Its next ordinary beat means it's back on.
+            com.noti.logger.push.Heartbeat.onBeatReceived(ctx, request = false)
+            assertFalse(s.peerHeartbeatOff)
+        } finally {
+            s.heartbeatEnabled = saved.first; s.lastPeerBeatAtMs = saved.second; s.peerHeartbeatOff = saved.third
+        }
+    }
+
+    @Test
+    fun notification_ids_follow_the_message_not_a_restarting_counter() {
+        assertEquals(com.noti.logger.push.MessageNotifier.idFor(42), com.noti.logger.push.MessageNotifier.idFor(42))
+        assertTrue(com.noti.logger.push.MessageNotifier.idFor(1) != com.noti.logger.push.MessageNotifier.idFor(2))
+        assertTrue(com.noti.logger.push.MessageNotifier.idFor(1) >= 100_000)
+    }
 }

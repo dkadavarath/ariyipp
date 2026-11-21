@@ -64,6 +64,7 @@ class AboutFragment : Fragment(R.layout.fragment_about) {
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton(R.string.about_switch_confirm) { _, _ ->
                 Settings.get(requireContext()).role = target
+                com.noti.logger.util.Theming.syncCache(requireContext()) // the other role's appearance
                 // Stop the companion's relay now rather than on the next start (see CompanionRole).
                 if (target == Role.MAIN) com.noti.sender.CompanionRole.stopAll(requireContext())
                 // Relaunch the app fresh so it rebuilds for the new role; keys/settings are kept.

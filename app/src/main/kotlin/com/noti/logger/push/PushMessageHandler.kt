@@ -83,7 +83,7 @@ object PushMessageHandler {
             is WireMessage.Relay -> showRelay(context, settings, wire)
             is WireMessage.DeliveryAck -> applyAck(context, wire)
             is WireMessage.Heartbeat -> {
-                Heartbeat.onBeatReceived(context, wire.request)
+                Heartbeat.onBeatReceived(context, wire.request, wire.off)
                 true
             }
             is WireMessage.StatusReport -> {
@@ -155,10 +155,13 @@ object PushMessageHandler {
 
         val title = msg.title.ifBlank { "Message" }
 
-        // Drop a duplicate delivery (same SMS via the live relay and again via ariy's missed-sync).
+        // Drop a duplicate delivery (same SMS via the live relay and again via a repush or
+        // catch-up) - but not a separate SMS that merely says the same thing (see countCopies).
         val dao = NotiDatabase.get(context).relayedMessageDao()
         if (msg.dedupe.isNotBlank()) {
-            val dup = try { dao.countByDedupe(msg.dedupe) > 0 } catch (e: Exception) { false }
+            val dup = try {
+                if (msg.time > 0) dao.countCopies(msg.dedupe, msg.time) > 0 else dao.countByDedupe(msg.dedupe) > 0
+            } catch (e: Exception) { false }
             if (dup) { Diag.log("inbound: duplicate ignored"); return true }
         }
 

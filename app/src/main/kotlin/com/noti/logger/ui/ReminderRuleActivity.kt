@@ -40,7 +40,13 @@ import kotlinx.coroutines.withContext
  */
 class ReminderRuleActivity : ScreenActivity() {
 
+    /** Set once a save has started; see save(). */
+    private var saving = false
+
     companion object {
+        private const val STATE_PICKED = "picked_package"
+        private const val STATE_PAY_PICKED = "pay_package"
+        private const val STATE_PICKING_PAY = "picking_for_payment"
         const val EXTRA_RULE_ID = "rule_id"
         /** A new rule drafted from a message: its text becomes the sample, its sender the filter. */
         const val EXTRA_SAMPLE = "sample"
@@ -93,7 +99,15 @@ class ReminderRuleActivity : ScreenActivity() {
         findViewById<View>(R.id.btn_save).setOnClickListener { save() }
         findViewById<View>(R.id.btn_delete).setOnClickListener { confirmDelete() }
 
-        if (ruleId > 0) {
+        val restored = savedState
+        if (restored != null) {
+            // Rotated (or recreated): every field restored itself; put back what lives outside them.
+            pickedPackage = restored.getString(STATE_PICKED, "")
+            payPackage = restored.getString(STATE_PAY_PICKED, "")
+            pickingForPayment = restored.getBoolean(STATE_PICKING_PAY, false)
+            if (ruleId > 0) load(fillFields = false)
+            updateTypeUi(); updateSourceUi(); updatePayUi()
+        } else if (ruleId > 0) {
             load()
         } else {
             applyDefaults()
@@ -319,16 +333,29 @@ class ReminderRuleActivity : ScreenActivity() {
         updateTypeUi()
     }
 
-    private fun load() {
+    override fun onSaveInstanceState(outState: android.os.Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(STATE_PICKED, pickedPackage)
+        outState.putString(STATE_PAY_PICKED, payPackage)
+        outState.putBoolean(STATE_PICKING_PAY, pickingForPayment)
+    }
+
+    /** [fillFields] = false after a rotation: only the rule itself is needed (for save and delete);
+     *  the fields already hold what was being edited, which reloading would overwrite. */
+    private fun load(fillFields: Boolean = true) {
         lifecycleScope.launch {
             val rule = withContext(Dispatchers.IO) {
                 try { NotiDatabase.get(applicationContext).reminderRuleDao().byId(ruleId) } catch (e: Exception) { null }
             }
             if (rule == null) {
-                applyDefaults()
+                if (fillFields) applyDefaults()
                 return@launch
             }
             existing = rule
+            if (!fillFields) {
+                findViewById<View>(R.id.btn_delete).visibility = View.VISIBLE
+                return@launch
+            }
             pickedPackage = rule.sourcePackage
             findViewById<EditText>(R.id.et_name).setText(rule.name)
             findViewById<RadioButton>(
@@ -768,6 +795,14 @@ class ReminderRuleActivity : ScreenActivity() {
             Toast.makeText(this, R.string.rm_rule_needs_name, Toast.LENGTH_SHORT).show()
             return
         }
+        // A pattern that won't compile, or that runs away on long text, never reaches the scan.
+        for (id in listOf(R.id.et_match, R.id.et_amount, R.id.et_currency, R.id.et_date, R.id.et_zone,
+            R.id.et_expiry, R.id.et_pay_match, R.id.et_pay_amount)) {
+            val err = ReminderExtractor.patternError(text(id)) ?: continue
+            findViewById<EditText>(id).error = err
+            Toast.makeText(this, getString(R.string.rm_bad_pattern, err), Toast.LENGTH_LONG).show()
+            return
+        }
         val payOn = payEnabled()
         val payFromApp = findViewById<RadioButton>(R.id.rb_pay_app).isChecked
         if (payOn && text(R.id.et_pay_match).isBlank()) {
@@ -841,12 +876,16 @@ class ReminderRuleActivity : ScreenActivity() {
             payAmountPattern = text(R.id.et_pay_amount),
             payMatchAmount = if (findViewById<MaterialSwitch>(R.id.sw_pay_match_amount).isChecked) 1 else 0,
         )
+        // One save per tap: a double tap used to insert the rule (or bill) twice.
+        if (saving) return
+        saving = true
         lifecycleScope.launch {
             val settled = withContext(Dispatchers.IO) {
                 val dao = NotiDatabase.get(applicationContext).reminderRuleDao()
                 val id = if (ruleId > 0) { dao.update(rule); ruleId } else dao.insert(rule)
                 // A manual rule should produce its first occurrence straight away rather than
                 // waiting for the next scheduled scan.
+                com.noti.logger.reminder.ReminderTrigger.invalidateWatched()
                 com.noti.logger.reminder.ReminderScanner.rollManualRules(applicationContext)
                 com.noti.logger.reminder.ReminderScheduler.rebuildAll(applicationContext)
                 // The payment this was set up from has usually been scanned already; look back now

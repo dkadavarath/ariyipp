@@ -24,17 +24,56 @@ object Theming {
 
     private fun isCompanion(context: Context) = Settings.get(context).role == Role.COMPANION
 
-    private fun themeMode(context: Context): ThemeMode {
+    // ---- A plain cache of the effective appearance ----
+    //
+    // The theme is needed before the first frame, and reading it from the encrypted settings
+    // stores meant opening them (a Tink keyset decrypt, ~50 ms each on the emulator) on the main
+    // thread at every cold start - all of the main-thread disk time StrictMode found at launch.
+    // Theme choices aren't secret, so the effective values sit in a small plain preferences file,
+    // refreshed from the encrypted stores off the main thread by [syncCache]. The encrypted stores
+    // stay the source of truth; with no cache yet (first run), they're read directly.
+
+    private const val CACHE = "appearance_cache"
+    private fun cache(context: Context) = context.applicationContext.getSharedPreferences(CACHE, Context.MODE_PRIVATE)
+
+    private fun themeModeFromSettings(context: Context): ThemeMode {
         val name = if (isCompanion(context)) SenderSettings.get(context).themeMode.name
         else Settings.get(context).themeMode.name
         return runCatching { ThemeMode.valueOf(name) }.getOrDefault(ThemeMode.SYSTEM)
     }
 
-    private fun dynamicColor(context: Context): Boolean =
+    private fun dynamicFromSettings(context: Context): Boolean =
         if (isCompanion(context)) SenderSettings.get(context).dynamicColor else Settings.get(context).dynamicColor
 
-    private fun amoled(context: Context): Boolean =
+    private fun amoledFromSettings(context: Context): Boolean =
         if (isCompanion(context)) SenderSettings.get(context).amoled else Settings.get(context).amoled
+
+    private fun themeMode(context: Context): ThemeMode =
+        cache(context).getString("mode", null)?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() }
+            ?: themeModeFromSettings(context)
+
+    private fun dynamicColor(context: Context): Boolean =
+        cache(context).let { if (it.contains("dynamic")) it.getBoolean("dynamic", false) else dynamicFromSettings(context) }
+
+    private fun amoled(context: Context): Boolean =
+        cache(context).let { if (it.contains("amoled")) it.getBoolean("amoled", false) else amoledFromSettings(context) }
+
+    /**
+     * Refreshes the cache from the encrypted settings (role-aware). Call off the main thread. Returns
+     * true when the night mode changed - the caller then re-applies it, which only happens when the
+     * appearance was changed somewhere that couldn't update the cache itself.
+     */
+    fun syncCache(context: Context): Boolean {
+        val mode = themeModeFromSettings(context)
+        val c = cache(context)
+        val changed = c.getString("mode", null) != mode.name
+        c.edit()
+            .putString("mode", mode.name)
+            .putBoolean("dynamic", dynamicFromSettings(context))
+            .putBoolean("amoled", amoledFromSettings(context))
+            .apply()
+        return changed
+    }
 
     /** Apply the light/dark/system mode globally. Call from Application.onCreate and on change. */
     fun applyNightMode(context: Context) {

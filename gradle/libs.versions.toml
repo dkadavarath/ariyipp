@@ -11,6 +11,8 @@ splashscreen = "1.2.0"
 room = "2.8.5"
 # Encrypts the Room database at rest (S4).
 sqlcipher = "4.20.0"
+# Linear-time regex engine for user-written reminder patterns (no catastrophic backtracking).
+re2j = "1.8"
 workManager = "2.12.0"
 serializationJson = "1.12.0"
 securityCrypto = "1.1.0"
@@ -37,6 +39,7 @@ androidx-room-runtime = { group = "androidx.room", name = "room-runtime", versio
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 sqlcipher-android = { group = "net.zetetic", name = "sqlcipher-android", version.ref = "sqlcipher" }
+re2j = { group = "com.google.re2j", name = "re2j", version.ref = "re2j" }
 
 # WorkManager
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }

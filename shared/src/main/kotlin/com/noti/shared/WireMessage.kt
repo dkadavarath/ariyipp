@@ -210,6 +210,10 @@ sealed interface WireMessage {
     @SerialName("heartbeat")
     data class Heartbeat(
         val request: Boolean = false,
+        /** The sender has its heartbeat switched off: it answers force-checks with this (and sends
+         *  one when switched off) so the peer stops expecting beats instead of warning "not
+         *  responding" about a phone that is fine. */
+        val off: Boolean = false,
     ) : WireMessage
 }
 

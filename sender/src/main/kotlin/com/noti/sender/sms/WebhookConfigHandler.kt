@@ -60,6 +60,9 @@ object WebhookConfigHandler {
         s.n8nAuthHeaderPrefix = cfg.authHeaderPrefix
         s.n8nToken = cfg.authToken
         s.lastWebhookConfigVersion = cfg.configVersion
+        // Set the webhook leg's starting point now. Left to the next scan, it was set by the scan
+        // the next SMS triggered - after that SMS was already in the inbox, so it was skipped.
+        if (cfg.enabled) com.noti.sender.SmsSyncWorker.baselineIfNeeded(context)
         RemoteConfigNotice.notify(context, cfg)
     }
 }

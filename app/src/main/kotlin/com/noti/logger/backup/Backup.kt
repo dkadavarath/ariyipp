@@ -31,6 +31,10 @@ object Backup {
      */
     const val VERSION = 3
 
+    /** Test hook: make the restore's database transaction fail, to prove it changes nothing. */
+    @androidx.annotation.VisibleForTesting
+    internal var failInsideTransactionForTest = false
+
     @Serializable
     data class Payload(
         /** Format version. Written explicitly by [export]; a file without one is the oldest kind. */
@@ -224,6 +228,88 @@ object Backup {
                 com.noti.logger.reminder.DueDates.zonesForCurrency(com.noti.logger.reminder.FxRates.isoOf(currency, home)),
                 java.time.ZoneId.systemDefault(),
             )
+        // 1. Every database change in one transaction: if any part fails (a bad row, low storage),
+        //    none of it happens and the phone keeps exactly what it had. Before, settings were written
+        //    first and the tables replaced one by one, so a failure part-way left a new key with old
+        //    or missing data.
+        val db = NotiDatabase.get(context)
+        db.runInTransaction {
+            if (failInsideTransactionForTest) throw IllegalStateException("simulated failure mid-restore")
+            val dao = db.relayedMessageDao()
+            val ruleDao = db.reminderRuleDao()
+            val billDao = db.billOccurrenceDao()
+            val parkingDao = db.parkingSessionDao()
+            dao.replaceAll(
+                payload.messages.map {
+                    RelayedMessageEntity(
+                        sender = it.sender, sim = it.sim, body = it.body, receivedAt = it.receivedAt,
+                        outgoing = it.outgoing, read = it.read, dedupe = it.dedupe,
+                    )
+                }
+            )
+            // Row ids were just reassigned, so the Reminder scan's id watermark means nothing now; it
+            // falls back to its time window until the next scan sets it again.
+            Settings.get(context).lastReminderScanSmsId = -1L
+
+            // Reminders are restored only when the backup carries them. An older file has empty lists,
+            // and wiping a working rulebook because the backup predates the feature would be the worst
+            // possible reading of "restore".
+            val hasReminders = payload.reminderRules.isNotEmpty() ||
+                payload.bills.isNotEmpty() || payload.parking.isNotEmpty()
+            if (hasReminders) {
+                ruleDao.deleteAll()
+                billDao.deleteAll()
+                parkingDao.deleteAll()
+
+                // Rules first, keeping name -> new id, because ids are reassigned here and a bill's
+                // stored rule id would otherwise point at whatever rule landed in that row.
+                val idByName = HashMap<String, Long>()
+                for (r in payload.reminderRules) {
+                    val id = ruleDao.insert(
+                        ReminderRuleEntity(
+                            name = r.name, type = r.type, source = r.source,
+                            sourcePackage = r.sourcePackage, sourceSender = r.sourceSender, enabled = r.enabled,
+                            matchPattern = r.matchPattern, amountPattern = r.amountPattern,
+                            currencyPattern = r.currencyPattern, datePattern = r.datePattern,
+                            zonePattern = r.zonePattern, expiryPattern = r.expiryPattern,
+                            dateFormat = r.dateFormat, dueMode = r.dueMode,
+                            constantDay = r.constantDay, anchorDay = r.anchorDay, offsetDays = r.offsetDays,
+                            recurrence = r.recurrence, recurrenceEvery = r.recurrenceEvery, anchorDate = legacyDate(r.anchorDate, r.defaultCurrency),
+                            defaultCurrency = r.defaultCurrency, skipNext = r.skipNext, createdAt = r.createdAt,
+                            notes = r.notes, category = r.category, remindDaysBefore = r.remindDaysBefore,
+                            defaultAmount = r.defaultAmount,
+                            payEnabled = r.payEnabled, paySource = r.paySource, paySender = r.paySender,
+                            payPackage = r.payPackage, payMatchPattern = r.payMatchPattern,
+                            payAmountPattern = r.payAmountPattern, payMatchAmount = r.payMatchAmount,
+                        )
+                    )
+                    if (id > 0) idByName[r.name] = id
+                }
+                for (b in payload.bills) {
+                    billDao.insert(
+                        BillOccurrenceEntity(
+                            ruleId = idByName[b.ruleName] ?: 0,
+                            name = b.name, dueAt = legacyDate(b.dueAt, b.currency), amount = b.amount, currency = b.currency,
+                            amountRaw = b.amountRaw, dueRaw = b.dueRaw, status = b.status,
+                            sourceKey = b.sourceKey, createdAt = b.createdAt, settledAt = b.settledAt,
+                            notes = b.notes, category = b.category, remindDaysBefore = b.remindDaysBefore,
+                            issuedAt = b.issuedAt, settleKey = b.settleKey, autoSettled = b.autoSettled,
+                            editedFields = b.editedFields,
+                        )
+                    )
+                }
+                for (p in payload.parking) {
+                    parkingDao.insert(
+                        ParkingSessionEntity(
+                            name = p.name, zone = p.zone, expiresAt = p.expiresAt,
+                            active = p.active, renewals = p.renewals,
+                            startedAt = p.startedAt, endedAt = p.endedAt,
+                        )
+                    )
+                }
+            }
+        }
+        // 2. Only then the settings - a restore that couldn't write its data doesn't change them.
         val s = Settings.get(context)
         with(payload.settings) {
             s.webhookUrl = webhookUrl; s.bearerToken = bearerToken
@@ -265,80 +351,6 @@ object Backup {
             remindersShowTotal?.let { s.remindersShowTotal = it }
             defaultCurrency?.let { s.defaultCurrency = it; s.fxAttemptAtMs = 0L }
         }
-        val db = NotiDatabase.get(context)
-        val dao = db.relayedMessageDao()
-        val ruleDao = db.reminderRuleDao()
-        val billDao = db.billOccurrenceDao()
-        val parkingDao = db.parkingSessionDao()
-        dao.replaceAll(
-            payload.messages.map {
-                RelayedMessageEntity(
-                    sender = it.sender, sim = it.sim, body = it.body, receivedAt = it.receivedAt,
-                    outgoing = it.outgoing, read = it.read, dedupe = it.dedupe,
-                )
-            }
-        )
-        // Row ids were just reassigned, so the Reminder scan's id watermark means nothing now; it
-        // falls back to its time window until the next scan sets it again.
-        Settings.get(context).lastReminderScanSmsId = -1L
-
-        // Reminders are restored only when the backup carries them. An older file has empty lists,
-        // and wiping a working rulebook because the backup predates the feature would be the worst
-        // possible reading of "restore".
-        val hasReminders = payload.reminderRules.isNotEmpty() ||
-            payload.bills.isNotEmpty() || payload.parking.isNotEmpty()
-        if (hasReminders) {
-            ruleDao.deleteAll()
-            billDao.deleteAll()
-            parkingDao.deleteAll()
-
-            // Rules first, keeping name -> new id, because ids are reassigned here and a bill's
-            // stored rule id would otherwise point at whatever rule landed in that row.
-            val idByName = HashMap<String, Long>()
-            for (r in payload.reminderRules) {
-                val id = ruleDao.insert(
-                    ReminderRuleEntity(
-                        name = r.name, type = r.type, source = r.source,
-                        sourcePackage = r.sourcePackage, sourceSender = r.sourceSender, enabled = r.enabled,
-                        matchPattern = r.matchPattern, amountPattern = r.amountPattern,
-                        currencyPattern = r.currencyPattern, datePattern = r.datePattern,
-                        zonePattern = r.zonePattern, expiryPattern = r.expiryPattern,
-                        dateFormat = r.dateFormat, dueMode = r.dueMode,
-                        constantDay = r.constantDay, anchorDay = r.anchorDay, offsetDays = r.offsetDays,
-                        recurrence = r.recurrence, recurrenceEvery = r.recurrenceEvery, anchorDate = legacyDate(r.anchorDate, r.defaultCurrency),
-                        defaultCurrency = r.defaultCurrency, skipNext = r.skipNext, createdAt = r.createdAt,
-                        notes = r.notes, category = r.category, remindDaysBefore = r.remindDaysBefore,
-                        defaultAmount = r.defaultAmount,
-                        payEnabled = r.payEnabled, paySource = r.paySource, paySender = r.paySender,
-                        payPackage = r.payPackage, payMatchPattern = r.payMatchPattern,
-                        payAmountPattern = r.payAmountPattern, payMatchAmount = r.payMatchAmount,
-                    )
-                )
-                if (id > 0) idByName[r.name] = id
-            }
-            for (b in payload.bills) {
-                billDao.insert(
-                    BillOccurrenceEntity(
-                        ruleId = idByName[b.ruleName] ?: 0,
-                        name = b.name, dueAt = legacyDate(b.dueAt, b.currency), amount = b.amount, currency = b.currency,
-                        amountRaw = b.amountRaw, dueRaw = b.dueRaw, status = b.status,
-                        sourceKey = b.sourceKey, createdAt = b.createdAt, settledAt = b.settledAt,
-                        notes = b.notes, category = b.category, remindDaysBefore = b.remindDaysBefore,
-                        issuedAt = b.issuedAt, settleKey = b.settleKey, autoSettled = b.autoSettled,
-                        editedFields = b.editedFields,
-                    )
-                )
-            }
-            for (p in payload.parking) {
-                parkingDao.insert(
-                    ParkingSessionEntity(
-                        name = p.name, zone = p.zone, expiresAt = p.expiresAt,
-                        active = p.active, renewals = p.renewals,
-                        startedAt = p.startedAt, endedAt = p.endedAt,
-                    )
-                )
-            }
-        }
         reapply(context)
     }
 
@@ -350,6 +362,10 @@ object Backup {
     private fun reapply(context: Context) {
         val s = Settings.get(context)
         try {
+            // The restored theme, for the launch-time cache (see Theming).
+            if (com.noti.logger.util.Theming.syncCache(context)) {
+                android.os.Handler(android.os.Looper.getMainLooper()).post { com.noti.logger.util.Theming.applyNightMode(context) }
+            }
             if (s.reminderEnabled) {
                 com.noti.logger.reminder.ReminderNotifier.ensureChannels(context)
                 com.noti.logger.work.ReminderScanWorker.applyFromSettings(context)
@@ -362,6 +378,13 @@ object Backup {
                 com.noti.logger.work.HeartbeatWorker.schedulePeriodic(context)
             } else {
                 com.noti.logger.work.HeartbeatWorker.cancel(context)
+            }
+            // A restore brings back the companion's address but not this phone's own, which is new
+            // on a new or reset phone. Tell the companion now, or it keeps relaying to the old
+            // address until the next app start notices.
+            if (s.role != com.noti.shared.Role.COMPANION && s.peerPaired()) {
+                s.announcedToken = ""
+                com.noti.logger.work.HubTokenAnnounceWorker.enqueue(context)
             }
         } catch (e: Exception) {
             // Scheduling is best effort here; app start re-applies it all anyway.
