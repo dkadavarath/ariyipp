@@ -1,20 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    The palette for both roles. It lives in this module because it is the one Android library both
+    the app shell and the companion screens compile against; :app reads these same names.
+
+    Contrast (WCAG 2.x, checked for every text tier on every surface it sits on):
+      light  - onSurface >= 14:1, onSurfaceVariant >= 6.7:1, primary >= 4.6:1
+      dark   - onSurface >= 11:1, onSurfaceVariant >= 6.6:1, primary >= 7.9:1
+      AMOLED - onSurface >= 13:1, onSurfaceVariant >= 6.9:1, primary >= 8.8:1
+    Secondary text never drops below AA (4.5:1), so "subtle" is done with size and weight rather than
+    with faint grey. Dark values in values-night/; the AMOLED tiers are the ds_amoled_* colors below,
+    applied by ThemeOverlay.Noti.Amoled.
+-->
 <resources>
-    <!-- Brand blue scheme, shared visual identity with noti. Light values; dark in values-night/. -->
+    <!-- Brand blue (matches the app icon). -->
     <color name="brand_primary">#1565C0</color>
     <color name="brand_on_primary">#FFFFFF</color>
-    <color name="brand_primary_container">#D6E3FF</color>
-    <color name="brand_on_primary_container">#001B3D</color>
-    <color name="brand_secondary">#545F70</color>
+    <color name="brand_primary_container">#D9E5FF</color>
+    <color name="brand_on_primary_container">#0A2A5C</color>
+    <color name="brand_secondary">#4F5B6C</color>
     <color name="brand_on_secondary">#FFFFFF</color>
-    <color name="brand_secondary_container">#D8E3F8</color>
-    <color name="brand_on_secondary_container">#111C2B</color>
+    <color name="brand_secondary_container">#DDE4F0</color>
+    <color name="brand_on_secondary_container">#141D2B</color>
 
-    <!-- Status & Container Accents -->
-    <color name="status_active_bg">#E8F5E9</color>
-    <color name="status_active_fg">#2E7D32</color>
-    <color name="status_warning_bg">#FFF3E0</color>
-    <color name="status_warning_fg">#E65100</color>
-    <color name="status_info_bg">#E3F2FD</color>
-    <color name="status_info_fg">#1565C0</color>
+    <!-- Text and lines. -->
+    <color name="ds_on_surface">#101318</color>
+    <color name="ds_on_surface_variant">#454B55</color>
+    <color name="ds_outline">#6E7682</color>
+    <color name="ds_outline_variant">#D3D7DE</color>
+
+    <color name="ds_error">#B3261E</color>
+    <color name="ds_on_error">#FFFFFF</color>
+    <color name="ds_error_container">#FCE1DE</color>
+    <color name="ds_on_error_container">#410E0B</color>
+
+    <!-- Neutral surfaces, no lavender cast. The page is a soft grey and cards are white on it, so
+         structure comes from the surface step and not from borders or shadows.
+         app_surface_variant is the incoming chat bubble, the compose field and the date pills: a
+         clearly darker fill than the page, so a bubble reads as a shape at a glance. -->
+    <color name="app_surface">#F2F3F5</color>
+    <color name="app_surface_variant">#DCE0E6</color>
+    <color name="app_surface_container_lowest">#FFFFFF</color> <!-- cards -->
+    <color name="app_surface_container_low">#F7F8FA</color>
+    <color name="app_surface_container">#ECEEF1</color>
+    <color name="app_surface_container_high">#E6E8EC</color>
+    <color name="app_surface_container_highest">#DFE2E7</color>
+
+    <!-- AMOLED: the page is true black; cards sit one barely-lit step above it with a hairline, so
+         they keep their edges without lighting up the panel. Chat bubbles keep the dark theme's grey. -->
+    <color name="ds_amoled_card">#0B0C0E</color>
+    <color name="ds_amoled_container">#121417</color>
+    <color name="ds_amoled_container_high">#16181B</color>
+    <color name="ds_amoled_container_highest">#1C1F23</color>
+    <color name="ds_amoled_hairline">#24272C</color>
+    <color name="ds_amoled_on_surface">#EDEFF2</color>
+    <color name="ds_amoled_on_surface_variant">#A9B0BA</color>
 </resources>

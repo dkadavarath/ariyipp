@@ -1,7 +1,6 @@
 plugins {
     // No version: AGP is already on the classpath from :app's application plugin.
     id("com.android.library")
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
 }
 
@@ -10,7 +9,7 @@ plugins {
 // single launcher.
 android {
     namespace = "com.noti.sender"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 26
@@ -27,15 +26,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
-    sourceSets {
-        getByName("main") { kotlin.srcDirs("src/main/kotlin") }
-        getByName("test") { kotlin.srcDirs("src/test/kotlin") }
-        getByName("androidTest") { kotlin.srcDirs("src/androidTest/kotlin") }
-    }
+    // Built-in Kotlin (AGP 9): jvmTarget follows compileOptions; src/<set>/kotlin is a default root.
 }
 
 dependencies {

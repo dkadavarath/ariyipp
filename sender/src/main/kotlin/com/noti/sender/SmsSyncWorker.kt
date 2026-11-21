@@ -39,8 +39,19 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         }
         // One scan at a time in-process, so a broadcast scan and the periodic scan can't both read the
         // same rows before either mark advances.
-        scanMutex.withLock { scanAndRelay(ctx) }
+        val result = scanMutex.withLock { scanAndRelay(ctx) }
+        // A broadcast-triggered scan that found nothing usually means the default SMS app hadn't
+        // written the row yet (cold start, slow OEM). Look again shortly rather than leaving the
+        // message for the 15-minute backstop.
+        val followUp = inputData.getInt(KEY_FOLLOW_UP, -1)
+        if (followUp in 0 until FOLLOW_UP_DELAYS_S.size && !foundRows) {
+            enqueueFollowUp(ctx, followUp)
+        }
+        result
     }
+
+    /** Whether this run's scan saw any row past a mark (set by [scanAndRelay]). */
+    private var foundRows = false
 
     private fun scanAndRelay(ctx: Context): Result {
         val s = SenderSettings.get(ctx)
@@ -53,12 +64,15 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
                 Diag.log("relay: baseline at id ${s.lastRelayedSmsId} - new SMS will relay to main")
             } else {
                 val rows = SmsInbox.since(ctx, s.lastRelayedSmsId)
+                if (rows.isNotEmpty()) foundRows = true
                 if (rows.isNotEmpty()) Diag.log("relay: ${rows.size} new SMS → main")
                 for (sms in rows) {
                     when (SenderPipeline.pushToIppu(ctx, sms)) {
                         SenderPipeline.SendOutcome.DELIVERED,
                         SenderPipeline.SendOutcome.PERMANENT -> s.lastRelayedSmsId = sms.id
-                        SenderPipeline.SendOutcome.TRANSIENT -> { retry = true; break }
+                        // BLOCKED holds the mark too: skipping would lose the SMS for good.
+                        SenderPipeline.SendOutcome.TRANSIENT,
+                        SenderPipeline.SendOutcome.BLOCKED -> { retry = true; break }
                         SenderPipeline.SendOutcome.NOT_CONFIGURED -> break
                     }
                 }
@@ -72,12 +86,14 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
                 Diag.log("webhook: baseline at id ${s.lastWebhookSmsId}")
             } else {
                 val rows = SmsInbox.since(ctx, s.lastWebhookSmsId)
+                if (rows.isNotEmpty()) foundRows = true
                 if (rows.isNotEmpty()) Diag.log("webhook: ${rows.size} new SMS → n8n")
                 for (sms in rows) {
                     when (SenderPipeline.pushToWebhook(ctx, sms)) {
                         SenderPipeline.SendOutcome.DELIVERED,
                         SenderPipeline.SendOutcome.PERMANENT -> s.lastWebhookSmsId = sms.id
-                        SenderPipeline.SendOutcome.TRANSIENT -> { retry = true; break }
+                        SenderPipeline.SendOutcome.TRANSIENT,
+                        SenderPipeline.SendOutcome.BLOCKED -> { retry = true; break }
                         SenderPipeline.SendOutcome.NOT_CONFIGURED -> break
                     }
                 }
@@ -89,6 +105,12 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
 
     companion object {
         private const val UNIQUE = "sms-scan"
+        // Its own name: enqueueing under UNIQUE with REPLACE from inside a running scan would
+        // cancel that scan.
+        private const val FOLLOW_UP = "sms-scan-follow-up"
+        private const val KEY_FOLLOW_UP = "follow_up"
+        /** Re-check delays after a broadcast scan that found no new row yet. */
+        private val FOLLOW_UP_DELAYS_S = longArrayOf(5, 15)
         private const val PERIODIC = "sms-scan-periodic"
 
         // Serializes scans across the one-shot and periodic workers (same process).
@@ -114,17 +136,29 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         /** Scan and relay new rows immediately (manual button, boot). */
         fun scanNow(context: Context) = enqueue(context, 0L)
 
-        /** Scan shortly after an SMS broadcast; the delay lets the default SMS app write the row. */
-        fun scanSoon(context: Context) = enqueue(context, 2L)
+        /** Scan shortly after an SMS broadcast; the delay lets the default SMS app write the row.
+         *  If the row still isn't there, the scan re-checks after [FOLLOW_UP_DELAYS_S]. */
+        fun scanSoon(context: Context) = enqueue(context, 2L, followUp = 0)
 
-        private fun enqueue(context: Context, delaySeconds: Long) {
-            val req = OneTimeWorkRequestBuilder<SmsSyncWorker>()
+        private fun enqueue(context: Context, delaySeconds: Long, followUp: Int = -1) {
+            // REPLACE so a burst (or a duplicate broadcast) collapses to one scan of the latest state.
+            WorkManager.getInstance(context)
+                .enqueueUniqueWork(UNIQUE, ExistingWorkPolicy.REPLACE, request(delaySeconds, followUp))
+        }
+
+        private fun enqueueFollowUp(context: Context, attempt: Int) {
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                FOLLOW_UP, ExistingWorkPolicy.REPLACE,
+                request(FOLLOW_UP_DELAYS_S[attempt], attempt + 1),
+            )
+        }
+
+        private fun request(delaySeconds: Long, followUp: Int) =
+            OneTimeWorkRequestBuilder<SmsSyncWorker>()
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .apply { if (delaySeconds > 0) setInitialDelay(delaySeconds, TimeUnit.SECONDS) }
+                .setInputData(androidx.work.workDataOf(KEY_FOLLOW_UP to followUp))
                 .build()
-            // REPLACE so a burst (or a duplicate broadcast) collapses to one scan of the latest state.
-            WorkManager.getInstance(context).enqueueUniqueWork(UNIQUE, ExistingWorkPolicy.REPLACE, req)
-        }
 
         fun schedulePeriodic(context: Context) {
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(

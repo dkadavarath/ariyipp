@@ -6,6 +6,7 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.noti.logger.R
 import com.noti.logger.config.Settings
+import com.noti.logger.util.BackToExit
 import com.noti.logger.util.Theming
 import com.noti.shared.Role
 
@@ -19,6 +20,7 @@ class RoleOnboardingActivity : AppCompatActivity() {
 
         findViewById<View>(R.id.card_main).setOnClickListener { choose(Role.MAIN) }
         findViewById<View>(R.id.card_companion).setOnClickListener { choose(Role.COMPANION) }
+        BackToExit.install(this)
     }
 
     private fun choose(role: Role) {

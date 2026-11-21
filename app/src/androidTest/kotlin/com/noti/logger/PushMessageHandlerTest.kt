@@ -122,7 +122,7 @@ class PushMessageHandlerTest {
     private val chunkSender = "Chunk Sender"
 
     /** One encrypted push carrying the [i]th of [parts] body slices. Time is fresh - an old
-     *  timestamp would get the assembled row purged by retention the moment it lands. */
+     *  timestamp would be treated as a backfill (stored without a notification). */
     private fun partPayload(i: Int, parts: Int, slice: String, dedupe: String): Map<String, String> {
         val plain = Wire.encode(
             WireMessage.Relay(
@@ -224,30 +224,80 @@ class PushMessageHandlerTest {
         assertTrue(rowsFor(chunkSender).isEmpty())
     }
 
-    // ---- Retention purge (runs after every insert) ----
+    // ---- Chat retention (its own setting; default keeps everything) ----
+
+    private fun relayAt(title: String, body: String, time: Long, dedupe: String): Map<String, String> {
+        val plain = Wire.encode(WireMessage.Relay(title = title, body = body, dedupe = dedupe, time = time))
+        return mapOf(PushMessageHandler.PAYLOAD_KEY to MessageCrypto.encrypt(plain, key))
+    }
 
     @Test
-    fun retention_purge_drops_history_older_than_the_window() {
+    fun chat_history_is_kept_by_default_whatever_the_notification_retention() {
         val dao = com.noti.logger.data.NotiDatabase.get(ctx).relayedMessageDao()
         val s = Settings.get(ctx)
-        val originalDays = s.retentionDays
-
+        val (origNotif, origChat) = s.retentionDays to s.chatRetentionDays
         try {
-            s.retentionDays = 30
-            // An old conversation from 40 days ago...
+            s.retentionDays = 7 // notification capture only - must not touch the chat
+            s.chatRetentionDays = 0
             dao.insert(
                 com.noti.logger.data.RelayedMessageEntity(
                     sender = "+ancient", sim = "", body = "old news", receivedAt = System.currentTimeMillis() - 40L * 86_400_000
                 )
             )
-            // ...then any fresh inbound relay triggers the purge.
             assertTrue(PushMessageHandler.handle(ctx, payload("Bank", "fresh")))
-
-            assertTrue("40-day-old history purged", rowsFor("+ancient").isEmpty())
-            deleteConversation("+ancient")
+            assertEquals("40-day-old history kept", 1, rowsFor("+ancient").size)
         } finally {
-            s.retentionDays = originalDays
-            deleteConversation(chunkSender)
+            s.retentionDays = origNotif
+            s.chatRetentionDays = origChat
+            deleteConversation("+ancient")
+            deleteConversation("Bank")
         }
+    }
+
+    @Test
+    fun chat_retention_purges_older_history_when_set() {
+        val dao = com.noti.logger.data.NotiDatabase.get(ctx).relayedMessageDao()
+        val s = Settings.get(ctx)
+        val orig = s.chatRetentionDays
+        try {
+            s.chatRetentionDays = 30
+            dao.insert(
+                com.noti.logger.data.RelayedMessageEntity(
+                    sender = "+ancient", sim = "", body = "old news", receivedAt = System.currentTimeMillis() - 40L * 86_400_000
+                )
+            )
+            assertTrue(PushMessageHandler.handle(ctx, payload("Bank", "fresh")))
+            assertTrue("40-day-old history purged", rowsFor("+ancient").isEmpty())
+        } finally {
+            s.chatRetentionDays = orig
+            deleteConversation("+ancient")
+            deleteConversation("Bank")
+        }
+    }
+
+    @Test
+    fun relay_older_than_the_chat_window_is_neither_stored_nor_notified() {
+        val s = Settings.get(ctx)
+        val orig = s.chatRetentionDays
+        try {
+            s.chatRetentionDays = 7
+            val old = System.currentTimeMillis() - 10L * 86_400_000
+            assertTrue(PushMessageHandler.handle(ctx, relayAt("+backfill", "from last week", old, uniq("bf-a"))))
+            assertTrue(rowsFor("+backfill").isEmpty())
+            assertEquals(0, nm.activeNotifications.size)
+        } finally {
+            s.chatRetentionDays = orig
+            deleteConversation("+backfill")
+        }
+    }
+
+    @Test
+    fun backfilled_relay_is_stored_without_a_notification() {
+        val old = System.currentTimeMillis() - 3L * 86_400_000
+        assertTrue(PushMessageHandler.handle(ctx, relayAt("+backfill", "from three days ago", old, uniq("bf-b"))))
+        assertEquals(1, rowsFor("+backfill").size)
+        Thread.sleep(300) // a post would have landed by now
+        assertEquals(0, nm.activeNotifications.size)
+        deleteConversation("+backfill")
     }
 }

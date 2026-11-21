@@ -55,6 +55,8 @@ class RelayReceiveActivity : ScreenActivity() {
         otpCopy.isChecked = s.otpCopyEnabled
         suppressSystem.isChecked = s.suppressSystemNotifActions
         heartbeat.isChecked = s.heartbeatEnabled
+        val chatRetention = findViewById<TextInputEditText>(R.id.et_chat_retention_days)
+        chatRetention.setText(s.chatRetentionDays.toString())
         if (s.relayKey.isBlank()) s.relayKey = MessageCrypto.generateKeyBase64()
         keyField.setText(s.relayKey)
         keyField.keyListener = null // read-only (still selectable/copyable) - Main owns the key
@@ -77,6 +79,15 @@ class RelayReceiveActivity : ScreenActivity() {
                 .show()
         }
 
+        findViewById<MaterialButton>(R.id.btn_reset_token).setOnClickListener {
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.reset_token_title)
+                .setMessage(R.string.reset_token_msg)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.reset_token_yes) { _, _ -> resetToken() }
+                .show()
+        }
+
         findViewById<MaterialButton>(R.id.btn_import_sa).setOnClickListener {
             importFiles.launch(arrayOf("application/json", "text/*", "*/*"))
         }
@@ -86,6 +97,7 @@ class RelayReceiveActivity : ScreenActivity() {
             s.otpCopyEnabled = otpCopy.isChecked
             s.suppressSystemNotifActions = suppressSystem.isChecked
             s.heartbeatEnabled = heartbeat.isChecked
+            s.chatRetentionDays = chatRetention.text.toString().toIntOrNull() ?: s.chatRetentionDays
             s.relayKey = keyField.text.toString()
             // Don't touch sndiFcmToken - it's set automatically when the companion announces itself.
             if (heartbeat.isChecked) {
@@ -119,6 +131,37 @@ class RelayReceiveActivity : ScreenActivity() {
             s.fcmToken = token
             tokenView.text = token
             refreshQr(qrView, keyField.text.toString())
+        }
+    }
+
+    /** Drops this device's FCM registration and fetches a fresh one, then pushes it to the companion.
+     *  The SDK hands back its locally cached token without re-checking it, so a registration that
+     *  died on Google's side (e.g. Play services data wiped) keeps being "current" here: the companion
+     *  sends to it, FCM accepts, and nothing arrives. Re-pairing can't fix that - it just re-sends the
+     *  same dead token. Main → companion still works, so the new token can travel that way. */
+    private fun resetToken() {
+        if (!FirebaseInit.ensureInitialized(this)) {
+            tokenView.text = getString(R.string.relay_fb_needed)
+            return
+        }
+        tokenView.text = getString(R.string.loading)
+        val fm = FirebaseMessaging.getInstance()
+        fm.deleteToken().addOnCompleteListener {
+            fm.token
+                .addOnSuccessListener { token ->
+                    currentToken = token
+                    Settings.get(this).fcmToken = token
+                    tokenView.text = token
+                    refreshQr(qrView, keyField.text.toString())
+                    com.noti.logger.work.HubTokenAnnounceWorker.enqueue(this)
+                    com.noti.shared.Diag.log("push token reset by hand - announcing it to the companion")
+                    Toast.makeText(this, R.string.reset_token_done, Toast.LENGTH_SHORT).show()
+                }
+                .addOnFailureListener { e ->
+                    com.noti.shared.Diag.log("push token reset FAILED: ${e.message}")
+                    tokenView.text = currentToken
+                    Toast.makeText(this, R.string.reset_token_failed, Toast.LENGTH_LONG).show()
+                }
         }
     }
 

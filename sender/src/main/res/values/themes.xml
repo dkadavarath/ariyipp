@@ -1,32 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Same brand blue scheme as noti; follows the system light/dark setting. -->
-    <style name="Theme.Sendi" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/brand_primary</item>
-        <item name="colorOnPrimary">@color/brand_on_primary</item>
-        <item name="colorPrimaryContainer">@color/brand_primary_container</item>
-        <item name="colorOnPrimaryContainer">@color/brand_on_primary_container</item>
-        <item name="colorSecondary">@color/brand_secondary</item>
-        <item name="colorOnSecondary">@color/brand_on_secondary</item>
-        <item name="colorSecondaryContainer">@color/brand_secondary_container</item>
-        <item name="colorOnSecondaryContainer">@color/brand_on_secondary_container</item>
-    </style>
-
-    <!-- AMOLED overlay: applied at runtime over the dark theme to push chrome/background/card
-         surfaces to true black. Elevation tint disabled so nothing reads grey. -->
-    <style name="ThemeOverlay.Sendi.Amoled" parent="">
-        <item name="android:colorBackground">#FF000000</item>
-        <item name="colorSurface">#FF000000</item>
-        <item name="colorSurfaceContainerLowest">#FF000000</item>
-        <item name="colorSurfaceContainerLow">#FF000000</item>
-        <item name="colorSurfaceContainer">#FF000000</item>
-        <item name="colorSurfaceContainerHigh">#FF000000</item>
-        <item name="colorSurfaceContainerHighest">#FF000000</item>
-        <item name="colorSurfaceBright">#FF000000</item>
-        <item name="colorSurfaceDim">#FF000000</item>
-        <item name="elevationOverlayEnabled">false</item>
-    </style>
-
     <!-- Section header on the pairing screen (kept identical to ippu's for a unified look). -->
     <style name="PairSectionHeader" parent="">
         <item name="android:layout_width">match_parent</item>

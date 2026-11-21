@@ -16,12 +16,10 @@
 
         <!-- Hero App Header Card -->
         <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.Material3.CardView.Filled"
+            style="@style/Widget.Noti.Card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="24dp"
-            app:strokeWidth="0dp">
+            android:layout_marginBottom="16dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -56,12 +54,10 @@
 
         <!-- Description Card -->
         <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.Material3.CardView.Filled"
+            style="@style/Widget.Noti.Card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="20dp"
-            app:strokeWidth="0dp">
+            android:layout_marginBottom="12dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -90,12 +86,10 @@
 
         <!-- Device role -->
         <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.Material3.CardView.Filled"
+            style="@style/Widget.Noti.Card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="20dp"
-            app:strokeWidth="0dp">
+            android:layout_marginBottom="12dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -120,7 +114,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_switch_role"
-                    style="@style/Widget.Material3.Button.TonalButton"
+                    style="@style/Widget.Noti.Button.Tonal"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp" />
@@ -129,12 +123,10 @@
 
         <!-- What's New Card -->
         <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.Material3.CardView.Filled"
+            style="@style/Widget.Noti.Card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="20dp"
-            app:strokeWidth="0dp">
+            android:layout_marginBottom="16dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -162,7 +154,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_help"
-            style="@style/Widget.Material3.Button.TonalButton"
+            style="@style/Widget.Noti.Button.Tonal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/btn_help"
@@ -170,7 +162,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_github"
-            style="@style/Widget.Material3.Button.TonalButton"
+            style="@style/Widget.Noti.Button.Tonal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
@@ -178,7 +170,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_donate"
-            style="@style/Widget.Material3.Button.TonalButton"
+            style="@style/Widget.Noti.Button.Tonal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"

@@ -2,6 +2,7 @@ package com.noti.logger.push
 
 import android.content.Context
 import com.noti.logger.config.Settings
+import com.noti.logger.data.ChatRetention
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.RelayedMessageEntity
 import com.noti.shared.Diag
@@ -61,6 +62,9 @@ object PushMessageHandler {
             return false
         }
 
+        // It decrypted with the shared key, so the companion sent it: proof of life on its own.
+        if (wire !is WireMessage.Heartbeat) Heartbeat.notePeerAlive(context)
+
         return when (wire) {
             is WireMessage.Token -> {
                 // The companion announced its push endpoint - store it so reverse-send can reach it.
@@ -72,6 +76,10 @@ object PushMessageHandler {
             is WireMessage.DeliveryAck -> applyAck(context, wire)
             is WireMessage.Heartbeat -> {
                 Heartbeat.onBeatReceived(context, wire.request)
+                true
+            }
+            is WireMessage.StatusReport -> {
+                CompanionStatus.onReport(context, wire)
                 true
             }
             else -> false
@@ -144,17 +152,27 @@ object PushMessageHandler {
             if (dup) { Diag.log("inbound: duplicate ignored"); return true }
         }
 
-        // Persist to the chat history (best-effort - a storage error must not block the notification).
         // Order by the SMS's real time (from the sender) so a delayed/synced message lands correctly
         // in the timeline; fall back to arrival time for older senders that don't send it.
+        val now = System.currentTimeMillis()
+        val receivedAt = if (msg.time > 0) msg.time else now
         val (sender, sim) = RelayTitle.parse(title)
+
+        // Already past the chat-history window: storing it would only get it purged straight back
+        // out, and notifying for it would announce a message that then isn't in the chat.
+        if (!ChatRetention.keeps(receivedAt, settings.chatRetentionDays, now)) {
+            Diag.log("inbound: skipped - older than the chat history window (from $sender)")
+            return true
+        }
+
+        // Persist to the chat history (best-effort - a storage error must not block the notification).
         val messageId = try {
             dao.insert(
                 RelayedMessageEntity(
                     sender = sender,
                     sim = sim,
                     body = msg.body,
-                    receivedAt = if (msg.time > 0) msg.time else System.currentTimeMillis(),
+                    receivedAt = receivedAt,
                     dedupe = msg.dedupe,
                 )
             )
@@ -162,18 +180,27 @@ object PushMessageHandler {
             -1L // ignore; still notify below (without a deep-link target)
         }
 
-        // Retention: chat history grows forever otherwise (the notifications table has its own
-        // purge in UploadWorker). Same knob and semantics as uploads: days ≤ 0 ⇒ keep nothing.
-        try {
-            val cutoff = System.currentTimeMillis() - settings.retentionDays.coerceAtLeast(0) * 86_400_000L
-            dao.purgeOlderThan(cutoff)
-        } catch (_: Exception) {
-            // best-effort
+        // A rule may be about this sender: run the rulebook now rather than at the next scan.
+        if (messageId > 0) {
+            try { com.noti.logger.reminder.ReminderTrigger.onSms(context, sender) } catch (_: Exception) {}
+        }
+
+        // Chat retention has its own knob, default forever - it used to share the notification-
+        // capture setting, which silently truncated chat history to that window.
+        ChatRetention.cutoff(settings.chatRetentionDays, now)?.let { cutoff ->
+            try {
+                dao.purgeOlderThan(cutoff)
+            } catch (_: Exception) {
+                // best-effort
+            }
         }
 
         // A muted conversation still stores the message (it shows up as unread to catch up on later),
-        // it just doesn't raise a notification.
-        if (!settings.isMuted(sender)) {
+        // it just doesn't raise a notification. Nor does a backfill: an SMS that was hours or months
+        // old by the time it got here (a repush, a catch-up) is stored unread, quietly.
+        if (!ChatRetention.notifies(receivedAt, now)) {
+            Diag.log("inbound: stored quietly (backfill) - from $sender")
+        } else if (!settings.isMuted(sender)) {
             MessageNotifier.show(context, title, msg.body, sender, messageId)
             Diag.log("inbound: shown - from $sender (${msg.body.length} chars)")
         } else {

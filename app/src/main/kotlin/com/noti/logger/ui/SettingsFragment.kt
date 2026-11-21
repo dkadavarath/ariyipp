@@ -37,16 +37,18 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         fun open(cls: Class<*>) = startActivity(Intent(requireContext(), cls))
 
         // Order: Pairing, Webhook, Appearance first; everything else; Diagnostics last.
-        addRow(R.string.menu_relay_title, R.string.menu_relay_sub, R.drawable.ic_qr_code) { open(RelayReceiveActivity::class.java) }
-        addRow(R.string.menu_connection_title, R.string.menu_connection_sub, R.drawable.ic_connection) { open(ConnectionActivity::class.java) }
-        addRow(R.string.menu_appearance_title, R.string.menu_appearance_sub, R.drawable.ic_palette) { open(AppearanceActivity::class.java) }
-        addRow(R.string.menu_sync_title, R.string.menu_sync_sub, R.drawable.ic_status_sync) { open(SyncActivity::class.java) }
+        addRow(R.string.menu_relay_title, R.string.menu_relay_sub, com.noti.sender.R.drawable.ic_qr_code) { open(RelayReceiveActivity::class.java) }
+        addRow(R.string.menu_connection_title, R.string.menu_connection_sub, com.noti.sender.R.drawable.ic_connection) { open(ConnectionActivity::class.java) }
+        addRow(R.string.menu_appearance_title, R.string.menu_appearance_sub, com.noti.sender.R.drawable.ic_palette) { open(AppearanceActivity::class.java) }
+        addRow(R.string.menu_sync_title, R.string.menu_sync_sub, com.noti.sender.R.drawable.ic_status_sync) { open(SyncActivity::class.java) }
         addRow(R.string.menu_apps_title, R.string.menu_apps_sub, R.drawable.ic_apps) { openApps() }
         addRow(R.string.menu_app_rules_title, R.string.menu_app_rules_sub, R.drawable.ic_keywords) { open(AppRulesActivity::class.java) }
-        addRow(R.string.menu_privacy_title, R.string.menu_privacy_sub, R.drawable.ic_privacy) { open(PrivacyActivity::class.java) }
+        addRow(R.string.menu_companion_status_title, R.string.menu_companion_status_sub, com.noti.sender.R.drawable.ic_connection) { open(CompanionStatusActivity::class.java) }
+        addRow(R.string.menu_reminder_title, R.string.menu_reminder_sub, R.drawable.ic_nav_reminders) { open(ReminderSettingsActivity::class.java) }
+        addRow(R.string.menu_privacy_title, R.string.menu_privacy_sub, com.noti.sender.R.drawable.ic_privacy) { open(PrivacyActivity::class.java) }
         addRow(R.string.menu_backup_title, R.string.menu_backup_sub, R.drawable.ic_relay) { open(BackupActivity::class.java) }
         addRow(R.string.menu_purge_title, R.string.menu_purge_sub, R.drawable.ic_delete) { confirmPurge() }
-        addRow(R.string.menu_diag_title, R.string.menu_diag_sub, R.drawable.ic_status_warning) { open(DiagnosticsActivity::class.java) }
+        addRow(R.string.menu_diag_title, R.string.menu_diag_sub, com.noti.sender.R.drawable.ic_status_warning) { open(DiagnosticsActivity::class.java) }
     }
 
     private val appPicker = registerForActivityResult(

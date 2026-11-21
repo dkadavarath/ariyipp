@@ -3,6 +3,10 @@
 
     <!-- Companion-role permissions; merged into the app. Requested at runtime only in companion mode. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Read wifi/mobile/VPN state for the device-status readout, and watch wifi come and go for
+         the wifi-loss alert. Both are normal permissions - no runtime prompt. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.SEND_SMS" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
@@ -20,6 +24,7 @@
 
         <activity android:name=".ui.PairingActivity" android:exported="false" />
         <activity android:name=".ui.SimNamesActivity" android:exported="false" />
+        <activity android:name=".ui.DeviceStatusActivity" android:exported="false" />
         <activity android:name=".ui.WebhookActivity" android:exported="false" />
         <activity android:name=".ui.AppearanceActivity" android:exported="false" />
         <activity android:name=".ui.DiagnosticsActivity" android:exported="false" />

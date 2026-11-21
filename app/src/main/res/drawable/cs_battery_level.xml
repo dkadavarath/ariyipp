@@ -1,0 +1,9 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_cs_battery_bg" />
+    <!-- clipOrientation=horizontal + gravity=left: setImageLevel(0..10000) fills left to right,
+         so the icon reads as an actual charge level rather than a generic battery glyph. -->
+    <item>
+        <clip android:drawable="@drawable/ic_cs_battery_fg"
+            android:clipOrientation="horizontal" android:gravity="left" />
+    </item>
+</layer-list>

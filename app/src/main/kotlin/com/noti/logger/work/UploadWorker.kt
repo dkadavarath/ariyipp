@@ -7,6 +7,7 @@ import com.noti.logger.alert.Alerter
 import com.noti.logger.config.Settings
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.NotificationDao
+import com.noti.logger.data.NotificationEntity
 import com.noti.shared.UploadBatch
 import com.noti.logger.upload.UploadOutcome
 import com.noti.logger.upload.Uploader
@@ -33,9 +34,15 @@ class UploadWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
             // Validation lives in n8n; the endpoint always replies 200 with per-uid
             // success/failure lists. Only uids echoed in `success` are deleted; every other
             // uid in the batch is retried, and failures are surfaced to the user.
+            // Keyset cursor: the last row of the previous page. Rows the endpoint rejected stay
+            // pending (and are retried next run), but no longer pin the queue - the scan steps past
+            // them, so one record n8n will never accept can't stop everything newer uploading.
+            var cursor: NotificationEntity? = null
             while (pagesScanned < maxPages) {
-                val page = dao.pendingBatch(100)
+                val c = cursor
+                val page = if (c == null) dao.pendingBatch(100) else dao.pendingBatchAfter(c.postTime, c.id, 100)
                 if (page.isEmpty()) break
+                cursor = page.last()
                 pagesScanned++
                 val drained = page.size < 100
 
@@ -62,10 +69,10 @@ class UploadWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                         if (failedInPage > 0) {
                             totalFailed += failedInPage
                             failureMessages.addAll(genuineFailures)
-                            // Unconfirmed records stay pending; stop and let WorkManager retry them.
-                            break
+                            // Unconfirmed records stay pending and are retried on the next run
+                            // (totalFailed > 0 → Result.retry below); carry on with newer pages.
                         }
-                        if (drained) break // queue fully drained, all confirmed
+                        if (drained) break // reached the end of the queue
                     }
                     UploadOutcome.Retry -> {
                         settings.lastUploadResult = "retry"

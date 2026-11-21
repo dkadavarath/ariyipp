@@ -23,16 +23,14 @@ object Alerter {
     private const val ALERT_INVALID_URL_ID = 1004
 
     private fun ensureChannel(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val mgr = context.getSystemService(NotificationManager::class.java)
-            if (mgr.getNotificationChannel(CHANNEL_ID) == null) {
-                val ch = NotificationChannel(
-                    CHANNEL_ID,
-                    "Upload alerts",
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply { description = "Warnings when notification uploads are rejected" }
-                mgr.createNotificationChannel(ch)
-            }
+        val mgr = context.getSystemService(NotificationManager::class.java)
+        if (mgr.getNotificationChannel(CHANNEL_ID) == null) {
+            val ch = NotificationChannel(
+                CHANNEL_ID,
+                "Upload alerts",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply { description = "Warnings when notification uploads are rejected" }
+            mgr.createNotificationChannel(ch)
         }
     }
 

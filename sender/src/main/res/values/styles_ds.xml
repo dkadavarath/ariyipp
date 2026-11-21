@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Design system: component styles shared by the app shell and the companion screens. Layouts ask for
+    Widget.Noti.* rather than the stock Material styles, so shape, fill and motion change in one place.
+
+    Motion rules the styles follow:
+    - Anything the finger presses answers straight away: it scales to 97% and back
+      (@animator/ds_press_scale). A plain ripple alone doesn't read as a physical press.
+    - Entrances use a strong ease-out (@interpolator/ds_ease_out) and stay under 300ms.
+    - Nothing animates in from scale 0, and exits are quicker than entrances.
+    - Everything is Animator-based, so the system's "Remove animations" setting turns it off.
+-->
+<resources>
+
+    <!-- Cards. Radius, fill and stroke come from the theme, so the AMOLED overlay can give every card
+         a hairline edge on true black without any layout knowing about it. -->
+    <style name="Widget.Noti.Card" parent="Widget.Material3.CardView.Filled">
+        <item name="cardBackgroundColor">?attr/notiCardBackground</item>
+        <item name="cardCornerRadius">24dp</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeWidth">?attr/notiCardStrokeWidth</item>
+        <item name="strokeColor">?attr/notiCardStrokeColor</item>
+        <item name="android:stateListAnimator">@animator/ds_press_scale</item>
+    </style>
+
+    <!-- Buttons: stock Material 3 shapes, plus the press scale. -->
+    <style name="Widget.Noti.Button" parent="Widget.Material3.Button">
+        <item name="android:stateListAnimator">@animator/ds_press_scale</item>
+    </style>
+    <style name="Widget.Noti.Button.Tonal" parent="Widget.Material3.Button.TonalButton">
+        <item name="android:stateListAnimator">@animator/ds_press_scale</item>
+    </style>
+    <style name="Widget.Noti.Button.Outlined" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:stateListAnimator">@animator/ds_press_scale</item>
+        <item name="strokeColor">?attr/colorOutline</item>
+    </style>
+    <style name="Widget.Noti.Button.Text" parent="Widget.Material3.Button.TextButton">
+        <item name="android:stateListAnimator">@animator/ds_press_scale</item>
+    </style>
+    <style name="Widget.Noti.Button.Icon" parent="Widget.Material3.Button.IconButton">
+        <item name="android:stateListAnimator">@animator/ds_press_scale</item>
+    </style>
+    <style name="Widget.Noti.Button.Icon.Filled" parent="Widget.Material3.Button.IconButton.Filled">
+        <item name="android:stateListAnimator">@animator/ds_press_scale</item>
+    </style>
+
+    <!-- Floating action button: solid primary, not the pale container, so the one "create" action on
+         the screen is the strongest thing on it. -->
+    <style name="Widget.Noti.Fab" parent="Widget.Material3.FloatingActionButton.Primary">
+        <item name="backgroundTint">?attr/colorPrimary</item>
+        <item name="tint">?attr/colorOnPrimary</item>
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.Noti.Fab</item>
+    </style>
+    <style name="ShapeAppearance.Noti.Fab" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">20dp</item>
+    </style>
+
+    <!-- Text fields: outlined, a little rounder than stock to match the cards. -->
+    <style name="Widget.Noti.TextInput" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxCornerRadiusTopStart">14dp</item>
+        <item name="boxCornerRadiusTopEnd">14dp</item>
+        <item name="boxCornerRadiusBottomStart">14dp</item>
+        <item name="boxCornerRadiusBottomEnd">14dp</item>
+    </style>
+
+    <!-- A dropdown field: the exposed-dropdown variant, which (unlike the plain outlined style)
+         gives its AutoCompleteTextView the field's padding and height, and shows the arrow. -->
+    <style name="Widget.Noti.TextInput.Dropdown" parent="Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+        <item name="boxCornerRadiusTopStart">14dp</item>
+        <item name="boxCornerRadiusTopEnd">14dp</item>
+        <item name="boxCornerRadiusBottomStart">14dp</item>
+        <item name="boxCornerRadiusBottomEnd">14dp</item>
+    </style>
+
+    <!-- The text inside a field whose value comes from a picker dialog (a date, a time): not
+         typeable and no cursor, but still a field - it keeps the outline and the floating label,
+         and a tap anywhere on it opens the picker. -->
+    <style name="Widget.Noti.PickerField" parent="">
+        <item name="android:focusable">false</item>
+        <item name="android:clickable">true</item>
+        <item name="android:cursorVisible">false</item>
+        <item name="android:inputType">none</item>
+        <item name="android:longClickable">false</item>
+        <item name="android:maxLines">1</item>
+    </style>
+
+    <!-- Bottom bar: the same colour as the page, separated by a hairline rather than a tinted slab;
+         the selected tab gets a primary-container pill. -->
+    <style name="Widget.Noti.BottomNav" parent="Widget.Material3.BottomNavigationView">
+        <item name="backgroundTint">?attr/colorSurface</item>
+        <item name="elevation">0dp</item>
+        <item name="itemIconTint">@color/ds_nav_icon</item>
+        <item name="itemTextColor">@color/ds_nav_label</item>
+        <item name="itemActiveIndicatorStyle">@style/Widget.Noti.BottomNav.Indicator</item>
+    </style>
+    <style name="Widget.Noti.BottomNav.Indicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">?attr/colorPrimaryContainer</item>
+    </style>
+
+    <!-- Type: the big titles a weight up, in the system font itself (weight 500 where the platform
+         supports choosing one, Android 9+). Asking for "sans-serif-medium" instead can pull in
+         Roboto on phones whose system font is something else, mixing two fonts on one screen. -->
+    <style name="TextAppearance.Noti.HeadlineMedium" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="android:letterSpacing">0</item>
+        <item name="android:textFontWeight">500</item>
+    </style>
+    <style name="TextAppearance.Noti.TitleLarge" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:letterSpacing">0</item>
+        <item name="android:textFontWeight">500</item>
+    </style>
+
+    <!-- All text at the font's own spacing. Material 3 tracks most of its type scale out (+0.5sp
+         on Body Large, +0.4sp on Body Small, up to +0.5sp on the small labels, a little on titles
+         and buttons) where the platform and other apps use none, which is why the same font read
+         as slightly spaced-out, "wrong" text across this app. Sizes and weights are unchanged;
+         the smallest sizes keep a hair (0.01em) so they don't clump. -->
+    <style name="TextAppearance.Noti.TitleMedium" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:letterSpacing">0</item>
+    </style>
+    <style name="TextAppearance.Noti.TitleSmall" parent="TextAppearance.Material3.TitleSmall">
+        <item name="android:letterSpacing">0</item>
+    </style>
+    <style name="TextAppearance.Noti.LabelLarge" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:letterSpacing">0</item>
+    </style>
+    <style name="TextAppearance.Noti.BodyLarge" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:letterSpacing">0</item>
+    </style>
+    <style name="TextAppearance.Noti.BodyMedium" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:letterSpacing">0</item>
+    </style>
+    <style name="TextAppearance.Noti.BodySmall" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:letterSpacing">0.01</item>
+    </style>
+    <style name="TextAppearance.Noti.LabelMedium" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:letterSpacing">0.01</item>
+    </style>
+    <style name="TextAppearance.Noti.LabelSmall" parent="TextAppearance.Material3.LabelSmall">
+        <item name="android:letterSpacing">0.01</item>
+    </style>
+
+    <!--
+        AMOLED: applied at runtime over the dark theme, for both roles. The page, app bar and bottom bar
+        go to true black. Cards stay one barely-lit step above black with a hairline edge: black cards
+        on a black page (the old approach) left the layout with no visible structure. Menus and dialogs
+        get their own lifted tiers so they separate from what is behind them.
+    -->
+    <style name="ThemeOverlay.Noti.Amoled" parent="">
+        <item name="android:colorBackground">@android:color/black</item>
+        <item name="android:colorBackgroundFloating">@color/ds_amoled_container_highest</item>
+        <item name="colorSurface">@android:color/black</item>
+        <item name="colorSurfaceDim">@android:color/black</item>
+        <item name="colorSurfaceContainerLowest">@android:color/black</item>
+        <item name="colorSurfaceContainerLow">@color/ds_amoled_card</item>
+        <item name="colorSurfaceContainer">@color/ds_amoled_container</item>
+        <item name="colorSurfaceContainerHigh">@color/ds_amoled_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/ds_amoled_container_highest</item>
+        <item name="colorSurfaceBright">@color/ds_amoled_container_highest</item>
+        <item name="colorOnSurface">@color/ds_amoled_on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/ds_amoled_on_surface_variant</item>
+        <item name="colorOutlineVariant">@color/ds_amoled_hairline</item>
+        <item name="notiCardBackground">@color/ds_amoled_card</item>
+        <item name="notiCardStrokeColor">@color/ds_amoled_hairline</item>
+        <item name="notiCardStrokeWidth">1dp</item>
+        <item name="notiHairline">@color/ds_amoled_hairline</item>
+        <item name="elevationOverlayEnabled">false</item>
+    </style>
+</resources>

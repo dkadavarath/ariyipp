@@ -1,0 +1,6 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="26dp" android:height="26dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <!-- The fill that sits inside the body. Clipped horizontally by level in cs_battery_level. -->
+    <path android:fillColor="?attr/colorPrimary" android:pathData="M4.2,9.6h13.6v4.8H4.2z" />
+</vector>

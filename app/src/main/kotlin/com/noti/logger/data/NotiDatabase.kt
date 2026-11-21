@@ -8,14 +8,23 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [NotificationEntity::class, RelayedMessageEntity::class],
-    version = 8,
+    entities = [
+        NotificationEntity::class,
+        RelayedMessageEntity::class,
+        ReminderRuleEntity::class,
+        BillOccurrenceEntity::class,
+        ParkingSessionEntity::class,
+    ],
+    version = 13,
     exportSchema = false,
 )
 abstract class NotiDatabase : RoomDatabase() {
 
     abstract fun notificationDao(): NotificationDao
     abstract fun relayedMessageDao(): RelayedMessageDao
+    abstract fun reminderRuleDao(): ReminderRuleDao
+    abstract fun billOccurrenceDao(): BillOccurrenceDao
+    abstract fun parkingSessionDao(): ParkingSessionDao
 
     companion object {
         @Volatile
@@ -96,6 +105,146 @@ abstract class NotiDatabase : RoomDatabase() {
             }
         }
 
+        /** v8 → v9: the Reminder module's three tables. Purely additive - nothing existing is
+         *  touched, so an install that never turns the module on carries three empty tables and is
+         *  otherwise unchanged. */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS reminder_rules (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        source TEXT NOT NULL,
+                        sourcePackage TEXT NOT NULL DEFAULT '',
+                        sourceSender TEXT NOT NULL DEFAULT '',
+                        enabled INTEGER NOT NULL DEFAULT 1,
+                        matchPattern TEXT NOT NULL DEFAULT '',
+                        amountPattern TEXT NOT NULL DEFAULT '',
+                        currencyPattern TEXT NOT NULL DEFAULT '',
+                        datePattern TEXT NOT NULL DEFAULT '',
+                        zonePattern TEXT NOT NULL DEFAULT '',
+                        expiryPattern TEXT NOT NULL DEFAULT '',
+                        dateFormat TEXT NOT NULL DEFAULT '',
+                        dueMode TEXT NOT NULL DEFAULT 'FROM_MESSAGE',
+                        constantDay INTEGER NOT NULL DEFAULT 1,
+                        anchorDay INTEGER NOT NULL DEFAULT 1,
+                        offsetDays INTEGER NOT NULL DEFAULT 0,
+                        recurrence TEXT NOT NULL DEFAULT 'MONTHLY',
+                        defaultCurrency TEXT NOT NULL DEFAULT '',
+                        skipNext INTEGER NOT NULL DEFAULT 0,
+                        createdAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_reminder_rules_enabled ON reminder_rules(enabled)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_reminder_rules_sourcePackage ON reminder_rules(sourcePackage)")
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS reminder_bills (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        ruleId INTEGER NOT NULL DEFAULT 0,
+                        name TEXT NOT NULL,
+                        dueAt INTEGER NOT NULL DEFAULT 0,
+                        amount REAL,
+                        currency TEXT NOT NULL DEFAULT '',
+                        amountRaw TEXT NOT NULL DEFAULT '',
+                        dueRaw TEXT NOT NULL DEFAULT '',
+                        status INTEGER NOT NULL DEFAULT 0,
+                        sourceKey TEXT NOT NULL DEFAULT '',
+                        remindAt INTEGER NOT NULL DEFAULT 0,
+                        notified INTEGER NOT NULL DEFAULT 0,
+                        createdAt INTEGER NOT NULL,
+                        settledAt INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_reminder_bills_ruleId ON reminder_bills(ruleId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_reminder_bills_status ON reminder_bills(status)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_reminder_bills_dueAt ON reminder_bills(dueAt)")
+                // Unique: re-scanning the same statement must update one row, never create a second.
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_reminder_bills_sourceKey ON reminder_bills(sourceKey)")
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS reminder_parking (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        ruleId INTEGER NOT NULL DEFAULT 0,
+                        name TEXT NOT NULL,
+                        zone TEXT NOT NULL DEFAULT '',
+                        expiresAt INTEGER NOT NULL DEFAULT 0,
+                        remindAt INTEGER NOT NULL DEFAULT 0,
+                        active INTEGER NOT NULL DEFAULT 1,
+                        incompleteNotified INTEGER NOT NULL DEFAULT 0,
+                        renewals INTEGER NOT NULL DEFAULT 0,
+                        startedAt INTEGER NOT NULL,
+                        endedAt INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_reminder_parking_active ON reminder_parking(active)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_reminder_parking_expiresAt ON reminder_parking(expiresAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_reminder_parking_zone ON reminder_parking(zone)")
+            }
+        }
+
+        /** v9 → v10: manual bills gain an interval ("every 28 days") and a date to count from, so
+         *  a recurrence is no longer limited to one-unit steps off a day-of-month. Additive, with
+         *  defaults matching the previous behaviour. */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE reminder_rules ADD COLUMN recurrenceEvery INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE reminder_rules ADD COLUMN anchorDate INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** v10 → v11: notes, a category and a per-entry reminder lead, on both rules and the bills
+         *  they produce. Additive; -1 keeps the existing behaviour of using the global lead. */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                for (table in listOf("reminder_rules", "reminder_bills")) {
+                    db.execSQL("ALTER TABLE $table ADD COLUMN notes TEXT NOT NULL DEFAULT ''")
+                    db.execSQL("ALTER TABLE $table ADD COLUMN category TEXT NOT NULL DEFAULT ''")
+                    db.execSQL("ALTER TABLE $table ADD COLUMN remindDaysBefore INTEGER NOT NULL DEFAULT -1")
+                }
+            }
+        }
+
+        /** v11 → v12: a repeating manual bill's amount. It used to be dropped on save - the rule had
+         *  nowhere to keep it - so every occurrence came out blank. Backfilled from the newest
+         *  occurrence the user already corrected by hand, so existing rules carry it from now on. */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE reminder_rules ADD COLUMN defaultAmount REAL")
+                db.execSQL(
+                    "UPDATE reminder_rules SET defaultAmount = (SELECT b.amount FROM reminder_bills b " +
+                        "WHERE b.ruleId = reminder_rules.id AND b.amount IS NOT NULL " +
+                        "ORDER BY b.dueAt DESC LIMIT 1) WHERE source = 'MANUAL'"
+                )
+            }
+        }
+
+        /** v12 → v13: the payment resolver - its options on the rule, and on each bill when it was
+         *  issued and which payment (if any) settled it. Existing bills count as issued when they
+         *  were created, which is the best record there is for them. */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE reminder_rules ADD COLUMN payEnabled INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE reminder_rules ADD COLUMN paySource TEXT NOT NULL DEFAULT 'SMS'")
+                db.execSQL("ALTER TABLE reminder_rules ADD COLUMN paySender TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE reminder_rules ADD COLUMN payPackage TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE reminder_rules ADD COLUMN payMatchPattern TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE reminder_rules ADD COLUMN payAmountPattern TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE reminder_rules ADD COLUMN payMatchAmount INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE reminder_bills ADD COLUMN issuedAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE reminder_bills ADD COLUMN settleKey TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE reminder_bills ADD COLUMN autoSettled INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE reminder_bills SET issuedAt = createdAt")
+            }
+        }
+
         fun get(context: Context): NotiDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -104,7 +253,7 @@ abstract class NotiDatabase : RoomDatabase() {
                     "noti.db"
                 ).addMigrations(
                     MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-                    MIGRATION_7_8
+                    MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13
                 ).build().also { INSTANCE = it }
             }
         }

@@ -31,6 +31,28 @@ object HeartbeatPolicy {
     fun isStale(lastBeatAtMs: Long, nowMs: Long): Boolean =
         lastBeatAtMs > 0L && nowMs - lastBeatAtMs > staleAfterMs
 
+    /**
+     * Going stale is only a suspicion: the routine beat travels at normal priority and both phones
+     * defer their 15-min work under Doze, so a healthy peer can easily miss the window. Before
+     * warning, the device sends a high-priority force-check and waits this long for any reply.
+     */
+    const val PROBE_WAIT_MINUTES = 3L
+
+    val probeWaitMs: Long get() = PROBE_WAIT_MINUTES * MINUTE_MS
+
+    /** Any authenticated push from the peer proves it alive; record it at most this often so a
+     *  status stream (one report every few seconds) doesn't rewrite encrypted prefs each time. */
+    const val ALIVE_WRITE_THROTTLE_MS = 60_000L
+
+    /** True when a reply (a beat, or any other traffic) arrived at or after the force-check sent at
+     *  [probeAtMs] - the peer is alive and the warning must not be shown. */
+    fun answeredSince(lastBeatAtMs: Long, probeAtMs: Long): Boolean =
+        probeAtMs > 0L && lastBeatAtMs >= probeAtMs
+
+    /** Whether a non-heartbeat push should refresh the last-seen time, given the stored one. */
+    fun shouldRecordAlive(lastBeatAtMs: Long, nowMs: Long): Boolean =
+        nowMs - lastBeatAtMs >= ALIVE_WRITE_THROTTLE_MS || nowMs < lastBeatAtMs
+
     /** Rough "next automatic check" delay from now, for the ETA line in the warning. */
     val retryEtaMinutes: Long get() = INTERVAL_MINUTES
 }

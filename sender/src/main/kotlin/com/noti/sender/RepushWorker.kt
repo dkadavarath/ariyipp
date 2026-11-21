@@ -74,6 +74,14 @@ class RepushWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                         return@withContext Result.success()
                     }
                 }
+                SenderPipeline.SendOutcome.BLOCKED -> {
+                    // Key rejected / Main's token stale: every later message would fail the same
+                    // way. Stop now, keeping the cursor so the next press resumes from here.
+                    s.repushCursorId = localCursor
+                    Diag.log("repush: stopped - main/FCM rejected the setup (check the key & main token)")
+                    RepushNotice.done(ctx, ctx.getString(R.string.repush_note_rejected))
+                    return@withContext Result.success()
+                }
                 SenderPipeline.SendOutcome.TRANSIENT -> {
                     s.repushCursorId = localCursor
                     val at = base + delivered + failed

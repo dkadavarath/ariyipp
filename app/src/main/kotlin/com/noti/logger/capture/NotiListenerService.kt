@@ -6,6 +6,7 @@ import android.service.notification.StatusBarNotification
 import com.noti.logger.config.Settings
 import com.noti.logger.config.TriggerMode
 import com.noti.logger.data.NotiDatabase
+import com.noti.logger.reminder.ReminderTrigger
 import com.noti.logger.data.NotificationEntity
 import com.noti.logger.redact.RawNotification
 import com.noti.logger.redact.RedactedResult
@@ -35,7 +36,15 @@ class NotiListenerService : NotificationListenerService() {
          *  many have piled up (e.g. no webhook configured), something is already wrong and further
          *  capture should stop until the backlog clears via upload or the retention purge. */
         const val MAX_PENDING_ROWS = 10_000
+
+        /** Local-only mode (no webhook): how often the age purge runs, and how many of the oldest
+         *  rows go when the cap is still hit. */
+        const val LOCAL_PURGE_INTERVAL_MS = 60 * 60 * 1000L
+        const val LOCAL_TRIM_ROWS = 1_000
     }
+
+    /** Last local-only age purge (in-memory; touched only on [serialIo]). */
+    private var lastLocalPurgeMs = 0L
 
     // Single-threaded so the dedup check + insert per notification can't race for rapid bursts.
     // Declared BEFORE `scope` so it is initialized when the first newScope() runs.
@@ -124,7 +133,19 @@ class NotiListenerService : NotificationListenerService() {
             if (dao.countRecentByPackage(packageName, now - PER_PACKAGE_WINDOW_MS) >= MAX_PER_PACKAGE_PER_WINDOW) {
                 return@launch
             }
-            if (dao.pendingCount() >= MAX_PENDING_ROWS) {
+            if (settings.webhookUrl.isBlank()) {
+                // Local-only: nothing is ever uploaded, so nothing is ever marked uploaded and the
+                // upload worker's purge never touches these rows. Without this the table hit the
+                // cap and capture (and notification-based Reminder rules) stopped for good. Prune
+                // by age instead - at least a day, so the Reminder scan still sees recent rows even
+                // with retention 0 - and trim the oldest if a flood still reaches the cap.
+                if (now - lastLocalPurgeMs >= LOCAL_PURGE_INTERVAL_MS) {
+                    lastLocalPurgeMs = now
+                    val days = settings.retentionDays.coerceAtLeast(1)
+                    try { dao.purgeOlderThan(now - days * 86_400_000L) } catch (_: Exception) {}
+                }
+                if (dao.pendingCount() >= MAX_PENDING_ROWS) dao.trimOldest(LOCAL_TRIM_ROWS)
+            } else if (dao.pendingCount() >= MAX_PENDING_ROWS) {
                 return@launch
             }
 
@@ -147,6 +168,11 @@ class NotiListenerService : NotificationListenerService() {
             )
 
             val rowId = dao.insert(entity)
+
+            // A rule may be about this app: run the rulebook now rather than at the next scan.
+            if (rowId != -1L) {
+                try { ReminderTrigger.onNotification(applicationContext, packageName) } catch (_: Exception) {}
+            }
 
             if (rowId != -1L &&
                 settings.triggerMode == TriggerMode.THRESHOLD &&

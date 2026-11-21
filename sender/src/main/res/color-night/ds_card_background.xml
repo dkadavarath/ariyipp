@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Card fill, dark: one step above the page. (In dark themes the "lowest" tier sits below the page,
+     so the light variant's choice would sink cards into the background.) -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="?attr/colorSurfaceContainerLow" />
+</selector>

@@ -1,20 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Brand blue scheme (dark), matching noti. -->
-    <color name="brand_primary">#A7C8FF</color>
-    <color name="brand_on_primary">#00325B</color>
-    <color name="brand_primary_container">#00497F</color>
-    <color name="brand_on_primary_container">#D6E3FF</color>
-    <color name="brand_secondary">#BCC7DC</color>
-    <color name="brand_on_secondary">#263141</color>
-    <color name="brand_secondary_container">#3D4758</color>
-    <color name="brand_on_secondary_container">#D8E3F8</color>
+    <!-- Brand blue (dark): a lighter primary so it stays legible on dark surfaces. -->
+    <color name="brand_primary">#A9C7FF</color>
+    <color name="brand_on_primary">#062E63</color>
+    <color name="brand_primary_container">#1F467F</color>
+    <color name="brand_on_primary_container">#D9E5FF</color>
+    <color name="brand_secondary">#BCC7DA</color>
+    <color name="brand_on_secondary">#253040</color>
+    <color name="brand_secondary_container">#343D4B</color>
+    <color name="brand_on_secondary_container">#DDE4F0</color>
 
-    <!-- Status & Container Accents (Dark) -->
-    <color name="status_active_bg">#1B3820</color>
-    <color name="status_active_fg">#81C784</color>
-    <color name="status_warning_bg">#3E2723</color>
-    <color name="status_warning_fg">#FFB74D</color>
-    <color name="status_info_bg">#0D47A1</color>
-    <color name="status_info_fg">#90CAF9</color>
+    <color name="ds_on_surface">#E7E9EC</color>
+    <color name="ds_on_surface_variant">#AEB5BF</color>
+    <color name="ds_outline">#8B929C</color>
+    <color name="ds_outline_variant">#31353B</color>
+
+    <color name="ds_error">#FFB4AB</color>
+    <color name="ds_on_error">#690005</color>
+    <color name="ds_error_container">#5C1A15</color>
+    <color name="ds_on_error_container">#FFDAD5</color>
+
+    <!-- Neutral dark greys: the page is near-black and each tier steps up evenly. -->
+    <color name="app_surface">#0E1013</color>
+    <color name="app_surface_variant">#2E3238</color>
+    <color name="app_surface_container_lowest">#0A0B0D</color>
+    <color name="app_surface_container_low">#181B1F</color>
+    <color name="app_surface_container">#1E2126</color>
+    <color name="app_surface_container_high">#25292E</color>
+    <color name="app_surface_container_highest">#2C3036</color>
 </resources>

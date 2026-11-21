@@ -13,6 +13,7 @@ import com.noti.logger.ui.MainActivity
 import com.noti.logger.work.HeartbeatWorker
 import com.noti.sender.config.SenderSettings
 import com.noti.shared.Diag
+import com.noti.shared.FcmLabel
 import com.noti.shared.FcmSender
 import com.noti.shared.HeartbeatPolicy
 import com.noti.shared.MessageCrypto
@@ -27,14 +28,14 @@ import com.noti.shared.WireMessage
  */
 object Heartbeat {
 
-    private data class Peer(val serviceAccountJson: String, val token: String, val key: String)
+    private data class Peer(val serviceAccountJson: String, val token: String, val key: String, val label: String)
 
     private fun peer(context: Context): Peer? = when (Settings.get(context).role) {
         Role.COMPANION -> SenderSettings.get(context).let {
-            if (it.peerPaired()) Peer(it.serviceAccountJson, it.notiFcmToken, it.relayKey) else null
+            if (it.peerPaired()) Peer(it.serviceAccountJson, it.notiFcmToken, it.relayKey, FcmLabel.HEARTBEAT_TO_MAIN) else null
         }
         else -> Settings.get(context).let {
-            if (it.peerPaired()) Peer(it.serviceAccountJson, it.sndiFcmToken, it.relayKey) else null
+            if (it.peerPaired()) Peer(it.serviceAccountJson, it.sndiFcmToken, it.relayKey, FcmLabel.HEARTBEAT_TO_COMPANION) else null
         }
     }
 
@@ -79,30 +80,60 @@ object Heartbeat {
         if (Settings.get(context).role == Role.COMPANION) context.getString(R.string.hb_peer_main)
         else context.getString(R.string.hb_peer_companion)
 
-    /** Send one beat to the peer. [request] = "pong back now" (used by force-retry). Blocking network. */
-    fun send(context: Context, request: Boolean): Boolean {
+    /**
+     * Send one beat to the peer. [request] = "pong back now" (a force-check). Blocking network.
+     * The routine beat goes at normal priority: it is invisible housekeeping that can wait for the
+     * peer's next maintenance window, and every silent high-priority push counts against how FCM
+     * treats the app's high-priority pushes. Force-checks and their answers stay high priority.
+     */
+    fun send(context: Context, request: Boolean, highPriority: Boolean = request): Boolean {
         if (!enabled(context)) return false
         val p = peer(context) ?: return false
         return try {
             val payload = MessageCrypto.encrypt(Wire.encode(WireMessage.Heartbeat(request)), p.key)
-            val res = FcmSender.forServiceAccount(p.serviceAccountJson).send(p.token, mapOf("payload" to payload))
-            if (!res.ok) Diag.log("heartbeat → HTTP ${res.httpCode} (${res.detail.take(40)})")
+            val res = FcmSender.forServiceAccount(p.serviceAccountJson)
+                .send(p.token, mapOf("payload" to payload), label = p.label, highPriority = highPriority)
+            // On success, the message id is what finds this beat in the BigQuery delivery export -
+            // "accepted here, never delivered there" is otherwise invisible from either phone.
+            val kind = if (request) " force-check" else if (highPriority) " answer" else ""
+            if (res.ok) Diag.log("heartbeat$kind → sent to ${peerLabel(context)} (id ${FcmLabel.messageId(res.detail)})")
+            else Diag.log("heartbeat$kind → HTTP ${res.httpCode} (${res.detail.take(40)})")
             res.ok
         } catch (e: Exception) {
             Diag.log("heartbeat → ERROR: ${e.message}"); false
         }
     }
 
-    /** A beat arrived from the peer: record it, clear the warning, and pong if it asked us to. */
+    /**
+     * A beat arrived from the peer: record it, clear the warning, and if it was a force-check answer
+     * straight away. Runs on FCM's delivery thread, inside the short window a high-priority push
+     * grants even under Doze - a WorkManager hop here could be deferred past the asker's wait, which
+     * is exactly the false alarm the force-check exists to prevent. The worker is only the fallback.
+     */
     fun onBeatReceived(context: Context, request: Boolean) {
         if (!enabled(context)) { clearNotification(context); return }
         setLastBeatAtMs(context, System.currentTimeMillis())
         clearNotification(context)
         Diag.log("heartbeat received from ${peerLabel(context)}${if (request) " (force-check)" else ""}")
-        if (request) HeartbeatWorker.answerNow(context)
+        if (request && !send(context, request = false, highPriority = true)) HeartbeatWorker.answerNow(context)
     }
 
-    /** Post the disconnected warning if stale, otherwise clear it. Called by the periodic worker. */
+    /**
+     * Any other authenticated push from the peer (a relayed SMS, an ack, a status report, a command)
+     * proves it is alive just as well as a beat does. Before this only beats counted, so an active
+     * companion could be streaming status to the open Diagnostics screen while being reported as
+     * not responding. Throttled; see [HeartbeatPolicy.ALIVE_WRITE_THROTTLE_MS].
+     */
+    fun notePeerAlive(context: Context) {
+        if (!enabled(context) || !paired(context)) return
+        val now = System.currentTimeMillis()
+        if (!HeartbeatPolicy.shouldRecordAlive(lastBeatAtMs(context), now)) return
+        setLastBeatAtMs(context, now)
+        clearNotification(context)
+    }
+
+    /** Post the disconnected warning if stale, otherwise clear it. Only called once a force-check
+     *  has gone unanswered (or could not be sent) - never on staleness alone. */
     fun refreshNotification(context: Context) {
         if (isDisconnected(context)) showDisconnected(context) else clearNotification(context)
     }

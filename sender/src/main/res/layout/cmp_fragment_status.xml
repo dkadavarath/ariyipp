@@ -16,14 +16,12 @@
         <!-- Connection-lost banner (hidden unless the Main heartbeat is stale) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/card_hb_banner"
-            style="@style/Widget.Material3.CardView.Filled"
+            style="@style/Widget.Noti.Card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
             android:visibility="gone"
-            app:cardBackgroundColor="?attr/colorErrorContainer"
-            app:cardCornerRadius="20dp"
-            app:strokeWidth="0dp">
+            app:cardBackgroundColor="?attr/colorErrorContainer">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -42,13 +40,13 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="@string/hb_banner_body"
+                    android:text="@string/cmp_hb_banner_body"
                     android:textAppearance="?attr/textAppearanceBodyMedium"
                     android:textColor="?attr/colorOnErrorContainer" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_hb_retry"
-                    style="@style/Widget.Material3.Button.TonalButton"
+                    style="@style/Widget.Noti.Button.Tonal"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
@@ -56,96 +54,97 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Permissions card -->
+        <!-- Each check is a status row (what, a plain-language detail, a badge for its state); the
+             fix-it button only appears under a row that needs it. -->
         <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.Material3.CardView.Filled"
+            style="@style/Widget.Noti.Card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="20dp"
-            app:strokeWidth="0dp">
+            android:layout_marginBottom="12dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="12dp">
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_privacy"
-                        app:tint="?attr/colorPrimary"
-                        android:contentDescription="@null" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
-                        android:text="@string/status_permissions"
-                        android:textAppearance="?attr/textAppearanceTitleLarge"
-                        android:textColor="?attr/colorOnSurface" />
-                </LinearLayout>
+                android:paddingHorizontal="20dp"
+                android:paddingTop="18dp"
+                android:paddingBottom="12dp">
 
                 <TextView
-                    android:id="@+id/txt_sms_status"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textAppearance="?attr/textAppearanceBodyMedium"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
+                    android:layout_marginBottom="4dp"
+                    android:text="@string/status_permissions"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <include
+                    android:id="@+id/row_sms"
+                    layout="@layout/ds_status_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_grant_sms"
-                    style="@style/Widget.Material3.Button.TonalButton"
+                    style="@style/Widget.Noti.Button.Tonal"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
                     android:text="@string/btn_grant_sms"
-                    android:visibility="gone"
-                    app:icon="@drawable/ic_status_active" />
+                    android:visibility="gone" />
 
-                <TextView
-                    android:id="@+id/txt_battery_status"
+                <include
+                    android:id="@+id/row_battery"
+                    layout="@layout/ds_status_row"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:textAppearance="?attr/textAppearanceBodyMedium"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
+                    android:layout_height="wrap_content" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_battery"
-                    style="@style/Widget.Material3.Button.TonalButton"
+                    style="@style/Widget.Noti.Button.Tonal"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
                     android:text="@string/btn_ignore_battery"
-                    android:visibility="gone"
-                    app:icon="@drawable/ic_status_active" />
+                    android:visibility="gone" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Noti.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="20dp"
+                android:paddingTop="18dp"
+                android:paddingBottom="12dp">
 
                 <TextView
-                    android:id="@+id/tv_heartbeat_status"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:textAppearance="?attr/textAppearanceBodyMedium"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
+                    android:layout_marginBottom="4dp"
+                    android:text="@string/st_connection"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <include
+                    android:id="@+id/row_main"
+                    layout="@layout/ds_status_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <!-- Sync card -->
         <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.Material3.CardView.Filled"
+            style="@style/Widget.Noti.Card"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardCornerRadius="20dp"
-            app:strokeWidth="0dp">
+            android:layout_height="wrap_content">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -153,33 +152,17 @@
                 android:orientation="vertical"
                 android:padding="20dp">
 
-                <LinearLayout
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="12dp">
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_status_sync"
-                        app:tint="?attr/colorPrimary"
-                        android:contentDescription="@null" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
-                        android:text="@string/status_sync"
-                        android:textAppearance="?attr/textAppearanceTitleLarge"
-                        android:textColor="?attr/colorOnSurface" />
-                </LinearLayout>
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/status_sync"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnSurface" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:alpha="0.85"
                     android:lineSpacingExtra="3dp"
                     android:text="@string/status_sync_hint"
                     android:textAppearance="?attr/textAppearanceBodyMedium"
@@ -187,7 +170,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_sync"
-                    style="@style/Widget.Material3.Button"
+                    style="@style/Widget.Noti.Button"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
@@ -196,7 +179,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_repush"
-                    style="@style/Widget.Material3.Button.TonalButton"
+                    style="@style/Widget.Noti.Button.Tonal"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"

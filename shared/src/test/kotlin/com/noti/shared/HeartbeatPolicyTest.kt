@@ -30,4 +30,31 @@ class HeartbeatPolicyTest {
         // Guards the "tolerates 2 missed beats, trips on the 3rd" intent.
         assertTrue(HeartbeatPolicy.STALE_AFTER_MINUTES == HeartbeatPolicy.INTERVAL_MINUTES * 3)
     }
+
+    @Test fun `a reply after the force-check counts as answered`() {
+        assertTrue(HeartbeatPolicy.answeredSince(lastBeatAtMs = now + 5_000L, probeAtMs = now))
+        assertTrue(HeartbeatPolicy.answeredSince(lastBeatAtMs = now, probeAtMs = now))
+    }
+
+    @Test fun `only the old beat means the force-check went unanswered`() {
+        assertFalse(HeartbeatPolicy.answeredSince(lastBeatAtMs = now - HeartbeatPolicy.staleAfterMs * 2, probeAtMs = now))
+    }
+
+    @Test fun `a missing probe time never counts as answered`() {
+        assertFalse(HeartbeatPolicy.answeredSince(lastBeatAtMs = now, probeAtMs = 0L))
+    }
+
+    @Test fun `other traffic refreshes last-seen at most once a minute`() {
+        assertFalse(HeartbeatPolicy.shouldRecordAlive(lastBeatAtMs = now - 5_000L, nowMs = now))
+        assertTrue(HeartbeatPolicy.shouldRecordAlive(lastBeatAtMs = now - HeartbeatPolicy.ALIVE_WRITE_THROTTLE_MS, nowMs = now))
+        assertTrue(HeartbeatPolicy.shouldRecordAlive(lastBeatAtMs = 0L, nowMs = now))
+    }
+
+    @Test fun `a clock that went backwards still records`() {
+        assertTrue(HeartbeatPolicy.shouldRecordAlive(lastBeatAtMs = now + 3_600_000L, nowMs = now))
+    }
+
+    @Test fun `the force-check wait fits well inside one interval`() {
+        assertTrue(HeartbeatPolicy.PROBE_WAIT_MINUTES < HeartbeatPolicy.INTERVAL_MINUTES)
+    }
 }

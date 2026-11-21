@@ -7,7 +7,6 @@
     <string name="loading_apps">Loading apps…</string>
 
     <!-- Footer / navigation -->
-    <string name="btn_about">About</string>
     <string name="btn_help">Help</string>
 
     <!-- Bottom navigation -->
@@ -39,7 +38,6 @@
     <!-- Messages / chat -->
     <string name="messages_search_hint">Search messages</string>
     <string name="messages_empty">No messages yet.\n\nMessages relayed from the companion appear here.</string>
-    <string name="messages_count">%1$d</string>
     <string name="chat_delete">Delete conversation</string>
     <string name="chat_delete_confirm">Delete this conversation? This can\'t be undone.</string>
     <string name="chat_compose_hint">Message</string>
@@ -81,6 +79,10 @@
     <!-- Per-message actions -->
     <string name="msg_copy">Copy</string>
     <string name="msg_copied">Copied</string>
+    <string name="msg_open_link">Open link</string>
+    <string name="msg_copy_link">Copy link</string>
+    <string name="msg_link_copied">Link copied</string>
+    <string name="msg_link_failed">No app can open this link</string>
     <string name="msg_select_text">Select text</string>
     <string name="msg_forward">Forward</string>
     <string name="msg_share">Share</string>
@@ -90,12 +92,10 @@
     <string name="compose_title">New message</string>
     <string name="compose_new">Compose</string>
     <string name="compose_to_label">To</string>
-    <string name="compose_message_label">Message</string>
     <string name="compose_to_hint">Phone number or contact</string>
     <string name="compose_empty_hint">Enter a recipient, then type your message below.</string>
     <string name="compose_pick_contact">Contact</string>
     <string name="compose_contact_failed">Couldn\'t read that contact\'s number.</string>
-    <string name="compose_sim">Send from</string>
     <string name="compose_sim_default">Default</string>
     <string name="compose_sim_1">SIM 1</string>
     <string name="compose_sim_2">SIM 2</string>
@@ -120,19 +120,21 @@
     <string name="relay_intro">Pair this phone with your companion so its SMS relay here, encrypted end-to-end. Scan companion device\'s code to exchange device tokens and the shared key, or enter them by hand.</string>
     <string name="sw_inbound_enabled">Receive relayed messages</string>
     <string name="label_relay_key">Shared key (base64)</string>
-    <string name="btn_generate_key">Generate a new shared key</string>
     <string name="btn_regenerate_key">Regenerate shared key</string>
     <string name="regen_key_title">Regenerate the shared key?</string>
     <string name="regen_key_msg">This creates a brand-new key. Every paired companion will stop working until you re-pair it (re-scan this device\'s code). Only do this if you want to reset pairing.</string>
     <string name="regen_key_yes">Regenerate</string>
-    <string name="label_token">This device\'s token</string>
     <string name="relay_qr_hint">Scan this on the companion to pair</string>
-    <string name="relay_reverse_intro">Reverse direction - compose messages here that the companion sends via its SIM. Import the same FCM service-account key and paste the companion device\'s token (shown on its Pairing screen).</string>
+    <string name="btn_reset_token">Get a new push token</string>
+    <string name="reset_token_title">Get a new push token?</string>
+    <string name="reset_token_msg">Use this if the companion can\'t reach this phone (its messages and heartbeats never arrive here). This phone asks Firebase for a fresh token and sends it to the companion over the paired channel - no re-scan needed.</string>
+    <string name="reset_token_yes">Get new token</string>
+    <string name="reset_token_done">New token sent to the companion</string>
+    <string name="reset_token_failed">Couldn\'t get a new token - check the connection and try again</string>
 
     <!-- Section headers, kept identical to the companion's Pairing screen -->
     <string name="pair_hdr_key">Shared key</string>
     <string name="pair_hdr_this">This device\'s code</string>
-    <string name="pair_hdr_other">The companion</string>
     <string name="pair_hdr_sa">Firebase</string>
     <string name="pair_hdr_options">Options</string>
     <string name="relay_sa_none">No service-account key imported.</string>
@@ -144,11 +146,6 @@
     <string name="relay_fb_needed">Import your Firebase config to get a device token.</string>
     <string name="btn_import_sa">Import Firebase files</string>
     <string name="btn_import_sa_hint">Pick both google-services.json and the service-account key at once, or import one at a time - each updates independently.</string>
-    <string name="btn_scan_ariy">Scan companion device\'s code</string>
-    <string name="relay_scan_ariy_prompt">Point at the QR on the companion device\'s Pairing screen</string>
-    <string name="relay_scan_ariy_bad">That QR isn\'t a companion token code.</string>
-    <string name="relay_scan_ariy_ok">Paired - the companion device\'s token filled in.</string>
-    <string name="hint_sndi_token">Companion device token</string>
 
     <string name="sw_otp_copy">Copy button for one-time codes</string>
     <string name="sw_suppress_system">Hide Android\'s own suggested actions</string>
@@ -165,12 +162,6 @@
     <string name="notif_reply_failed_body">Tap to open the conversation and try again.</string>
 
     <!-- Clear received messages (before a full repush from the companion) - temporary, removed next version -->
-    <string name="clear_inbound_intro">Before rebuilding history with a full repush from the companion, clear the received messages here so they aren\'t duplicated. Messages you composed on this device are kept.</string>
-    <string name="btn_clear_inbound">Clear received messages…</string>
-    <string name="clear_inbound_title">Clear received messages?</string>
-    <string name="clear_inbound_msg">This permanently deletes every received message stored on this device (messages you composed here are kept). Use it right before repushing the whole inbox from the companion. This can\'t be undone.</string>
-    <string name="clear_inbound_yes">Clear</string>
-    <string name="clear_inbound_done">Cleared %1$d received message(s).</string>
 
     <string name="menu_privacy_title">Privacy</string>
     <string name="menu_privacy_sub">Notifications: body, keywords, duplicates, retention</string>
@@ -240,16 +231,15 @@
     <string name="status_data">Notification capture</string>
 
     <!-- About screen -->
-    <string name="about_title">About</string>
     <string name="about_version">Version %1$s</string>
-    <string name="about_description">ariyipp links two phones over end-to-end encrypted FCM to relay SMS between them: a companion phone (with the SIM) forwards its incoming SMS to your main device, where you read and reply to them as a chat, and the main device can send SMS back through the companion. Notification capture and webhook posting are optional extras. This device\'s role is shown below, and can be switched anytime.</string>
+    <string name="about_description">ariyipp links two phones over end-to-end encrypted FCM to relay SMS between them: a companion phone (with the SIM) forwards its incoming SMS to your main device, where you read and reply to them as a chat, and the main device can send SMS back through the companion. The main device can also show the companion\'s battery and signal, and track bills and parking from your messages with the optional Reminders module. Notification capture and webhook posting are optional extras. This device\'s role is shown below, and can be switched anytime.</string>
     <string name="about_project_url">https://github.com/dkadavarath/ariyipp</string>
     <string name="about_github">View on GitHub</string>
     <string name="about_donate">Buy me a Ko-fi</string>
     <string name="about_donate_url">https://ko-fi.com/dvkad</string>
     <string name="about_device_id">Device ID: %1$s</string>
     <string name="about_whats_new">What\'s new</string>
-    <string name="about_changelog">ariyipp v1.3 - Security hardening. Webhook URLs must now be https: a plain http:// address is rejected when you save it and blocked before any upload, and the same check now applies to a webhook config pushed from the main device. The companion also shows a notification whenever the main device changes its webhook settings, so a remote change is never silent, and accepting pushed config is now opt-in (off by default). Encrypted backups use stronger key derivation (600,000 PBKDF2 iterations, up from 120,000) and require a 12-character passphrase; older backups still restore with their original passphrase. Notification capture gained guardrails against a misbehaving or hostile app flooding local storage: a per-field length cap, a per-app rate limit, and an overall pending-row ceiling.\n\nariyipp v1.2 - Messages: long-press a message to share it to any other installed app (separate from Forward, which relays it as a new SMS through the companion); the chat screen\'s own menu now has Mute/Unmute and Mark as read too. The Messages list gets a collapsible search bar and a new overflow menu with Mark all as read and multi-select (Select all/Deselect all, Mark as read, Mute, Delete) - long-press a conversation\'s avatar to jump straight into selection. Predictive back gesture support throughout the app. Status and Messages no longer visibly pop in their content a beat after the tab-switch animation finishes, and Status stops re-checking permissions on every tab switch. Fixed dark mode showing near-black on the chat screen and inside Settings sub-screens, and an overflow menu that blended into its own background; fixed low-contrast incoming message bubbles (plus the date header and compose field) in light mode. Also fixed a couple of smaller Messages-list glitches: a jarring jump when opening/closing search, and the list briefly appearing empty right after.\n\nariyipp v1.1 - Chat screen redesign: compact bubbles with an inline timestamp, a floating date header, and a jump-to-latest button, grouped by day. Delivery-receipt ticks on sent messages are now real (received by companion / handed to SIM / carrier-confirmed) instead of decorative. Performance pass: chats open by loading only the newest history page, the conversation list updates itself live instead of polling, relayed payloads are smaller over the air, long SMS split reliably, connections are reused instead of re-authenticating on every send, cold start skips crypto work off the main thread, chat history respects a retention setting, and the conversation list/search now stay fast via a dedicated index as history grows. Also a batch of UI bug fixes: bubble line spacing, RTL timestamp placement, a shared-background flicker, and an oversized corner-radius clamp on short messages.\n\nariyipp v1.0 - Pair two phones over end-to-end encrypted FCM to relay SMS between them. The main device receives the relayed SMS as a searchable chat and can reply; the companion phone (with the SIM) forwards its incoming SMS and sends SMS on request. Pick a role on first run and switch anytime. Optional extras: notification capture to a webhook, encrypted backup and restore, per-conversation mute, and a liveness heartbeat that warns if the other device goes offline. Bring your own Firebase project (BYO-FCM).</string>
+    <string name="about_changelog">ariyipp v1.4 - The biggest update yet.\n\nReminders (new, optional - turn it on in Settings): ariyipp can now track bill due dates and parking expiry from the SMS and notifications it already sees, in a new Reminders tab. Long-press a message and choose Create reminder rule: the sender and every field are drafted for you by an auto-parser you can override, or select the amount or date in the sample to build the pattern without writing any regex. Rules run the moment a matching SMS or notification arrives. Bills remind you ahead at a time you choose; parking sessions extend themselves on renewal and ring an alarm before they run out. A bill can be marked paid automatically when the bank\'s payment confirmation arrives - optionally only if the amount matches - and that works for bills you add by hand too. Manual bills repeat every N days, weeks, months or years, with notes, categories and their own reminder lead. One figure shows everything due in the next 30 days in AED, converted at daily exchange rates (fetched once a day from open.er-api.com; nothing about you or your bills is sent). A Compact view fits one entry per line.\n\nCompanion status: while the main device\'s Status screen is open, it shows the companion\'s battery, signal, network and VPN as live gauges, and the companion can alert you when its battery runs low or its wifi has been down too long.\n\nMore reliable: no more false \"isn\'t responding\" alerts - the phone asks the other one to answer before warning. A broken relay setup holds an SMS and retries instead of dropping it. Push tokens heal themselves when they change, and Relay has a Get a new push token button. Chat history has its own setting and is kept forever by default; a repush or catch-up is stored quietly instead of buzzing once per message.\n\nA new look: colours rebuilt so all text meets WCAG AA contrast in light, dark and AMOLED; calmer motion; a Status screen of clear rows and badges; tappable links in chat; and a download about a fifth smaller.\n\nAlso: backups now include your reminder rules, bills and every setting; Do Not Disturb bypass for alarms in one tap; settings save as you change them; Back twice to exit keeps your place.\n\nNew permissions, all for Reminders and companion status: exact alarms, full-screen alarm, vibrate, set alarm and Do Not Disturb access on the main device; network and wifi state on the companion.\n\nariyipp v1.3 - Security hardening. Webhook URLs must now be https: a plain http:// address is rejected when you save it and blocked before any upload, and the same check now applies to a webhook config pushed from the main device. The companion also shows a notification whenever the main device changes its webhook settings, so a remote change is never silent, and accepting pushed config is now opt-in (off by default). Encrypted backups use stronger key derivation (600,000 PBKDF2 iterations, up from 120,000) and require a 12-character passphrase; older backups still restore with their original passphrase. Notification capture gained guardrails against a misbehaving or hostile app flooding local storage: a per-field length cap, a per-app rate limit, and an overall pending-row ceiling.\n\nariyipp v1.2 - Messages: long-press a message to share it to any other installed app (separate from Forward, which relays it as a new SMS through the companion); the chat screen\'s own menu now has Mute/Unmute and Mark as read too. The Messages list gets a collapsible search bar and a new overflow menu with Mark all as read and multi-select (Select all/Deselect all, Mark as read, Mute, Delete) - long-press a conversation\'s avatar to jump straight into selection. Predictive back gesture support throughout the app. Status and Messages no longer visibly pop in their content a beat after the tab-switch animation finishes, and Status stops re-checking permissions on every tab switch. Fixed dark mode showing near-black on the chat screen and inside Settings sub-screens, and an overflow menu that blended into its own background; fixed low-contrast incoming message bubbles (plus the date header and compose field) in light mode. Also fixed a couple of smaller Messages-list glitches: a jarring jump when opening/closing search, and the list briefly appearing empty right after.\n\nariyipp v1.1 - Chat screen redesign: compact bubbles with an inline timestamp, a floating date header, and a jump-to-latest button, grouped by day. Delivery-receipt ticks on sent messages are now real (received by companion / handed to SIM / carrier-confirmed) instead of decorative. Performance pass: chats open by loading only the newest history page, the conversation list updates itself live instead of polling, relayed payloads are smaller over the air, long SMS split reliably, connections are reused instead of re-authenticating on every send, cold start skips crypto work off the main thread, chat history respects a retention setting, and the conversation list/search now stay fast via a dedicated index as history grows. Also a batch of UI bug fixes: bubble line spacing, RTL timestamp placement, a shared-background flicker, and an oversized corner-radius clamp on short messages.\n\nariyipp v1.0 - Pair two phones over end-to-end encrypted FCM to relay SMS between them. The main device receives the relayed SMS as a searchable chat and can reply; the companion phone (with the SIM) forwards its incoming SMS and sends SMS on request. Pick a role on first run and switch anytime. Optional extras: notification capture to a webhook, encrypted backup and restore, per-conversation mute, and a liveness heartbeat that warns if the other device goes offline. Bring your own Firebase project (BYO-FCM).</string>
 
     <!-- Help screen -->
     <string name="help_title">Help</string>
@@ -266,37 +256,23 @@
     <string name="help_triggers_title">Triggers &amp; network</string>
     <string name="help_triggers_body">Choose when uploads run: Periodic (every N minutes, min 15), Threshold (after N pending), or Manual (“Sync now” only). Optionally restrict to Wi-Fi or to charging to save battery/data.</string>
     <string name="help_privacy_title">Privacy &amp; retention</string>
-    <string name="help_privacy_body">Turn off “Capture notification body” to store metadata only. Add excluded keywords to drop notifications containing sensitive words (e.g. OTP). “Retention days” controls how long captured notification rows are kept before purging.</string>
+    <string name="help_privacy_body">Turn off “Capture notification body” to store metadata only. Add excluded keywords to drop notifications containing sensitive words (e.g. OTP). “Keep notification records” controls how long captured notification rows are kept before purging; it never touches chat history, which has its own setting on the Relay screen (forever by default).</string>
     <string name="help_trouble_title">Troubleshooting</string>
     <string name="help_trouble_body">• 403 on upload: the auth header/token is wrong - for custom Header Auth use header name “key” and an empty prefix.\n• Nothing captured: grant notification access; check your included-apps selection.\n• Uploads delayed: allow the app to ignore battery optimization, or use “Sync now”.</string>
     <string name="help_playprotect_title">Installing &amp; updating (Play Protect)</string>
     <string name="help_playprotect_body">This app is sideloaded and asks for SMS permissions on the companion, so Google Play Protect will warn on install and on some updates - that’s expected, not a sign of malware.\n\n• On the prompt, tap “More details”, then “Install anyway”.\n• If an update is blocked outright with a conflict error, that’s a signing mismatch, not Play Protect - uninstall the old build first (you’ll re-pair), then install the new one.\n• On your own devices you can make updates apply silently over ADB (no fingerprint needed):\n   adb shell settings put global verifier_verify_adb_installs 0\n   adb install -r ariyipp.apk</string>
-    <string name="never">Never</string>
 
     <!-- Permission status labels -->
-    <string name="granted">granted</string>
-    <string name="not_granted">not granted</string>
-    <string name="exempt">exempt</string>
-    <string name="not_exempt">not exempt</string>
 
     <!-- Permission status messages -->
-    <string name="notification_access_status">Notification access: %1$s</string>
-    <string name="battery_optimization_status">Battery optimization: %1$s</string>
 
     <!-- Section headers -->
-    <string name="section_permissions">Permissions</string>
-    <string name="section_webhook">Webhook Configuration</string>
-    <string name="section_trigger">Trigger Configuration</string>
-    <string name="section_capture">Capture &amp; Privacy</string>
-    <string name="section_actions">Actions</string>
-    <string name="section_status">Status</string>
 
     <!-- Buttons -->
     <string name="btn_grant_notification">Grant notification access</string>
     <string name="btn_ignore_battery">Ignore battery optimization</string>
     <string name="btn_save">Save settings</string>
     <string name="btn_sync_now">Sync now</string>
-    <string name="btn_purge_now">Purge old data now</string>
 
     <!-- EditText hints -->
     <string name="hint_webhook_url">Webhook URL</string>
@@ -305,13 +281,12 @@
     <string name="hint_auth_header_prefix">Token prefix</string>
     <string name="hint_interval_minutes">Interval (minutes, ≥15)</string>
     <string name="hint_threshold_count">Threshold count</string>
-    <string name="hint_excluded_packages">com.example.app</string>
-    <string name="hint_excluded_keywords">verification code</string>
-    <string name="hint_retention_days">Retention days</string>
+    <string name="hint_retention_days">Keep notification records (days)</string>
+    <string name="hint_chat_retention_days">Keep chat history (days)</string>
+    <string name="chat_retention_hint">0 keeps every message forever. Notification capture has its own setting under Privacy.</string>
     <string name="hint_dedupe_window">Ignore duplicate window (seconds, 0 = off)</string>
 
     <!-- Field labels -->
-    <string name="label_included_apps">Included apps</string>
     <string name="label_excluded_keywords">Excluded keywords (one per line)</string>
     <string name="label_app_keywords">Keywords (comma separated)</string>
     <string name="label_app_notes">Notes (optional)</string>
@@ -327,9 +302,6 @@
     <string name="picker_clear">Clear</string>
     <string name="picker_done">Done</string>
     <string name="picker_selected_count">%1$d selected</string>
-    <string name="btn_choose_apps">Choose apps</string>
-    <string name="included_apps_summary_all">All apps (no filter)</string>
-    <string name="included_apps_summary_some">%1$d app(s) selected</string>
 
     <!-- RadioButton labels -->
     <string name="rb_periodic">Periodic</string>
@@ -349,10 +321,9 @@
     <string name="purge_result">Purged %1$d record(s)</string>
 
     <!-- Status section -->
-    <string name="status_total">Total captured: %1$d</string>
-    <string name="status_pending">Pending: %1$d</string>
-    <string name="status_last_upload">Last upload: %1$s (%2$s)</string>
-    <string name="status_device_id">Device ID: %1$s</string>
+    <string name="status_total_label">Captured</string>
+    <string name="status_pending_label">Waiting to upload</string>
+    <string name="status_device_id_label">Device ID</string>
 
     <!-- Heartbeat / connection health -->
     <string name="hb_peer_main">Main app</string>
@@ -362,13 +333,301 @@
     <string name="hb_disconnected_title">%1$s isn\'t responding</string>
     <string name="hb_disconnected_body">No heartbeat received. Auto-retrying every %1$d min - tap Retry now to reconnect sooner.</string>
     <string name="hb_retry_now">Retry now</string>
-    <string name="hb_banner_title">%1$s disconnected</string>
+    <string name="hb_banner_title_peer">%1$s disconnected</string>
     <string name="hb_banner_body">No heartbeat in a while - relayed messages may not be getting through.</string>
     <string name="sw_heartbeat">Heartbeat</string>
     <string name="sw_heartbeat_hint">Periodically check the other device is reachable and warn if it goes offline.</string>
-    <string name="hb_status">Heartbeat: %1$s</string>
-    <string name="hb_state_ok">OK</string>
-    <string name="hb_state_disabled">Disabled</string>
-    <string name="hb_state_failed">Failed</string>
-    <string name="hb_state_unpaired">not paired</string>
+    <!-- Companion device status -->
+    <string name="menu_companion_status_title">Companion status</string>
+    <string name="menu_companion_status_sub">Battery, signal and network of the other phone, and when to be alerted</string>
+    <string name="title_companion_status">Companion status</string>
+    <string name="cs_card_title">Companion device</string>
+    <string name="cs_intro">While this screen is open, the companion reports its battery, signal, network and VPN state every few seconds. It stops as soon as you leave. Battery and wifi alerts are separate - those reach you whether or not the app is open.</string>
+    <string name="sw_cs_enabled">Monitor companion status</string>
+    <string name="sw_cs_alerts">Alert me about battery and wifi</string>
+    <string name="hint_cs_battery">Alert below battery %</string>
+    <string name="hint_cs_wifi">Alert after minutes without wifi</string>
+    <string name="hint_cs_poll">Refresh every (seconds)</string>
+    <string name="cs_push_hint">Thresholds are checked on the companion, so they are pushed to it when you save. It needs to be reachable for the change to land.</string>
+    <string name="cs_bars">%1$d/4</string>
+    <string name="cs_network_wifi">Wi-Fi</string>
+    <string name="cs_network_mobile">Mobile data</string>
+    <string name="cs_network_offline">Offline</string>
+    <string name="cs_waiting">Waiting for the companion…</string>
+    <string name="cs_unknown">—</string>
+    <string name="cs_battery_cd">Companion battery level</string>
+    <string name="cs_signal_cd">Companion signal strength</string>
+    <string name="cs_network_cd">Companion network</string>
+    <string name="cs_vpn_label">VPN</string>
+    <string name="cs_suspect_cd">Companion readings may be out of date</string>
+    <string name="sw_cs_labels">Show values next to the icons</string>
+    <!-- Quoted: Android strips leading/trailing whitespace from string resources. -->
+    <string name="cs_flags_sep">" · "</string>
+    <string name="cs_powersave">Battery saver is on</string>
+    <string name="cs_roaming">Roaming</string>
+    <string name="cs_airplane">Airplane mode</string>
+
+    <!-- Companion status alerts -->
+    <string name="cs_channel">Companion device alerts</string>
+    <string name="cs_channel_desc">Warns when the companion\'s battery is low or its wifi has been down.</string>
+    <string name="cs_alert_battery_title">Companion battery low</string>
+    <string name="cs_alert_battery_body">The companion is at %1$d%%, below your %2$d%% alert level.</string>
+    <string name="cs_alert_wifi_title">Companion wifi is down</string>
+    <string name="cs_alert_wifi_body">No wifi on the companion for %1$d min. %2$s</string>
+    <string name="cs_alert_wifi_on_mobile">It is still online over mobile data.</string>
+    <string name="cs_alert_wifi_offline">It has no other connection right now.</string>
+    <!-- Reminder module -->
+    <string name="nav_reminders">Reminders</string>
+    <string name="menu_reminder_title">Reminders</string>
+    <string name="menu_reminder_sub">Bill due dates and parking expiry, from your notifications and SMS</string>
+    <string name="title_reminder_settings">Reminder settings</string>
+    <string name="title_reminder_rules">Rulebook</string>
+    <string name="title_reminder_rule">Rule</string>
+    <string name="title_reminder_edit">Reminder</string>
+
+    <string name="rm_intro">Reminders reads the notifications and SMS ariyipp already captures, matches them against your rulebook, and tracks what is due. It is off until you turn it on, and nothing outside this screen changes when it is off.</string>
+    <string name="sw_reminder_enabled">Enable Reminders</string>
+    <string name="rm_scan_hours">Run the rulebook every (hours, 0 = manual only)</string>
+    <string name="rm_remind_days">Remind this many days before due</string>
+    <string name="rm_remind_time">Remind at (HH:mm)</string>
+    <string name="rm_spacing">Minutes between reminders due together</string>
+    <string name="rm_parking_lead">Parking: remind this many minutes before expiry</string>
+    <string name="rm_parking_lead_hint">Without exact-alarm permission a reminder can fire a few minutes late, so a lead time keeps a late reminder still early enough to act on.</string>
+    <string name="rm_calculate_now">Calculate now</string>
+    <string name="rm_open_rulebook">Open rulebook</string>
+    <string name="rm_scan_running">Running the rulebook…</string>
+
+    <string name="rm_alarm_mode">Parking alarm</string>
+    <string name="rm_alarm_mode_clock">Phone\'s Clock app</string>
+    <string name="rm_alarm_mode_inapp">Ring inside ariyipp</string>
+    <string name="rm_alarm_mode_hint">The Clock app uses your real alarm sound and rings even if ariyipp is killed, but Android only lets us set a time of day (not a date), and setting or cancelling one from the background may be blocked. Test it below before relying on it.</string>
+    <string name="rm_test_alarm">Test alarm (2 min)</string>
+    <string name="rm_cancel_test">Cancel test alarm</string>
+    <string name="rm_test_sent">Test alarm requested - check your Clock app, then wait for it to ring.</string>
+    <string name="rm_test_failed">Could not set the test alarm. See Diagnostics for the reason.</string>
+    <string name="rm_cancel_test_sent">Dismiss requested - check the test alarm is gone from your Clock app.</string>
+    <string name="rm_grant_exact">Grant Alarms &amp; reminders</string>
+    <string name="rm_dnd_enable">Let parking alarms through Do Not Disturb</string>
+    <string name="rm_dnd_hint">A parking meter running out is worth hearing even with Do Not Disturb on. Android needs your permission first; after that ariyipp sets it up itself.</string>
+    <string name="rm_dnd_step1">Parking alarms are currently silenced by Do Not Disturb. The button below asks Android for permission, then sets it up.</string>
+    <string name="rm_dnd_step2">Access granted. Tap below to finish setting it up.</string>
+    <string name="rm_dnd_done">Parking alarms will sound during Do Not Disturb.</string>
+
+    <string name="rm_channel_bills">Bill reminders</string>
+    <string name="rm_channel_bills_desc">Fires the day before a bill is due.</string>
+    <string name="rm_channel_parking">Parking expiry</string>
+    <string name="rm_channel_parking_desc">Fires shortly before a parking session runs out. Turn on Override Do Not Disturb for this one.</string>
+    <string name="rm_channel_attention">Needs your input</string>
+    <string name="rm_channel_attention_desc">A rule matched but a detail could not be read from the message.</string>
+
+    <string name="rm_parking_title">%1$s · %2$s</string>
+    <string name="rm_parking_expires_at">Expires at %1$s</string>
+    <string name="rm_no_expiry">Expiry time unknown - tap to set it</string>
+    <string name="rm_no_due_date">Due date unknown</string>
+    <string name="rm_no_amount">Amount not captured</string>
+    <string name="rm_attention_title">%1$s needs details</string>
+    <string name="rm_attention_body">Couldn\'t read the %1$s from the message. Tap to fill it in.</string>
+    <string name="rm_missing_both">zone or expiry time</string>
+    <string name="rm_missing_zone">parking zone</string>
+    <string name="rm_missing_expiry">expiry time</string>
+
+    <string name="rm_due_today">Due today</string>
+    <string name="rm_due_tomorrow">Due tomorrow</string>
+    <string name="rm_due_in_days">Due in %1$d days · %2$s</string>
+    <string name="rm_overdue_one">Overdue by a day</string>
+    <string name="rm_overdue_days">Overdue by %1$d days</string>
+
+    <string name="rm_tab_active">Active</string>
+    <string name="rm_tab_history">History</string>
+    <string name="rm_empty_active">Nothing due. Bills appear here once the rulebook matches a statement.</string>
+    <string name="rm_empty_history">No history yet.</string>
+    <string name="rm_empty_disabled">Reminders is turned off. Turn it on in Settings → Reminders.</string>
+    <string name="rm_last_paid">Last paid %1$s</string>
+    <!-- Compact Reminders rows: short forms that fit beside the name on one line. -->
+    <string name="rm_compact_view">Compact view</string>
+    <string name="rm_short_today">Today</string>
+    <string name="rm_short_tomorrow">Tomorrow</string>
+    <string name="rm_short_overdue">%1$dd late</string>
+    <string name="rm_short_paid">Paid %1$s</string>
+    <string name="rm_short_auto_paid">Auto-paid %1$s</string>
+    <string name="rm_short_until">Until %1$s</string>
+    <string name="rm_short_no_amount">—</string>
+    <string name="rm_renewals">Renewed %1$d×</string>
+    <string name="rm_mark_paid">Mark paid</string>
+    <string name="rm_skip_next">Skip next</string>
+    <string name="rm_skip_next_set">The next occurrence of this rule will be skipped.</string>
+    <string name="rm_end_parking">End parking</string>
+    <string name="rm_add_manual">Add a one-off</string>
+    <string name="rm_marked_paid">Marked paid</string>
+    <string name="rm_parking_ended">Parking ended</string>
+
+    <!-- Rulebook -->
+    <string name="rm_rule_name">Name (used as the reminder title)</string>
+    <string name="rm_rule_type">Rule type</string>
+    <string name="rm_rule_type_bill">Bill</string>
+    <string name="rm_rule_type_parking">Parking</string>
+    <string name="rm_rule_source">Source</string>
+    <string name="rm_rule_source_pick">Pick an app</string>
+    <string name="rm_rule_source_sms">SMS</string>
+    <string name="rm_rule_source_manual">Manual (no message)</string>
+    <string name="rm_rule_sender">SMS sender contains (blank = any)</string>
+    <string name="rm_rule_enabled">Rule enabled</string>
+    <string name="rm_pattern_match">Identify the message</string>
+    <string name="rm_pattern_amount">Amount</string>
+    <string name="rm_pattern_currency">Currency</string>
+    <string name="rm_pattern_date">Due date</string>
+    <string name="rm_pattern_zone">Parking zone</string>
+    <string name="rm_pattern_expiry">Expiry date/time</string>
+    <string name="rm_pattern_format">Date format (blank = try common ones)</string>
+    <string name="rm_due_mode">Due date from</string>
+    <string name="rm_due_mode_message">The message</string>
+    <string name="rm_due_mode_constant">Same day each month</string>
+    <string name="rm_due_mode_calculated">Days after a fixed day</string>
+    <string name="rm_constant_day">Day of the month</string>
+    <string name="rm_anchor_day">Fixed day (e.g. statement date)</string>
+    <string name="rm_offset_days">Days after it</string>
+    <string name="rm_recurrence">Repeats</string>
+    <string name="rm_recurrence_weekly">Weekly</string>
+    <string name="rm_recurrence_monthly">Monthly</string>
+    <string name="rm_recurrence_yearly">Yearly</string>
+    <string name="rm_default_currency">Currency (when not captured)</string>
+    <string name="rm_test_sample">Paste a sample message to test against</string>
+    <string name="rm_test_run">Test this rule</string>
+    <string name="rm_from_selection">Use selection for…</string>
+    <string name="rm_from_selection_hint">Easier than writing a pattern: select a value in the sample above — the amount, the date, the zone — and pick its field from the bar that appears over the selection (or tap below). Or let Auto-fill read the sample for you.</string>
+    <string name="rm_sample_type">Type or paste in the sample</string>
+    <string name="rm_auto_fill">Auto-fill from sample</string>
+    <string name="rm_auto_filled">Filled %1$d field(s) from the sample - check them below, and change anything that\'s wrong</string>
+    <string name="rm_auto_nothing">Nothing to fill - either no amount or date was recognised, or those fields already have a pattern</string>
+    <string name="rm_create_rule_from_msg">Create reminder rule</string>
+    <!-- Payment resolver -->
+    <string name="rm_pay_enabled">Mark paid automatically</string>
+    <string name="rm_pay_hint">Watch for the payment confirmation (a bank debit, a "payment received" message) and mark the bill it pays as paid.</string>
+    <string name="rm_pay_source">Payment message comes from</string>
+    <string name="rm_pay_source_sms">SMS</string>
+    <string name="rm_pay_source_app">An app</string>
+    <string name="rm_pay_match">Identify the payment message</string>
+    <string name="rm_pay_amount">Paid amount</string>
+    <string name="rm_pay_match_amount">Match amount</string>
+    <string name="rm_pay_match_on">Only a bill with this amount is marked paid (to within 1, for rounding).</string>
+    <string name="rm_pay_match_off">The newest unpaid bill that already existed when the payment came in is marked paid - never one generated after it.</string>
+    <string name="rm_pay_sample">Paste a payment message to test against</string>
+    <string name="rm_pay_needs_match">To mark bills paid automatically, fill in what identifies the payment message.</string>
+    <string name="rm_pay_needs_app">Pick the app the payment message comes from.</string>
+    <string name="rm_pay_test_result">Recognised as a payment.\nAmount paid: %1$s</string>
+    <string name="rm_pay_test_statement">The bill pattern matches this too, so it\'s read as the statement, not a payment. Make the payment pattern more specific.</string>
+    <string name="rm_auto_paid">Paid automatically %1$s</string>
+    <string name="rm_use_as_payment">Auto mark a bill paid from this</string>
+    <string name="rm_pick_rule_for_payment">Which bill does this pay?</string>
+    <string name="rm_no_bill_rules">No bill rules yet - create one first.</string>
+    <string name="rm_select_first">Select the value in the sample first, then tap this.</string>
+    <string name="rm_built_ok">Pattern written from your selection.</string>
+    <string name="rm_built_ok_format">Pattern and date format written from your selection.</string>
+    <string name="rm_built_failed">Couldn\'t work out a reliable pattern for that selection. Try selecting just the value itself.</string>
+    <string name="rm_field_identify">Identify the message</string>
+    <string name="rm_test_no_match">No match - the \"identify\" pattern didn\'t match this text.</string>
+    <string name="rm_test_result">Matched.\nAmount: %1$s\nCurrency: %2$s\nDue: %3$s</string>
+    <string name="rm_test_result_parking">Matched.\nZone: %1$s\nExpiry: %2$s</string>
+    <string name="rm_bad_pattern">Invalid regex: %1$s</string>
+    <string name="rm_rule_needs_name">Give the rule a name first.</string>
+    <string name="rm_rule_deleted">Rule deleted</string>
+    <string name="rm_no_rules">No rules yet. Add one to start matching statements or parking tickets.</string>
+    <string name="rm_add_rule">Add rule</string>
+    <string name="rm_delete_rule">Delete rule</string>
+    <string name="rm_delete_selected_confirm">Delete %1$d rule(s)? Bills already created from them stay in your history.</string>
+    <string name="rm_rules_deleted">%1$d rule(s) deleted</string>
+    <string name="rm_select_hint">Long-press to select several.</string>
+    <string name="rm_delete">Delete</string>
+    <string name="rm_totals_title">Due in the next 30 days</string>
+    <string name="rm_totals_compact_label">30 days</string>
+    <string name="rm_show_total">Show total</string>
+    <string name="rm_edit_rule">Edit rule</string>
+    <string name="rm_rule_auto_paid">Auto-paid</string>
+    <plurals name="rm_pay_settled_now">
+        <item quantity="one">Saved - and %1$d bill marked paid from a payment message already received</item>
+        <item quantity="other">Saved - and %1$d bills marked paid from payment messages already received</item>
+    </plurals>
+    <string name="rm_pay_enable_title">Mark \"%1$s\" paid automatically?</string>
+    <string name="rm_pay_enable_body">Messages like this one will mark the bill paid. The rule opens with the sender, what identifies the payment and the paid amount filled in from this message - check them, then save.</string>
+    <string name="rm_pay_replace_body">\"%1$s\" already marks itself paid from another payment message. Replace its payment details with ones drafted from this message?</string>
+    <string name="rm_pay_enable_yes">Turn on</string>
+    <string name="rm_pay_replace_yes">Replace</string>
+    <plurals name="rm_total_bills">
+        <item quantity="one">%1$d bill</item>
+        <item quantity="other">%1$d bills</item>
+    </plurals>
+    <string name="rm_total_no_amount">%1$d without an amount</string>
+    <string name="rm_total_no_amount_short">%1$d no amt</string>
+    <string name="rm_total_unconverted">%1$s not converted (no rate)</string>
+    <string name="rm_total_no_rates">%1$s not included - exchange rates not available yet</string>
+    <string name="rm_total_rates_of">rates of %1$s</string>
+    <string name="rm_filter_all">All</string>
+    <string name="rm_select_items">Select rules</string>
+    <string name="rm_select_entries">Select entries</string>
+    <string name="rm_selected_count">%1$d selected</string>
+    <string name="rm_delete_entries_confirm">Delete %1$d entry/entries? This removes them from history for good.</string>
+    <string name="rm_entries_deleted">%1$d deleted</string>
+    <string name="rm_mark_paid_selected">Mark paid</string>
+    <string name="rm_end_selected">End parking</string>
+    <string name="rm_delete_rule_confirm">Delete this rule? Bills already created from it stay in your history.</string>
+    <string name="rm_help_show">How to write these</string>
+    <string name="rm_help_hide">Hide the guide</string>
+    <string name="rm_eg_prefix">e.g. %1$s  (tap to use)</string>
+
+    <!-- Manual entry -->
+    <string name="rm_save_entry">Save</string>
+    <string name="st_notif_title">Notification access</string>
+    <string name="st_notif_ok_detail">Captures notifications from the apps you pick</string>
+    <string name="st_notif_missing_detail">Needed to capture notifications</string>
+    <string name="st_sync_title">Webhook sync</string>
+    <string name="st_synced">Synced</string>
+    <string name="st_retrying">Retrying</string>
+    <string name="st_never">Never</string>
+    <string name="st_last_synced">Last synced %1$s</string>
+    <string name="st_last_attempt">Last try %1$s · %2$s</string>
+    <string name="st_sync_never_detail">Nothing has been sent yet</string>
+    <string name="st_sync_off_detail">No webhook set up</string>
+    <string name="back_again_to_exit">Press back again to exit</string>
+    <string name="rm_section_details">Details</string>
+    <string name="rm_section_when">When</string>
+    <string name="rm_section_optional">Optional</string>
+    <string name="rm_field_category">Category</string>
+    <string name="rm_field_notes">Notes</string>
+    <string name="rm_field_remind_days">Remind days before</string>
+    <string name="rm_field_remind_days_helper">Leave blank to use your default</string>
+    <string name="rm_repeats_helper">Repeating bills add the next one for you when you mark this one paid</string>
+    <string name="rm_repeats_every_hint">Repeat every</string>
+    <string name="rm_repeats_every_helper">For example 3 months for a quarterly bill</string>
+    <string name="rm_repeat_daily">Every day</string>
+    <string name="rm_repeat_weekly">Every week</string>
+    <string name="rm_repeat_monthly">Every month</string>
+    <string name="rm_repeat_yearly">Every year</string>
+    <string name="rm_manual_name">Name</string>
+    <string name="rm_manual_amount">Amount</string>
+    <string name="rm_manual_currency">Currency</string>
+    <string name="rm_manual_due_label">Due date</string>
+    <string name="rm_manual_expiry_label">Expires</string>
+    <string name="rm_pick_date">Pick a date</string>
+    <string name="rm_pick_datetime">Pick date and time</string>
+    <string name="rm_repeats_label">Repeats</string>
+    <string name="rm_unit_never">Doesn\'t repeat</string>
+    <string name="rm_unit_day">days</string>
+    <string name="rm_unit_week">weeks</string>
+    <string name="rm_unit_month">months</string>
+    <string name="rm_unit_year">years</string>
+    <string name="rm_due_calculated_switch">Due a number of days after that date</string>
+    <string name="rm_due_calculated_hint">For bills raised on one date and payable later — a statement on the 28th, due 10 days after. The date above becomes the date it is raised, and the due date follows it each cycle.</string>
+    <string name="rm_due_preview">Next due %1$s</string>
+    <string name="rm_due_preview_repeat">Next due %1$s, then %2$s</string>
+    <string name="rm_needs_due">Pick a due date first.</string>
+    <string name="rm_manual_zone">Zone</string>
+    <string name="rm_manual_kind_bill">A bill</string>
+    <string name="rm_manual_kind_parking">A parking session</string>
+
+    <!-- Parking alarm screen -->
+    <string name="rm_alarm_dismiss">Dismiss</string>
+    <string name="rm_alarm_snooze">Snooze 5 min</string>
+    <string name="rm_alarm_clock_caveat">Tested: this works while ariyipp is open, but Android blocks it from the background - so renewals arriving in your pocket fall back to the in-app alarm. In-app is the default for that reason.</string>
+    <string name="rm_fsi_missing">Full-screen alarms are turned off for ariyipp, so a parking alarm will appear as a notification instead of ringing over the lock screen.</string>
+    <string name="rm_source_not_captured">%1$s isn\'t in your notification capture list, so this rule will never match. Add it in Settings → Apps, or pick another app.</string>
 </resources>

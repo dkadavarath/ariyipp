@@ -11,6 +11,7 @@ import com.noti.logger.R
 import com.noti.logger.config.Settings
 import com.noti.logger.config.ThemeMode
 import com.noti.sender.config.SenderSettings
+import com.noti.sender.R as DesignR
 import com.noti.shared.Role
 
 /**
@@ -65,12 +66,13 @@ object Theming {
     }
 
     /**
-     * Push chrome/background surfaces to true black when AMOLED is on and dark mode is active. Call
-     * after super.onCreate (theme resolved) and before setContentView. No-op in light mode.
+     * Push the page and chrome to true black when AMOLED is on and dark mode is active (cards keep a
+     * hairline edge - see ThemeOverlay.Noti.Amoled). Call after super.onCreate (theme resolved) and
+     * before setContentView. No-op in light mode.
      */
     fun applyAmoledIfEnabled(activity: Activity) {
         if (!amoledActive(activity)) return
-        activity.theme.applyStyle(R.style.ThemeOverlay_Noti_Amoled, true)
+        activity.theme.applyStyle(DesignR.style.ThemeOverlay_Noti_Amoled, true)
         // Force the window background too: it's resolved from the theme at window creation, so the
         // overlay alone won't repaint it.
         activity.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.BLACK))
@@ -87,8 +89,8 @@ object Theming {
      */
     fun applyPredictiveBackTransitions(activity: Activity) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            activity.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_OPEN, R.anim.screen_open_enter, R.anim.screen_open_exit)
-            activity.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_CLOSE, R.anim.screen_close_enter, R.anim.screen_close_exit)
+            activity.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_OPEN, DesignR.anim.screen_open_enter, DesignR.anim.screen_open_exit)
+            activity.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_CLOSE, DesignR.anim.screen_close_enter, DesignR.anim.screen_close_exit)
         }
     }
 }

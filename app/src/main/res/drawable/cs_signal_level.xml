@@ -1,0 +1,7 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_cs_signal_bg" />
+    <item>
+        <clip android:drawable="@drawable/ic_cs_signal_fg"
+            android:clipOrientation="horizontal" android:gravity="left" />
+    </item>
+</layer-list>

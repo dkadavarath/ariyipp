@@ -9,6 +9,8 @@ import com.noti.sender.sms.HeartbeatHandler
 import com.noti.sender.sms.SmsCommandHandler
 import com.noti.sender.sms.SmsSender
 import com.noti.sender.sms.WebhookConfigHandler
+import com.noti.sender.status.StatusPushHandler
+import com.noti.sender.status.StatusReporter
 import com.noti.shared.Diag
 import com.noti.shared.Role
 import com.noti.shared.WireMessage
@@ -34,6 +36,7 @@ class NotiMessagingService : FirebaseMessagingService() {
     private fun handleCommand(message: RemoteMessage) {
         // A send-SMS command?
         SmsCommandHandler.parse(applicationContext, message.data)?.let { cmd ->
+            Heartbeat.notePeerAlive(applicationContext)
             if (cmd.msgId > 0) {
                 SenderPipeline.pushAckToIppu(applicationContext, cmd.msgId, WireMessage.DeliveryAck.RECEIVED)
             }
@@ -50,8 +53,33 @@ class NotiMessagingService : FirebaseMessagingService() {
         }
         // A webhook-config push from Main?
         WebhookConfigHandler.parse(applicationContext, message.data)?.let { cfg ->
+            Heartbeat.notePeerAlive(applicationContext)
             WebhookConfigHandler.apply(applicationContext, cfg)
             Diag.log("webhook config applied from main (${if (cfg.enabled) "enabled" else "disabled"})")
+            return
+        }
+        // A device-status request or threshold config from Main?
+        StatusPushHandler.parse(applicationContext, message.data)?.let { msg ->
+            Heartbeat.notePeerAlive(applicationContext)
+            when (msg) {
+                is WireMessage.StatusRequest -> StatusReporter.onRequest(applicationContext, msg.forSeconds)
+                is WireMessage.StatusConfig -> {
+                    StatusPushHandler.apply(applicationContext, msg)
+                    Diag.log("status thresholds applied from main (battery ${msg.batteryPct}%, wifi ${msg.wifiLossMinutes} min)")
+                }
+                else -> Unit
+            }
+            return
+        }
+        // Main announcing a new push endpoint (its token rotated)? Adopt it, or every relay, ack and
+        // heartbeat from here keeps going to a dead endpoint while Main → companion still works.
+        com.noti.sender.sms.HubTokenHandler.parse(applicationContext, message.data)?.let { tok ->
+            Heartbeat.notePeerAlive(applicationContext)
+            val s = SenderSettings.get(applicationContext)
+            if (s.notiFcmToken != tok.endpoint) {
+                s.notiFcmToken = tok.endpoint
+                Diag.log("main endpoint updated - relays resume to the new hub token")
+            }
             return
         }
         // A liveness heartbeat from Main?
@@ -62,8 +90,8 @@ class NotiMessagingService : FirebaseMessagingService() {
         Diag.log("push from main DROPPED (not accepted, wrong shared key, or unknown type)")
     }
 
-    /** Cache the refreshed token in both stores; if this is the companion, re-announce it to Main so
-     *  reverse-send keeps working with no copy-back. */
+    /** Cache the refreshed token in both stores and re-announce it to the peer: the companion's so
+     *  reverse-send keeps working, Main's so relays and heartbeats keep arriving - no re-pair. */
     override fun onNewToken(token: String) {
         val s = Settings.get(applicationContext)
         s.fcmToken = token
@@ -72,7 +100,8 @@ class NotiMessagingService : FirebaseMessagingService() {
             com.noti.sender.TokenAnnounceWorker.enqueue(applicationContext)
             Diag.log("FCM token refreshed - re-announcing endpoint to main")
         } else {
-            Diag.log("FCM token refreshed - re-pair if the companion needs the new hub token")
+            com.noti.logger.work.HubTokenAnnounceWorker.enqueue(applicationContext)
+            Diag.log("FCM token refreshed - re-announcing endpoint to the companion")
         }
     }
 }

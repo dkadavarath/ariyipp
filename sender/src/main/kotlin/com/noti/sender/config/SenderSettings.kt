@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.noti.shared.DeviceStatusPolicy
 import java.io.File
 import java.util.UUID
 
@@ -219,6 +220,60 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean(KEY_HEARTBEAT_ENABLED, true)
         set(value) { prefs.edit().putBoolean(KEY_HEARTBEAT_ENABLED, value).apply() }
 
+    // ---- Device status (shared with Main; thresholds are pushed down by Main) ----
+
+    /** Master switch for answering Main's status requests and raising status alerts. Default ON:
+     *  the pair is already a trust relationship, and the readout is the point of the feature - but
+     *  it stays a single switch the companion's owner can flip without unpairing. */
+    var statusSharingEnabled: Boolean
+        get() = prefs.getBoolean(KEY_STATUS_SHARING, true)
+        set(value) { prefs.edit().putBoolean(KEY_STATUS_SHARING, value).apply() }
+
+    /** Whether battery/wifi alerts fire. Main-authored (see [com.noti.shared.WireMessage.StatusConfig]). */
+    var statusAlertsEnabled: Boolean
+        get() = prefs.getBoolean(KEY_STATUS_ALERTS, true)
+        set(value) { prefs.edit().putBoolean(KEY_STATUS_ALERTS, value).apply() }
+
+    /** Alert when battery is at or below this percentage. Main-authored. */
+    var statusBatteryPct: Int
+        get() = prefs.getInt(KEY_STATUS_BATTERY_PCT, DeviceStatusPolicy.DEFAULT_BATTERY_PCT)
+        set(value) { prefs.edit().putInt(KEY_STATUS_BATTERY_PCT, DeviceStatusPolicy.clampBatteryPct(value)).apply() }
+
+    /** Alert when wifi has been down this many minutes. Main-authored. */
+    var statusWifiLossMinutes: Int
+        get() = prefs.getInt(KEY_STATUS_WIFI_MIN, DeviceStatusPolicy.DEFAULT_WIFI_LOSS_MINUTES)
+        set(value) { prefs.edit().putInt(KEY_STATUS_WIFI_MIN, DeviceStatusPolicy.clampWifiLossMinutes(value)).apply() }
+
+    /** Seconds between snapshots while Main has a subscription open. Main-authored. */
+    var statusPollSeconds: Int
+        get() = prefs.getInt(KEY_STATUS_POLL_SEC, DeviceStatusPolicy.DEFAULT_POLL_SECONDS)
+        set(value) { prefs.edit().putInt(KEY_STATUS_POLL_SEC, DeviceStatusPolicy.clampPollSeconds(value)).apply() }
+
+    /** Replay/rollback guard for [com.noti.shared.WireMessage.StatusConfig], as for the webhook
+     *  config. -1 = none applied yet. */
+    var lastStatusConfigVersion: Long
+        get() = prefs.getLong(KEY_LAST_STATUS_CONFIG_VERSION, -1L)
+        set(value) { prefs.edit().putLong(KEY_LAST_STATUS_CONFIG_VERSION, value).apply() }
+
+    /** True while no low-battery alert is outstanding, i.e. the next crossing may alert. Persisted
+     *  so a reboot mid-episode doesn't re-alert for a low battery Main already knows about. */
+    var batteryAlertArmed: Boolean
+        get() = prefs.getBoolean(KEY_BATTERY_ARMED, true)
+        set(value) { prefs.edit().putBoolean(KEY_BATTERY_ARMED, value).apply() }
+
+    /** When wifi went away (0 = wifi is up). Persisted so the downtime clock survives a process
+     *  restart - otherwise every OEM app-kill would silently restart the countdown and the alert
+     *  would never fire on exactly the phones that need it most. */
+    var wifiLostAtMs: Long
+        get() = prefs.getLong(KEY_WIFI_LOST_AT, 0L)
+        set(value) { prefs.edit().putLong(KEY_WIFI_LOST_AT, value).apply() }
+
+    /** Whether a wifi-down alert is outstanding, so wifi coming back sends the all-clear exactly
+     *  once and a still-down wifi doesn't re-alert on every re-evaluation. */
+    var wifiAlertSent: Boolean
+        get() = prefs.getBoolean(KEY_WIFI_ALERT_SENT, false)
+        set(value) { prefs.edit().putBoolean(KEY_WIFI_ALERT_SENT, value).apply() }
+
     /** Generated once, stable for the install; identifies this device in the n8n payload. */
     @Volatile private var cachedDeviceId: String? = null
     val deviceId: String
@@ -265,6 +320,15 @@ class SenderSettings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_REPUSH_TOTAL = "repush_total"
         private const val KEY_LAST_PEER_BEAT_MS = "last_peer_beat_ms"
         private const val KEY_HEARTBEAT_ENABLED = "heartbeat_enabled"
+        private const val KEY_STATUS_SHARING = "status_sharing_enabled"
+        private const val KEY_STATUS_ALERTS = "status_alerts_enabled"
+        private const val KEY_STATUS_BATTERY_PCT = "status_battery_pct"
+        private const val KEY_STATUS_WIFI_MIN = "status_wifi_loss_minutes"
+        private const val KEY_STATUS_POLL_SEC = "status_poll_seconds"
+        private const val KEY_LAST_STATUS_CONFIG_VERSION = "last_status_config_version"
+        private const val KEY_BATTERY_ARMED = "battery_alert_armed"
+        private const val KEY_WIFI_LOST_AT = "wifi_lost_at_ms"
+        private const val KEY_WIFI_ALERT_SENT = "wifi_alert_sent"
 
         @Volatile private var INSTANCE: SenderSettings? = null
 

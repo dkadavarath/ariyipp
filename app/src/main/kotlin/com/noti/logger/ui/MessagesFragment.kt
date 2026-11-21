@@ -30,6 +30,8 @@ import com.noti.logger.data.NotiDatabase
 import com.noti.logger.util.Avatars
 import com.noti.logger.util.ChatTime
 import com.noti.logger.util.Haptics
+import com.noti.logger.util.Motion
+import com.noti.logger.util.SoftItemAnimator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -96,6 +98,8 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
         view.findViewById<RecyclerView>(R.id.recycler).apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = this@MessagesFragment.adapter
+            // A conversation that arrives while the list is open rises into place.
+            itemAnimator = SoftItemAnimator(liftPx = 8f * resources.displayMetrics.density)
         }
         if (cachedConvos != null && cachedMuted != null) {
             latestConvos = cachedConvos
@@ -112,7 +116,7 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
         view.findViewById<View>(R.id.btn_overflow).setOnClickListener { showOverflowMenu(it) }
 
         search.doAfterTextChanged {
-            searchClear.visibility = if (it.isNullOrEmpty()) View.GONE else View.VISIBLE
+            Motion.setShown(searchClear, !it.isNullOrEmpty(), fromScale = 0.8f)
             updateSearchBack()
             searchJob?.cancel()
             searchJob = viewLifecycleOwner.lifecycleScope.launch { delay(220); observeConversations() }
@@ -138,8 +142,10 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
 
     /** Swaps the collapsed search icon for the full search pill and focuses it. */
     private fun expandSearch() {
+        // Both rows are the same height, so swapping them never moves the list; the pill fades in
+        // from 96% so it reads as the search icon opening up.
         rowCollapsed.visibility = View.GONE
-        rowSearch.visibility = View.VISIBLE
+        Motion.setShown(rowSearch, true)
         search.requestFocus()
         requireContext().getSystemService(InputMethodManager::class.java)
             ?.showSoftInput(search, InputMethodManager.SHOW_IMPLICIT)
@@ -153,8 +159,8 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
         requireContext().getSystemService(InputMethodManager::class.java)
             ?.hideSoftInputFromWindow(search.windowToken, 0)
         searchBack.isEnabled = false
-        rowSearch.visibility = View.GONE
-        rowCollapsed.visibility = View.VISIBLE
+        Motion.setShownNow(rowSearch, false)
+        Motion.setShown(rowCollapsed, true)
     }
 
     override fun onResume() {
@@ -401,10 +407,18 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
         private var colorOnSurfaceVariant = 0
         private var colorPrimary = 0
 
+        /** The muted glyph, tinted once; each row draws a fresh copy of its shared state. */
+        private var mutedIcon: android.graphics.drawable.Drawable? = null
+
         fun resolveColors(v: View) {
             colorOnSurface = MaterialColors.getColor(v, com.google.android.material.R.attr.colorOnSurface)
             colorOnSurfaceVariant = MaterialColors.getColor(v, com.google.android.material.R.attr.colorOnSurfaceVariant)
-            colorPrimary = MaterialColors.getColor(v, com.google.android.material.R.attr.colorPrimary)
+            colorPrimary = MaterialColors.getColor(v, androidx.appcompat.R.attr.colorPrimary)
+            val size = (15f * v.resources.displayMetrics.density).toInt()
+            mutedIcon = androidx.core.content.ContextCompat.getDrawable(v.context, R.drawable.ic_mute)?.mutate()?.apply {
+                setBounds(0, 0, size, size)
+                setTint(colorOnSurfaceVariant)
+            }
         }
 
         fun submit(list: List<ConversationSummary>, muted: Set<String>, selectionMode: Boolean, selected: Set<String>) {
@@ -438,7 +452,12 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
                 holder.unread.visibility = View.GONE
             }
 
-            holder.muted.visibility = if (c.muted) View.VISIBLE else View.GONE
+            holder.time.setCompoundDrawablesRelative(
+                if (c.muted) mutedIcon?.constantState?.newDrawable()?.also { it.bounds = mutedIcon!!.bounds } else null,
+                null, null, null,
+            )
+            holder.time.contentDescription =
+                if (c.muted) "${holder.time.text}, ${ctx.getString(R.string.conv_muted)}" else null
 
             holder.checkbox.visibility = if (c.selectionMode) View.VISIBLE else View.GONE
             holder.checkbox.isChecked = c.selected
@@ -483,7 +502,6 @@ private class ConversationVH(v: View) : RecyclerView.ViewHolder(v) {
     val last: TextView = v.findViewById(R.id.txt_last)
     val time: TextView = v.findViewById(R.id.txt_time)
     val unread: TextView = v.findViewById(R.id.txt_unread)
-    val muted: ImageView = v.findViewById(R.id.ic_muted)
     val checkbox: MaterialCheckBox = v.findViewById(R.id.checkbox_select)
     val avatar: View = v.findViewById(R.id.avatar)
     val avatarInitials: TextView = v.findViewById(R.id.avatar_initials)

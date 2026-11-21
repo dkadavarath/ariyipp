@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Card fill, light: the brightest tier (white on the grey page). Read through the theme so Material
+     You's wallpaper-derived surfaces carry through to cards too. Dark: see color-night/. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="?attr/colorSurfaceContainerLowest" />
+</selector>

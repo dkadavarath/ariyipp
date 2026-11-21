@@ -42,6 +42,6 @@ class DiagnosticsActivity : ScreenActivity() {
 
     private fun render() {
         val lines = Diag.snapshot()
-        logView.text = if (lines.isEmpty()) getString(R.string.diag_empty) else lines.joinToString("\n")
+        logView.text = if (lines.isEmpty()) getString(R.string.cmp_diag_empty) else lines.joinToString("\n")
     }
 }

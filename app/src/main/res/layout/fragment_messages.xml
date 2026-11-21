@@ -116,8 +116,8 @@
             android:gravity="center"
             android:padding="32dp"
             android:text="@string/messages_empty"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:alpha="0.7"
             android:visibility="gone" />
     </FrameLayout>
 </LinearLayout>

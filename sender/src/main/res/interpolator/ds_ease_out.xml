@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strong ease-out, cubic-bezier(0.23, 1, 0.32, 1): moves fast at the start and settles gently, so
+     a response starts the moment you touch and never feels sluggish. The default for anything
+     entering or reacting to input. -->
+<pathInterpolator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:controlX1="0.23"
+    android:controlY1="1"
+    android:controlX2="0.32"
+    android:controlY2="1" />

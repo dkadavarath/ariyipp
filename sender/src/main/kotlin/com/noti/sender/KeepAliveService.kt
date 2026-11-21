@@ -14,6 +14,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.content.ContextCompat
 import com.noti.sender.config.SenderSettings
+import com.noti.sender.status.DeviceMonitor
 
 /**
  * A persistent foreground service whose only job is to keep ariy's process warm so the SMS receiver
@@ -25,8 +26,18 @@ class KeepAliveService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onDestroy() {
+        DeviceMonitor.stop(this)
+        super.onDestroy()
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         ensureChannel()
+        // The status monitor's battery broadcast and wifi callback only fire while this process is
+        // alive, which is exactly what this service exists to arrange - so it starts and stops with
+        // the service rather than owning a lifetime of its own.
+        DeviceMonitor.start(this)
+        StatusWatchWorker.schedule(this)
         // Open the app's launcher (this is a library - it can't name the app's Activity directly).
         val launch = packageManager.getLaunchIntentForPackage(packageName)
             ?: Intent().setPackage(packageName)

@@ -41,7 +41,7 @@ object NotiCommandSender {
             s.relayKey,
         )
         return try {
-            val res = FcmSender.forServiceAccount(s.serviceAccountJson).send(s.sndiFcmToken, mapOf("payload" to payload))
+            val res = FcmSender.forServiceAccount(s.serviceAccountJson).send(s.sndiFcmToken, mapOf("payload" to payload), label = com.noti.shared.FcmLabel.COMMAND)
             Diag.log(
                 when {
                     res.ok -> "compose → HTTP 200 - command sent to the companion"

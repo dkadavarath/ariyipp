@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Design-system hooks the component styles read, so a theme overlay (AMOLED) can re-skin every
+         card at once instead of each layout carrying its own colours. -->
+    <attr name="notiCardBackground" format="color" />
+    <attr name="notiCardStrokeColor" format="color" />
+    <attr name="notiCardStrokeWidth" format="dimension" />
+    <!-- The hairline above the bottom bar and under toolbars. -->
+    <attr name="notiHairline" format="color" />
+</resources>

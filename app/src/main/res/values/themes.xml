@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.Noti" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Brand blue scheme (matches the icon); day/night values from colors.xml. Surfaces come
-             from the Material3 DayNight parent. Follows the system light/dark setting. -->
+        <!-- Palette from :sender's colors.xml (day/night pairs; AMOLED is ThemeOverlay.Noti.Amoled).
+             Every role is pinned explicitly - text and lines included - so contrast is a property of
+             this theme rather than whatever the Material defaults happen to be. -->
         <item name="colorPrimary">@color/brand_primary</item>
         <item name="colorOnPrimary">@color/brand_on_primary</item>
         <item name="colorPrimaryContainer">@color/brand_primary_container</item>
@@ -11,38 +12,62 @@
         <item name="colorOnSecondary">@color/brand_on_secondary</item>
         <item name="colorSecondaryContainer">@color/brand_secondary_container</item>
         <item name="colorOnSecondaryContainer">@color/brand_on_secondary_container</item>
-        <!-- Neutralise the M3 lavender/blue-tinted surface ramp so cards and pages read neutral and
-             consistent (Settings especially, being one large filled card). -->
+        <item name="colorError">@color/ds_error</item>
+        <item name="colorOnError">@color/ds_on_error</item>
+        <item name="colorErrorContainer">@color/ds_error_container</item>
+        <item name="colorOnErrorContainer">@color/ds_on_error_container</item>
+        <item name="colorOnSurface">@color/ds_on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/ds_on_surface_variant</item>
+        <item name="colorOutline">@color/ds_outline</item>
+        <item name="colorOutlineVariant">@color/ds_outline_variant</item>
+
+        <!-- Surfaces: a neutral page (colorSurface, and the window/background that Material ties to
+             it) with cards one tier brighter in light mode and one tier lighter in dark mode (see
+             @color/ds_card_background). Menus and dialogs use the container tiers above the page.
+             android:colorBackgroundFloating is what the plain-platform PopupMenu draws on; left
+             alone it defaults to the page colour and a menu blends into what is behind it. -->
+        <item name="colorSurface">@color/app_surface</item>
         <item name="colorSurfaceVariant">@color/app_surface_variant</item>
-        <!-- The base/window surface (colorSurface, and android:colorBackground/windowBackground,
-             which Material3 ties to it) was left unset here, so any screen without an explicit
-             card/container background - ChatActivity's root, sub-screens' root, onboarding - fell
-             through to M3's own stock dark palette instead of this theme's neutral greys.
-             "container_low" (#1A1B1D) technically isn't pure black, but it's dark enough to read as
-             black at a glance - measured at RGB(26,27,27) on device, next to cards at RGB(51,53,55).
-             Pinned to "container_high" instead: a clearly-lighter, unambiguously-grey tier, still
-             visibly darker than the filled cards (colorSurfaceContainerHighest) above it.
-             colorSurfaceContainer (what Material3 popup/dropdown menus render on by default) is
-             bumped up to match the cards' tier too, so a menu popping up over this background is
-             visibly a shade lighter instead of blending into it. The plain-platform overflow menu on
-             the Messages screen (android.widget.PopupMenu) doesn't read colorSurfaceContainer though -
-             it uses the older platform attr android:colorBackgroundFloating, which defaults to
-             android:colorBackground and so silently matched the page again; set explicitly here too. -->
-        <item name="android:colorBackground">@color/app_surface_container_high</item>
-        <item name="android:windowBackground">@color/app_surface_container_high</item>
+        <item name="android:colorBackground">@color/app_surface</item>
+        <item name="android:windowBackground">@color/app_surface</item>
         <item name="android:colorBackgroundFloating">@color/app_surface_container_highest</item>
-        <item name="colorSurface">@color/app_surface_container_high</item>
         <item name="colorSurfaceContainerLowest">@color/app_surface_container_lowest</item>
         <item name="colorSurfaceContainerLow">@color/app_surface_container_low</item>
-        <item name="colorSurfaceContainer">@color/app_surface_container_highest</item>
+        <item name="colorSurfaceContainer">@color/app_surface_container</item>
         <item name="colorSurfaceContainerHigh">@color/app_surface_container_high</item>
         <item name="colorSurfaceContainerHighest">@color/app_surface_container_highest</item>
+
+        <!-- Design-system hooks (see :sender's styles_ds.xml). -->
+        <item name="notiCardBackground">@color/ds_card_background</item>
+        <item name="notiCardStrokeColor">?attr/colorOutlineVariant</item>
+        <item name="notiCardStrokeWidth">0dp</item>
+        <item name="notiHairline">?attr/colorOutlineVariant</item>
+
+        <!-- Components pick up the Widget.Noti.* styles by default, so a view with no explicit style
+             still gets the shared shape and press motion. -->
+        <item name="materialCardViewStyle">@style/Widget.Noti.Card</item>
+        <item name="materialButtonStyle">@style/Widget.Noti.Button</item>
+        <item name="materialButtonOutlinedStyle">@style/Widget.Noti.Button.Outlined</item>
+        <item name="floatingActionButtonStyle">@style/Widget.Noti.Fab</item>
+        <item name="bottomNavigationStyle">@style/Widget.Noti.BottomNav</item>
+        <item name="textInputStyle">@style/Widget.Noti.TextInput</item>
+        <item name="textAppearanceHeadlineMedium">@style/TextAppearance.Noti.HeadlineMedium</item>
+        <item name="textAppearanceTitleLarge">@style/TextAppearance.Noti.TitleLarge</item>
+        <item name="textAppearanceTitleMedium">@style/TextAppearance.Noti.TitleMedium</item>
+        <item name="textAppearanceTitleSmall">@style/TextAppearance.Noti.TitleSmall</item>
+        <item name="textAppearanceLabelLarge">@style/TextAppearance.Noti.LabelLarge</item>
+        <item name="textAppearanceBodyLarge">@style/TextAppearance.Noti.BodyLarge</item>
+        <item name="textAppearanceBodyMedium">@style/TextAppearance.Noti.BodyMedium</item>
+        <item name="textAppearanceBodySmall">@style/TextAppearance.Noti.BodySmall</item>
+        <item name="textAppearanceLabelMedium">@style/TextAppearance.Noti.LabelMedium</item>
+        <item name="textAppearanceLabelSmall">@style/TextAppearance.Noti.LabelSmall</item>
+
         <!-- Slide + fade for opening/closing screens (settings sub-screens, chat, compose). -->
         <item name="android:windowAnimationStyle">@style/Noti.WindowAnimation</item>
     </style>
 
-    <!-- Shared-axis-X activity transitions with emphasized easing. Only the activity open/close pairs
-         are set, so the launcher/splash launch keeps the system default. -->
+    <!-- Short slide-and-fade activity transitions with a strong ease-out (:sender's anim/). Only the
+         activity open/close pairs are set, so the launcher/splash launch keeps the system default. -->
     <style name="Noti.WindowAnimation" parent="@android:style/Animation.Activity">
         <item name="android:activityOpenEnterAnimation">@anim/screen_open_enter</item>
         <item name="android:activityOpenExitAnimation">@anim/screen_open_exit</item>
@@ -50,44 +75,15 @@
         <item name="android:activityCloseExitAnimation">@anim/screen_close_exit</item>
     </style>
 
-    <!-- AMOLED overlay: applied at runtime over the dark theme to push ALL chrome/background/card
-         surfaces to true black (cards, nav bar, app bar, Status/Settings blocks). colorSurfaceVariant
-         is deliberately left alone so chat bubbles, the compose field, and date pills stay visible.
-         Cards read as seamless black; section titles and spacing carry the structure. -->
-    <style name="ThemeOverlay.Noti.Amoled" parent="">
-        <item name="android:colorBackground">#FF000000</item>
-        <item name="android:colorBackgroundFloating">#FF000000</item>
-        <item name="colorSurface">#FF000000</item>
-        <item name="colorSurfaceContainerLowest">#FF000000</item>
-        <item name="colorSurfaceContainerLow">#FF000000</item>
-        <item name="colorSurfaceContainer">#FF000000</item>
-        <item name="colorSurfaceContainerHigh">#FF000000</item>
-        <item name="colorSurfaceContainerHighest">#FF000000</item>
-        <item name="colorSurfaceBright">#FF000000</item>
-        <item name="colorSurfaceDim">#FF000000</item>
-        <item name="elevationOverlayEnabled">false</item>
-    </style>
-
-    <!-- Small uppercase coloured section header for the flat Status/Settings screens. -->
+    <!-- Small coloured section header for the flat Status/Settings screens. Sentence case at title
+         weight: all-caps with wide tracking read as shouting next to the calmer card titles. -->
     <style name="SectionLabel" parent="">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textAppearance">?attr/textAppearanceLabelLarge</item>
+        <item name="android:textAppearance">?attr/textAppearanceTitleSmall</item>
         <item name="android:textColor">?attr/colorPrimary</item>
-        <item name="android:textAllCaps">true</item>
-        <item name="android:letterSpacing">0.06</item>
     </style>
 
-    <!-- Small uppercase section label used to group the compose form. -->
-    <style name="Compose.Eyebrow" parent="">
-        <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:textAppearance">?attr/textAppearanceLabelMedium</item>
-        <item name="android:textColor">?attr/colorPrimary</item>
-        <item name="android:textAllCaps">true</item>
-        <item name="android:letterSpacing">0.08</item>
-        <item name="android:layout_marginBottom">8dp</item>
-    </style>
 
     <!-- Launch splash: the "n." icon on the blue brand background (AndroidX SplashScreen). -->
     <style name="Theme.Noti.Splash" parent="Theme.SplashScreen">
@@ -96,13 +92,4 @@
         <item name="postSplashScreenTheme">@style/Theme.Noti</item>
     </style>
 
-    <!-- Section header on the pairing screen (kept identical to ariy's for a unified look). -->
-    <style name="PairSectionHeader" parent="">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginTop">24dp</item>
-        <item name="android:layout_marginBottom">6dp</item>
-        <item name="android:textAppearance">?attr/textAppearanceTitleSmall</item>
-        <item name="android:textColor">?attr/colorPrimary</item>
-    </style>
 </resources>

@@ -8,11 +8,13 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -21,7 +23,9 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -31,7 +35,10 @@ import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.RelayedMessageEntity
 import com.noti.logger.push.NotiCommandSender
 import com.noti.logger.util.Avatars
+import com.noti.logger.util.ChatLinks
 import com.noti.logger.util.ChatTime
+import com.noti.logger.util.Motion
+import com.noti.logger.util.SoftItemAnimator
 import com.noti.logger.util.Theming
 import com.google.android.material.color.MaterialColors
 import androidx.core.content.ContextCompat
@@ -71,31 +78,30 @@ class ChatActivity : AppCompatActivity() {
     private var colorTimeOnPrimary = 0
     private var colorTimeOnSurface = 0
 
-    /** The body TextView's max width in px (set in onCreate, applied per bind) - the line-width
-     *  budget [reserveMetaSpace] measures against. */
+    /** The body TextView's max width in px (set in onCreate, applied per bind) - it caps the
+     *  whole bubble (see ChatBubbleLayout). */
     private var bodyMaxPx = 0
     // Distinct accent for a "delivered" (blue) read-receipt tick, against the outgoing bubble fill.
     private var colorTickDelivered = 0
-
-    /** Sized to match txt_time (11sp) so [reserveMetaSpace] can measure how much blank room the
-     *  time/ticks need at the end of a bubble's text. */
-    private val metaPaint = android.text.TextPaint()
+    private lateinit var tickReceived: android.graphics.drawable.Drawable
+    private lateinit var tickSent: android.graphics.drawable.Drawable
+    private lateinit var tickDelivered: android.graphics.drawable.Drawable
 
     /** Per-bind-state bubble corner radii (2 sides × 4 group positions), computed once and reused -
      *  a float array is immutable once built, so sharing it *by reference* across many
      *  GradientDrawables is safe (unlike sharing a whole Drawable instance - see [groupedBubble]). */
     private val bubbleCache = HashMap<Triple<Boolean, Boolean, Boolean>, FloatArray>()
 
-    /** reserveMetaSpace result per (clock text, outgoing) - avoids re-measuring on every bind. */
-    private val metaReserveCache = HashMap<String, Int>()
+    /** Link-marked body per message id - a body never changes, and Linkify's URL scan is not worth
+     *  repeating on every bind while scrolling. */
+    private val linkCache = HashMap<Long, CharSequence>()
 
-    /** The px width the meta row needs, per (clock text, ticks) - see [reserveMetaSpace]. */
-    private val metaReserveWidthCache = HashMap<String, Float>()
-
-    /** [reserveMetaSpace]'s full result per (msgId, showTicks) - a message's body/time never change,
-     *  so the only thing that can invalidate this is a delivery-status update flipping showTicks,
-     *  which is already part of the key. Avoids building a StaticLayout on every bind while scrolling. */
-    private val metaSuffixCache = HashMap<Pair<Long, Boolean>, String>()
+    /** Where the in-progress gesture went down, in the bubble's own coordinates. Recorded without
+     *  consuming the event (see [bindMessage]) because neither a click nor a long-press carries the
+     *  position, and [ChatLinks.linkAt] needs it to tell a tap on a link from a tap on the text
+     *  beside it. One gesture is in flight at a time, so a single pair is enough. */
+    private var touchX = 0f
+    private var touchY = 0f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Theming.applyDynamicColorIfEnabled(this)
@@ -127,42 +133,64 @@ class ChatActivity : AppCompatActivity() {
             sender,
         )
 
-        colorPrimary = MaterialColors.getColor(root, com.google.android.material.R.attr.colorPrimary)
+        colorPrimary = MaterialColors.getColor(root, androidx.appcompat.R.attr.colorPrimary)
         // Read the fixed resource directly rather than the colorSurfaceVariant theme attribute: under
         // Material You, DynamicColors overrides that attribute with a wallpaper-derived tone
         // independent of our own pinned window background, which can land the incoming bubble only a
         // few units off the page - barely visible. This role (bubble/date-pill/compose-field fill) is
         // deliberately neutral and untouched by dynamic color, same as it already is in AMOLED mode.
-        colorSurfaceVariant = ContextCompat.getColor(this, R.color.app_surface_variant)
+        colorSurfaceVariant = ContextCompat.getColor(this, com.noti.sender.R.color.app_surface_variant)
         colorOnPrimary = MaterialColors.getColor(root, com.google.android.material.R.attr.colorOnPrimary)
         colorOnSurface = MaterialColors.getColor(root, com.google.android.material.R.attr.colorOnSurface)
-        colorTimeOnPrimary = ColorUtils.setAlphaComponent(colorOnPrimary, 179) // ~70%
+        colorTimeOnPrimary = ColorUtils.setAlphaComponent(colorOnPrimary, 217) // 85%: the lowest that keeps 11sp time at 4.5:1 on the bubble
         colorTimeOnSurface = MaterialColors.getColor(root, com.google.android.material.R.attr.colorOnSurfaceVariant)
         colorTickDelivered = ContextCompat.getColor(this, R.color.chat_tick_delivered)
-        metaPaint.textSize = 11f * resources.displayMetrics.scaledDensity
+        // The three tick states, tinted once here rather than per bind.
+        fun tick(res: Int, color: Int) = ContextCompat.getDrawable(this, res)!!.mutate().apply {
+            val size = (15f * resources.displayMetrics.density).toInt()
+            setBounds(0, 0, size, size)
+            setTint(color)
+        }
+        tickReceived = tick(R.drawable.ic_single_check, colorTimeOnPrimary)
+        tickSent = tick(R.drawable.ic_double_check, colorTimeOnPrimary)
+        tickDelivered = tick(R.drawable.ic_double_check, colorTickDelivered)
         bodyMaxPx = (resources.displayMetrics.widthPixels * 0.80f).toInt() - (32f * resources.displayMetrics.density).toInt()
 
         adapter = MessageAdapter()
         recycler = findViewById<RecyclerView>(R.id.recycler).apply {
             layoutManager = LinearLayoutManager(this@ChatActivity).apply { stackFromEnd = true }
             adapter = this@ChatActivity.adapter
+            // A new bubble grows out of its own bottom corner - the side it was sent from - while
+            // the ones above it move up to make room.
+            val d = resources.displayMetrics.density
+            itemAnimator = SoftItemAnimator(liftPx = 10f * d, startScale = 0.94f) { holder ->
+                if (holder !is MessageVH) return@SoftItemAnimator null
+                val v = holder.itemView
+                val outgoing = (holder.bubble.layoutParams as FrameLayout.LayoutParams).gravity == Gravity.END
+                (if (outgoing) (v.width - v.paddingRight).toFloat() else v.paddingLeft.toFloat()) to v.height.toFloat()
+            }
         }
 
         // Live updates: any insert/delete or delivery-status change reloads (paged) while the chat
         // is open, so ticks appear without leaving the screen. DiffUtil keeps the rebinding minimal.
+        // Only while STARTED: load() marks the conversation read, so collecting in the background
+        // (user pressed Home with the chat open) silently cleared unread state for messages nobody
+        // had seen. onResume's load() catches up on return; drop(1) skips the restart's replay.
         lifecycleScope.launch {
-            NotiDatabase.get(this@ChatActivity).relayedMessageDao().changeToken()
-                .distinctUntilChanged()
-                .drop(1) // onCreate's load() covers the initial state
-                .collect {
-                    // Respect deep pagination: don't yank the user back to the newest page.
-                    if (loadedCount <= PAGE_SIZE) {
-                        val lm = recycler.layoutManager as LinearLayoutManager
-                        val last = lm.findLastVisibleItemPosition()
-                        val atBottom = last == RecyclerView.NO_POSITION || last >= adapter.itemCount - 1
-                        load(scrollToEnd = atBottom)
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                NotiDatabase.get(this@ChatActivity).relayedMessageDao().changeToken()
+                    .distinctUntilChanged()
+                    .drop(1) // onCreate's/onResume's load() covers the initial state
+                    .collect {
+                        // Respect deep pagination: don't yank the user back to the newest page.
+                        if (loadedCount <= PAGE_SIZE) {
+                            val lm = recycler.layoutManager as LinearLayoutManager
+                            val last = lm.findLastVisibleItemPosition()
+                            val atBottom = last == RecyclerView.NO_POSITION || last >= adapter.itemCount - 1
+                            load(scrollToEnd = atBottom)
+                        }
                     }
-                }
+            }
         }
         stickyDate = findViewById(R.id.txt_sticky_date)
         scrollBottomBtn = findViewById<View>(R.id.btn_scroll_bottom).apply {
@@ -179,17 +207,28 @@ class ChatActivity : AppCompatActivity() {
         val sendButton = findViewById<View>(R.id.btn_send)
         sendButton.setOnClickListener { sendComposed() }
         val composeField = findViewById<android.widget.EditText>(R.id.et_compose)
-        updateSendEnabled(sendButton, composeField.text?.isNotBlank() == true)
+        updateSendEnabled(sendButton, composeField.text?.isNotBlank() == true, animate = false)
         composeField.addTextChangedListener(afterTextChanged = {
-            updateSendEnabled(sendButton, it?.isNotBlank() == true)
+            updateSendEnabled(sendButton, it?.isNotBlank() == true, animate = true)
         })
         load()
     }
 
-    /** The send action only reads as "live" once there's something to send. */
-    private fun updateSendEnabled(button: View, hasText: Boolean) {
+    /** The send action only reads as "live" once there's something to send: it eases up to full
+     *  size and opacity with the first character, and back down when the field empties. */
+    private fun updateSendEnabled(button: View, hasText: Boolean, animate: Boolean) {
+        if (button.isEnabled == hasText && animate) return
         button.isEnabled = hasText
-        button.alpha = if (hasText) 1f else 0.4f
+        val alpha = if (hasText) 1f else 0.4f
+        val scale = if (hasText) 1f else 0.9f
+        if (animate) {
+            button.animate().alpha(alpha).scaleX(scale).scaleY(scale)
+                .setDuration(Motion.ENTER_MS).setInterpolator(Motion.EASE_OUT).start()
+        } else {
+            button.alpha = alpha
+            button.scaleX = scale
+            button.scaleY = scale
+        }
     }
 
     private fun sendComposed() {
@@ -208,12 +247,15 @@ class ChatActivity : AppCompatActivity() {
                 val id = dao.insert(
                     RelayedMessageEntity(sender = sender, sim = "", body = text, receivedAt = System.currentTimeMillis(), outgoing = 1)
                 )
-                // Same retention rule the inbound path applies (best-effort).
-                try {
-                    val days = Settings.get(this@ChatActivity).retentionDays.coerceAtLeast(0)
-                    dao.purgeOlderThan(System.currentTimeMillis() - days * 86_400_000L)
-                } catch (_: Exception) {
-                }
+                // Same chat-retention rule the inbound path applies (best-effort; default keeps all).
+                com.noti.logger.data.ChatRetention
+                    .cutoff(Settings.get(this@ChatActivity).chatRetentionDays, System.currentTimeMillis())
+                    ?.let { cutoff ->
+                        try {
+                            dao.purgeOlderThan(cutoff)
+                        } catch (_: Exception) {
+                        }
+                    }
                 id
             }
             load(scrollToEnd = true)
@@ -296,15 +338,15 @@ class ChatActivity : AppCompatActivity() {
         val lm = recycler.layoutManager as LinearLayoutManager
         val firstVisible = lm.findFirstVisibleItemPosition()
         if (firstVisible == RecyclerView.NO_POSITION || adapter.isSeparatorAt(firstVisible)) {
-            stickyDate.visibility = View.GONE
+            Motion.setShown(stickyDate, false)
             return
         }
         val label = adapter.dateLabelAt(firstVisible)
         if (label == null) {
-            stickyDate.visibility = View.GONE
+            Motion.setShown(stickyDate, false)
         } else {
             stickyDate.text = label
-            stickyDate.visibility = View.VISIBLE
+            Motion.setShown(stickyDate, true)
         }
     }
 
@@ -312,31 +354,102 @@ class ChatActivity : AppCompatActivity() {
         val lm = recycler.layoutManager as LinearLayoutManager
         val lastVisible = lm.findLastVisibleItemPosition()
         val atBottom = lastVisible == RecyclerView.NO_POSITION || lastVisible >= adapter.itemCount - 1
-        scrollBottomBtn.visibility = if (atBottom) View.GONE else View.VISIBLE
+        Motion.setShown(scrollBottomBtn, !atBottom, fromScale = 0.8f)
     }
 
-    private fun onMessageLongPress(m: RelayedMessageEntity) {
-        val actions = arrayOf(
-            getString(R.string.msg_copy),
-            getString(R.string.msg_select_text),
-            getString(R.string.msg_forward),
-            getString(R.string.msg_share),
-            getString(R.string.msg_delete),
-        )
-        MaterialAlertDialogBuilder(this)
-            .setItems(actions) { _, which ->
-                when (which) {
-                    0 -> copyText(m.body)
-                    1 -> showSelectableText(m.body)
-                    2 -> startActivity(
-                        Intent(this, ComposeActivity::class.java)
-                            .putExtra(ComposeActivity.EXTRA_PREFILL_BODY, m.body)
-                    )
-                    3 -> shareText(m.body)
-                    4 -> deleteMessage(m.id)
-                }
+    /**
+     * The per-message menu. [link] is the URL the long-press landed on, if any: it adds the two
+     * link actions at the top rather than replacing the menu, so a message that is nothing but a
+     * URL keeps Forward, Share and Delete instead of losing them to a link-only menu.
+     *
+     * Built as label-to-action pairs because the list is no longer fixed - a positional `when` over
+     * the index would silently shift every action by one as soon as a link is present.
+     */
+    private fun onMessageLongPress(m: RelayedMessageEntity, link: String?) {
+        val actions = buildList<Pair<String, () -> Unit>> {
+            if (link != null) {
+                add(getString(R.string.msg_open_link) to { openLink(link) })
+                add(getString(R.string.msg_copy_link) to { copyText(link, R.string.msg_link_copied) })
             }
+            add(getString(R.string.msg_copy) to { copyText(m.body) })
+            add(getString(R.string.msg_select_text) to { showSelectableText(m.body) })
+            add(getString(R.string.msg_forward) to {
+                startActivity(
+                    Intent(this@ChatActivity, ComposeActivity::class.java)
+                        .putExtra(ComposeActivity.EXTRA_PREFILL_BODY, m.body)
+                )
+            })
+            add(getString(R.string.msg_share) to { shareText(m.body) })
+            // Only for what arrived (a bill never comes in something you sent), and only while the
+            // Reminders module is on - a rule made with it off would never run.
+            if (m.outgoing == 0 && com.noti.logger.config.Settings.get(this@ChatActivity).reminderEnabled) {
+                add(getString(R.string.rm_create_rule_from_msg) to {
+                    startActivity(
+                        Intent(this@ChatActivity, ReminderRuleActivity::class.java)
+                            .putExtra(ReminderRuleActivity.EXTRA_SAMPLE, m.body)
+                            .putExtra(ReminderRuleActivity.EXTRA_SENDER, m.sender)
+                    )
+                })
+                add(getString(R.string.rm_use_as_payment) to { useAsPayment(m) })
+            }
+            add(getString(R.string.msg_delete) to { deleteMessage(m.id) })
+        }
+        MaterialAlertDialogBuilder(this)
+            .setItems(actions.map { it.first }.toTypedArray()) { _, which -> actions[which].second() }
             .show()
+    }
+
+    /** A payment confirmation → pick which bill rule it settles → that rule opens with its payment
+     *  section switched on and drafted from this message. */
+    private fun useAsPayment(m: RelayedMessageEntity) {
+        lifecycleScope.launch {
+            val rules = withContext(Dispatchers.IO) {
+                try {
+                    NotiDatabase.get(applicationContext).reminderRuleDao().all()
+                        .filter { it.type == com.noti.logger.reminder.RuleType.BILL.name }
+                } catch (e: Exception) { emptyList() }
+            }
+            if (rules.isEmpty()) {
+                Toast.makeText(this@ChatActivity, R.string.rm_no_bill_rules, Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            MaterialAlertDialogBuilder(this@ChatActivity)
+                .setTitle(R.string.rm_pick_rule_for_payment)
+                .setItems(rules.map { it.name }.toTypedArray()) { _, which -> confirmAutoPaid(rules[which], m) }
+                .show()
+        }
+    }
+
+    /** Says what is about to change before the rule opens - turning the resolver on, or (if it is
+     *  already on) replacing the payment details it has with ones drafted from this message. */
+    private fun confirmAutoPaid(rule: com.noti.logger.data.ReminderRuleEntity, m: RelayedMessageEntity) {
+        val replacing = rule.payEnabled == 1
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.rm_pay_enable_title, rule.name))
+            .setMessage(
+                if (replacing) getString(R.string.rm_pay_replace_body, rule.name)
+                else getString(R.string.rm_pay_enable_body)
+            )
+            .setPositiveButton(if (replacing) R.string.rm_pay_replace_yes else R.string.rm_pay_enable_yes) { _, _ ->
+                startActivity(
+                    Intent(this, ReminderRuleActivity::class.java)
+                        .putExtra(ReminderRuleActivity.EXTRA_RULE_ID, rule.id)
+                        .putExtra(ReminderRuleActivity.EXTRA_PAY_SAMPLE, m.body)
+                        .putExtra(ReminderRuleActivity.EXTRA_PAY_SENDER, m.sender)
+                )
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    /** Hands a tapped link to whatever the user browses with. Only ever http/https - see [ChatLinks]. */
+    private fun openLink(url: String) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        } catch (e: Exception) {
+            // No browser installed, or one that refuses the URL. The link is still copyable.
+            Toast.makeText(this, R.string.msg_link_failed, Toast.LENGTH_SHORT).show()
+        }
     }
 
     /** Hands the message off to the system share sheet, so it can be forwarded through any other
@@ -349,10 +462,10 @@ class ChatActivity : AppCompatActivity() {
         startActivity(Intent.createChooser(send, getString(R.string.msg_share)))
     }
 
-    private fun copyText(text: String) {
+    private fun copyText(text: String, confirmation: Int = R.string.msg_copied) {
         val clip = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clip.setPrimaryClip(ClipData.newPlainText("message", text))
-        Toast.makeText(this, R.string.msg_copied, Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, confirmation, Toast.LENGTH_SHORT).show()
     }
 
     private fun showSelectableText(text: String) {
@@ -548,6 +661,7 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    @android.annotation.SuppressLint("ClickableViewAccessibility") // the listener returns false; performClick() still runs
     private fun bindMessage(holder: MessageVH, row: Row.Msg) {
         val m = row.message
         val outgoing = m.outgoing != 0
@@ -573,97 +687,45 @@ class ChatActivity : AppCompatActivity() {
         // acknowledged something - a still-pending send shows no ticks at all, same as incoming. A
         // failed send also shows none (just the time), rather than inventing a distinct failure icon.
         val showTicks = outgoing && m.status in WireMessage.DeliveryAck.RECEIVED..WireMessage.DeliveryAck.SMS_DELIVERED
-        holder.ticks.visibility = if (showTicks) View.VISIBLE else View.GONE
-        if (showTicks) {
-            holder.ticks.setImageResource(
-                if (m.status >= WireMessage.DeliveryAck.SMS_SENT) R.drawable.ic_double_check else R.drawable.ic_single_check
-            )
-            holder.ticks.setColorFilter(
-                if (m.status == WireMessage.DeliveryAck.SMS_DELIVERED) colorTickDelivered else timeColor
-            )
+        val ticks = when {
+            !showTicks -> null
+            m.status == WireMessage.DeliveryAck.SMS_DELIVERED -> tickDelivered
+            m.status >= WireMessage.DeliveryAck.SMS_SENT -> tickSent
+            else -> tickReceived
         }
+        // A fresh Drawable per view from the shared state (see groupedBubble on why a Drawable
+        // instance must never be shared between views).
+        holder.time.setCompoundDrawablesRelative(null, null, ticks?.constantState?.newDrawable()?.also { it.bounds = ticks.bounds }, null)
 
-        // The bubble must never be narrower than its meta row: the overlay is pinned to the
-        // bubble's end, so if the reserved inline space is ever out of sync (e.g. a row last bound
-        // while pending gets its ticks later), the ticks would render past the bubble's edge.
-        holder.bubble.minimumWidth = kotlin.math.ceil(
-            metaPaint.measureText(timeText) + (if (showTicks) (15f * d) + (3f * d) else 0f) + 10f * d
-        ).toInt()
+        // Time and ticks never collide with the text: ChatBubbleLayout measures the body's real
+        // last line and puts them on it only when they fit, otherwise on a row of their own.
+        // Links take the bubble's own foreground on outgoing (where a blue would be unreadable on
+        // the primary fill) and the accent on incoming; either way the URLSpan's underline is what
+        // actually marks them out, so the distinction survives any palette Material You picks.
+        holder.body.setLinkTextColor(if (outgoing) colorOnPrimary else colorPrimary)
+        holder.body.text = linkCache.getOrPut(m.id) { ChatLinks.linkify(m.body) }
 
-        // Reserve blank room at the end of the text for the time/ticks: they
-        // ride the last line when it fits, or wrap to their own line when it doesn't - either way no
-        // separate row is added, so single-line bubbles stay as short as their text. This only works
-        // for LTR-first text: appended characters land at the *logical* end of the string, which for
-        // an RTL paragraph renders on the visual left, while the overlay below is pinned to the visual
-        // right - so for RTL messages, skip the inline trick and just give the text enough bottom
-        // padding to clear the meta row instead, guaranteeing no overlap regardless of the text's own
-        // internal alignment.
-        val isRtl = android.text.TextDirectionHeuristics.FIRSTSTRONG_LTR.isRtl(m.body, 0, m.body.length)
-        val basePadding = intArrayOf(holder.body.paddingLeft, holder.body.paddingTop, holder.body.paddingRight)
-        if (isRtl) {
-            holder.body.text = m.body
-            holder.body.setPadding(basePadding[0], basePadding[1], basePadding[2], (31f * d).toInt())
-        } else {
-            holder.body.text = m.body + reserveMetaSpace(m.id, m.body, holder.body, timeText, showTicks, d)
-            holder.body.setPadding(basePadding[0], basePadding[1], basePadding[2], (7f * d).toInt())
+        // Returns false throughout: the gesture still reaches the click/long-press handlers below
+        // and the RecyclerView's scroll, which is the whole reason the links aren't driven by a
+        // MovementMethod. performClick() is therefore still called by the framework.
+        holder.body.setOnTouchListener { _, e ->
+            if (e.actionMasked == MotionEvent.ACTION_DOWN) {
+                touchX = e.x
+                touchY = e.y
+            }
+            false
         }
-
-        // The meta row (time + ticks) always trails at the bubble's bottom-right - that's where the
-        // reserved blank space actually lands in the (LTR) text layout: even incoming bubbles keep
-        // their timestamp bottom-right, not mirrored to the bubble's side.
-        val metaLp = holder.metaRow.layoutParams as FrameLayout.LayoutParams
-        metaLp.gravity = Gravity.BOTTOM or Gravity.END
-        holder.metaRow.layoutParams = metaLp
-
-        holder.body.setOnLongClickListener { com.noti.logger.util.Haptics.longPress(it); onMessageLongPress(m); true }
+        holder.body.setOnClickListener { ChatLinks.linkAt(holder.body, touchX, touchY)?.let { openLink(it) } }
+        holder.body.setOnLongClickListener {
+            com.noti.logger.util.Haptics.longPress(it)
+            onMessageLongPress(m, ChatLinks.linkAt(holder.body, touchX, touchY))
+            true
+        }
         if (m.id == adapter.flashId) {
             adapter.flashId = -1L
             flash(holder.itemView)
         } else {
             holder.itemView.setBackgroundColor(Color.TRANSPARENT)
-        }
-    }
-
-    /**
-     * Appends the blank room the time/ticks meta row needs at the end of the bubble text: either
-     * inline on the last line (when it fits, so single-line bubbles stay as
-     * short as their text), or on its own final line (when it doesn't). The overlay is pinned to the
-     * bubble's bottom-right either way.
-     *
-     * The fit check matters: the inline reserve is an unbreakable non-breaking-space run, and when
-     * it wraps, Android trims the resulting whitespace-only line entirely - the bubble doesn't grow,
-     * and the overlay lands on top of the real last text line. Measuring up front (with a
-     * StaticLayout using the view's own paint/break settings, so wrapping matches) lets us choose
-     * the own-line form deterministically instead.
-     */
-    private fun reserveMetaSpace(msgId: Long, body: String, bodyView: TextView, timeText: String, showTicks: Boolean, d: Float): String {
-        if (body.isEmpty()) return ""
-        return metaSuffixCache.getOrPut(msgId to showTicks) {
-            val spaceCount = metaReserveCache.getOrPut("n|$timeText|$showTicks") {
-                val ticksWidth = if (showTicks) (15f * d) + (3f * d) else 0f
-                val endPadding = 10f * d
-                val reserveWidthPx = metaPaint.measureText(timeText) + ticksWidth + endPadding
-                val spaceWidthPx = bodyView.paint.measureText(" ").coerceAtLeast(1f)
-                kotlin.math.ceil(reserveWidthPx / spaceWidthPx).toInt().coerceAtLeast(1)
-            }
-            val reserveWidth = metaReserveWidthCache.getOrPut("$timeText|$showTicks") {
-                val ticksWidth = if (showTicks) (15f * d) + (3f * d) else 0f
-                metaPaint.measureText(timeText) + ticksWidth + 10f * d
-            }
-
-            // Would time+ticks fit after the body's real last line? Measure the body alone with the
-            // same constraints the actual layout will use.
-            val available = bodyMaxPx - bodyView.paddingLeft - bodyView.paddingRight
-            if (available > 0) {
-                val sl = android.text.StaticLayout.Builder
-                    .obtain(body, 0, body.length, bodyView.paint, available)
-                    .setBreakStrategy(bodyView.breakStrategy)
-                    .setHyphenationFrequency(bodyView.hyphenationFrequency)
-                    .build()
-                val fitsInline = sl.getLineRight(sl.lineCount - 1) + reserveWidth <= available
-                if (!fitsInline) return@getOrPut "\n" + " ".repeat(spaceCount)
-            }
-            " " + " ".repeat(spaceCount)
         }
     }
 
@@ -680,8 +742,8 @@ class ChatActivity : AppCompatActivity() {
             // text plus its fixed padding, ~31dp regardless of content) so the "big" radius never
             // exceeds what the shape can actually draw - past that point GradientDrawable clamps
             // it into an oversized, blown-out pill instead of a normal rounded corner.
-            val big = 12f * d
-            val small = 3f * d
+            val big = 14f * d
+            val small = 4f * d
             val topSpine = if (first) big else small
             val botSpine = if (last) big else small
             if (outgoing) {
@@ -716,9 +778,7 @@ class ChatActivity : AppCompatActivity() {
     private inner class MessageVH(v: View) : RecyclerView.ViewHolder(v) {
         val bubble: View = v.findViewById(R.id.bubble)
         val body: TextView = v.findViewById(R.id.txt_body)
-        val metaRow: android.widget.LinearLayout = v.findViewById(R.id.meta_row)
         val time: TextView = v.findViewById(R.id.txt_time)
-        val ticks: android.widget.ImageView = v.findViewById(R.id.img_ticks)
     }
 
     private inner class SeparatorVH(v: View) : RecyclerView.ViewHolder(v) {

@@ -5,13 +5,16 @@ import android.content.Context
 import android.content.Intent
 import com.noti.sender.KeepAliveService
 import com.noti.sender.SmsSyncWorker
+import com.noti.sender.StatusWatchWorker
 
-/** After a reboot, bring the relay back: keep-alive service, periodic sync, and a catch-up sync. */
+/** After a reboot, bring the relay back: keep-alive service, periodic sync, a catch-up sync, and
+ *  the device-status backstop. */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
         KeepAliveService.ensureRunning(context)
         SmsSyncWorker.schedulePeriodic(context)
         SmsSyncWorker.scanNow(context)
+        StatusWatchWorker.schedule(context)
     }
 }

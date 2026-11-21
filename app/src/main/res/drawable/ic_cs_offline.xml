@@ -1,0 +1,7 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="26dp" android:height="26dp"
+    android:viewportWidth="24" android:viewportHeight="24" android:tint="?attr/colorError">
+    <path android:fillColor="#000000" android:fillAlpha="0.55" android:pathData="M2,21L21,2v19z" />
+    <!-- Struck through, so "offline" reads differently from "weak signal" at a glance. -->
+    <path android:fillColor="#000000" android:pathData="M3.2,1.8l19,19l-1.7,1.7l-19,-19z" />
+</vector>

@@ -3,6 +3,7 @@ package com.noti.sender
 import android.content.Context
 import com.noti.sender.config.SenderSettings
 import com.noti.shared.Diag
+import com.noti.shared.FcmLabel
 import com.noti.shared.FcmSendResult
 import com.noti.shared.FcmSender
 import com.noti.sender.net.WebhookPoster
@@ -106,7 +107,19 @@ object SenderPipeline {
     fun isConfigured(s: SenderSettings): Boolean =
         s.fcmEnabled && s.serviceAccountJson.isNotBlank() && s.notiFcmToken.isNotBlank() && s.relayKey.isNotBlank()
 
-    enum class SendOutcome { DELIVERED, TRANSIENT, PERMANENT, NOT_CONFIGURED }
+    /**
+     * [PERMANENT]: this one message can never go (e.g. a 400) - skip it and move on.
+     * [BLOCKED]: the *setup* is broken (key rejected, Main's token stale, webhook auth/URL wrong),
+     * so every message would fail the same way. Never skip past it: hold the high-water mark and
+     * retry, so nothing is lost once the user fixes it or Main's new token arrives.
+     */
+    enum class SendOutcome { DELIVERED, TRANSIENT, PERMANENT, BLOCKED, NOT_CONFIGURED }
+
+    /** FCM codes that mean the configuration, not the message, is at fault. */
+    private fun fcmBlocked(code: Int) = code == 401 || code == 403 || code == 404
+
+    /** Webhook codes that mean the URL/auth is wrong rather than this payload. */
+    private fun webhookBlocked(code: Int) = code == 401 || code == 403 || code == 404 || code == 405
 
     /** Encrypted FCM push of one SMS to ippu. Logs a reason only on failure (quiet on success).
      *  Bodies too large for one FCM data message are sent as part-relays (see [encryptedPayloads]);
@@ -118,7 +131,7 @@ object SenderPipeline {
             val payloads = encryptedPayloads(fcmMessage(sms), s.relayKey)
             var res: FcmSendResult? = null
             for (payload in payloads) {
-                res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload))
+                res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload), label = FcmLabel.RELAY)
                 if (!res.ok) break
             }
             val r = res!!
@@ -126,6 +139,9 @@ object SenderPipeline {
                 r.ok -> SendOutcome.DELIVERED
                 r.httpCode == -1 || r.httpCode == 429 || r.httpCode in 500..599 -> {
                     Diag.log(fcmDiag(r.httpCode, r.detail)); SendOutcome.TRANSIENT
+                }
+                fcmBlocked(r.httpCode) -> {
+                    Diag.log(fcmDiag(r.httpCode, r.detail) + " - SMS held, will retry"); SendOutcome.BLOCKED
                 }
                 else -> { Diag.log(fcmDiag(r.httpCode, r.detail)); SendOutcome.PERMANENT }
             }
@@ -145,9 +161,9 @@ object SenderPipeline {
         }
         return try {
             val payload = MessageCrypto.encrypt(Wire.encode(WireMessage.Token(s.myFcmToken)), s.relayKey)
-            val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload))
+            val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload), label = FcmLabel.TOKEN_TO_MAIN)
             when {
-                res.ok -> { Diag.log("endpoint announced to main"); SendOutcome.DELIVERED }
+                res.ok -> { Diag.log("endpoint announced to main (id ${FcmLabel.messageId(res.detail)})"); SendOutcome.DELIVERED }
                 res.httpCode == -1 || res.httpCode == 429 || res.httpCode in 500..599 -> SendOutcome.TRANSIENT
                 else -> { Diag.log(fcmDiag(res.httpCode, res.detail)); SendOutcome.PERMANENT }
             }
@@ -168,7 +184,7 @@ object SenderPipeline {
         }
         return try {
             val payload = MessageCrypto.encrypt(Wire.encode(WireMessage.DeliveryAck(msgId, status)), s.relayKey)
-            val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload))
+            val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload), label = FcmLabel.ACK)
             when {
                 res.ok -> SendOutcome.DELIVERED
                 res.httpCode == -1 || res.httpCode == 429 || res.httpCode in 500..599 -> SendOutcome.TRANSIENT
@@ -190,6 +206,9 @@ object SenderPipeline {
                 code in 200..299 -> SendOutcome.DELIVERED
                 code == -1 || code == 429 || code in 500..599 -> {
                     Diag.log("webhook → HTTP $code (will retry)"); SendOutcome.TRANSIENT
+                }
+                webhookBlocked(code) -> {
+                    Diag.log("webhook → HTTP $code (check URL/auth) - SMS held, will retry"); SendOutcome.BLOCKED
                 }
                 else -> { Diag.log("webhook → HTTP $code (check URL/auth)"); SendOutcome.PERMANENT }
             }

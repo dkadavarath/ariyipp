@@ -51,11 +51,17 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|end"
-            android:layout_margin="16dp"
+            android:layout_margin="20dp"
             android:visibility="gone"
             android:contentDescription="@string/compose_new"
             app:srcCompat="@drawable/ic_edit" />
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+    <!-- The bottom bar shares the page colour; this hairline is what separates it. -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/notiHairline" />
 
     <!-- Menu is inflated per-role in MainActivity (hub vs companion). -->
     <com.google.android.material.bottomnavigation.BottomNavigationView

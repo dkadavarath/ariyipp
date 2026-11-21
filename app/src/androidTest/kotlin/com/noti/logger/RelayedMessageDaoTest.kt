@@ -165,26 +165,41 @@ class RelayedMessageDaoTest {
     @Test
     fun changeToken_reacts_to_inserts_deletes_and_status_updates_but_not_markRead() = runBlocking {
         val initial = dao.changeToken().first()
-        assertEquals(0, initial.rows)
+        assertEquals(0, initial.rowCount)
 
         val id = dao.insert(msg("+111", "hi", 100))
         val afterInsert = dao.changeToken().first()
-        assertEquals(1, afterInsert.rows)
+        assertEquals(1, afterInsert.rowCount)
         assertEquals(id, afterInsert.maxId)
 
         // A delivery-status update must move the token even though the row count doesn't change -
         // this is what drives live tick updates in an open chat.
         dao.updateStatus(id, com.noti.shared.WireMessage.DeliveryAck.SMS_DELIVERED)
         val afterAck = dao.changeToken().first()
-        assertEquals(afterInsert.maxStatus + 3, afterAck.maxStatus)
+        assertEquals(afterInsert.statusSum + 3, afterAck.statusSum)
         assertTrue(afterAck != afterInsert)
 
-        // Marking read changes neither rows, maxStatus, nor maxId - the token must stay put so an
+        // Marking read changes neither rows, statusSum, nor maxId - the token must stay put so an
         // open chat doesn't reload itself in a loop after its own markRead.
         dao.markRead("+111")
         assertEquals(afterAck, dao.changeToken().first())
 
         dao.deleteMessage(id)
         assertTrue(dao.changeToken().first() != afterAck)
+    }
+
+    @Test
+    fun receivedAfterId_catches_late_rows_but_not_backfilled_history() {
+        val now = 10_000_000_000L
+        val day = 86_400_000L
+        val seen = dao.insert(msg("+111", "already scanned", now - day))
+        // Stored after the mark: one recent-but-late SMS, one years-old repush backfill.
+        dao.insert(msg("+111", "late", now - 3 * day))
+        dao.insert(msg("+111", "ancient", now - 900 * day))
+        val out = dao.insert(msg("+111", "mine", now).copy(outgoing = 1))
+
+        val rows = dao.receivedAfterId(seen, notBefore = now - 35 * day)
+        assertEquals(listOf("late"), rows.map { it.body })
+        assertTrue(rows.none { it.id == out })
     }
 }

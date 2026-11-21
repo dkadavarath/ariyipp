@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Motion.setShown: marks a view that is mid-way through its exit animation. -->
+    <item name="motion_exiting" type="id" />
+</resources>

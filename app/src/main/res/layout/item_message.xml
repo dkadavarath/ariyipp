@@ -4,7 +4,8 @@
     android:layout_height="wrap_content"
     android:paddingHorizontal="12dp">
 
-    <FrameLayout
+    <!-- Lays out the body and the meta row so they never overlap - see ChatBubbleLayout. -->
+    <com.noti.logger.ui.widget.ChatBubbleLayout
         android:id="@+id/bubble"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content">
@@ -18,37 +19,23 @@
             android:paddingTop="7dp"
             android:paddingBottom="7dp"
             android:textAppearance="?attr/textAppearanceBodyLarge"
-            android:textSize="14.5sp"
+            android:textSize="15sp"
+            android:letterSpacing="0"
             android:includeFontPadding="false"
-            android:lineHeight="16sp" />
+            android:lineHeight="20sp" />
 
-        <!-- Overlaid on the reserved blank space at the end of txt_body's text (see
-             reserveMetaSpace in ChatActivity), so it rides the last line instead of adding a row. -->
-        <LinearLayout
-            android:id="@+id/meta_row"
+        <!-- Time + ticks: on the body's last line when it fits, otherwise on a row of its own.
+             One TextView drawing the ticks as its end drawable (set in ChatActivity), not a row of
+             three views - this is inflated for every bubble scrolled past. -->
+        <TextView
+            android:id="@+id/txt_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom|end"
-            android:orientation="horizontal"
+            android:drawablePadding="3dp"
             android:gravity="center_vertical"
+            android:includeFontPadding="false"
             android:paddingEnd="10dp"
-            android:paddingBottom="8dp">
-
-            <TextView
-                android:id="@+id/txt_time"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="11sp"
-                android:includeFontPadding="false" />
-
-            <ImageView
-                android:id="@+id/img_ticks"
-                android:layout_width="15dp"
-                android:layout_height="15dp"
-                android:layout_marginStart="3dp"
-                android:src="@drawable/ic_double_check"
-                android:visibility="gone"
-                android:contentDescription="@null" />
-        </LinearLayout>
-    </FrameLayout>
+            android:paddingBottom="8dp"
+            android:textSize="11sp" />
+    </com.noti.logger.ui.widget.ChatBubbleLayout>
 </FrameLayout>

@@ -1,48 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-    <color name="noti_blue">#FF1565C0</color>
+    <!-- The palette (brand, text, surfaces, AMOLED tiers) lives in :sender's colors.xml, shared by
+         both roles. Only app-specific colours are here. -->
+
     <!-- Splash background: matches the theme-adaptive launcher icon (light here, dark in -night). -->
     <color name="splash_bg">#FFFFFFFF</color>
 
-    <!-- Brand blue scheme (matches the app icon). Light values; dark in values-night/. -->
-    <color name="brand_primary">#1565C0</color>
-    <color name="brand_on_primary">#FFFFFF</color>
-    <color name="brand_primary_container">#D6E3FF</color>
-    <color name="brand_on_primary_container">#001B3D</color>
-    <color name="brand_secondary">#545F70</color>
-    <color name="brand_on_secondary">#FFFFFF</color>
-    <color name="brand_secondary_container">#D8E3F8</color>
-    <color name="brand_on_secondary_container">#111C2B</color>
-
-    <!-- Neutral surfaces (light). The M3 baseline surface ramp is lavender-tinted; these are near-
-         neutral greys so cards/pages don't cast a colour. Dark values in values-night/.
-         app_surface_variant is the incoming-chat-bubble fill; it used to sit only 8 units off
-         app_surface_container_high (the chat background, #EBEBEE vs #E3E3E6) - nearly invisible.
-         Darkened to match the ~28-unit gap dark mode already has between the same two tiers. -->
-    <color name="app_surface_variant">#D4D4D8</color>
-    <color name="app_surface_container_lowest">#FFFFFF</color>
-    <color name="app_surface_container_low">#F6F6F8</color>
-    <color name="app_surface_container">#F1F1F3</color>
-    <color name="app_surface_container_high">#EBEBEE</color>
-    <color name="app_surface_container_highest">#E5E5E8</color>
-
-    <!-- Status & Container Accents -->
-    <color name="status_active_bg">#E8F5E9</color>
-    <color name="status_active_fg">#2E7D32</color>
-    <color name="status_warning_bg">#FFF3E0</color>
-    <color name="status_warning_fg">#E65100</color>
-    <color name="status_info_bg">#E3F2FD</color>
-    <color name="status_info_fg">#1565C0</color>
-
     <!-- Delivered read-receipt tick: needs to read as a distinct accent against the outgoing bubble
          fill (brand_primary), which is dark blue in light mode - a bright cyan pops against it. Dark
-         mode's inverted (light) bubble fill needs the opposite: see values-night/. -->
-    <color name="chat_tick_delivered">#40C4FF</color>
+         mode's inverted (light) bubble fill needs the opposite: see values-night/. Light enough
+         to clear 3:1 against the bubble (#40C4FF only managed 2.9:1). -->
+    <color name="chat_tick_delivered">#80DEFF</color>
 </resources>

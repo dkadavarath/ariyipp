@@ -31,134 +31,194 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:alpha="0.85"
                 android:lineSpacingExtra="3dp"
                 android:text="@string/pairing_intro"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
 
-            <!-- 1. Shared key (received from ippu — no generator here) -->
-            <TextView
-                style="@style/PairSectionHeader"
-                android:text="@string/pair_hdr_key" />
-
-            <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.Noti.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="@string/hint_relay_key"
-                app:endIconMode="password_toggle">
+                android:layout_marginTop="16dp">
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/et_relay_key"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textPassword"
-                    android:maxLines="1" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:orientation="vertical"
+                    android:padding="20dp">
 
-            <!-- 2. The other device -->
-            <TextView
-                style="@style/PairSectionHeader"
-                android:text="@string/pair_hdr_other" />
+                    <!-- 1. Shared key (received from ippu — no generator here) -->
+                    <TextView
+                        style="@style/PairSectionHeader"
+                        android:layout_marginTop="0dp"
+                        android:text="@string/pair_hdr_key" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_scan_qr"
-                style="@style/Widget.Material3.Button.TonalButton"
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Noti.TextInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/hint_relay_key"
+                        app:endIconMode="password_toggle">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_relay_key"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textPassword"
+                            android:maxLines="1" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.Noti.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/btn_scan_qr"
-                app:icon="@drawable/ic_qr_code" />
+                android:layout_marginTop="16dp">
 
-            <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="@string/hint_noti_token">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/et_noti_token"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textNoSuggestions"
-                    android:maxLines="3" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:orientation="vertical"
+                    android:padding="20dp">
 
-            <!-- 4. Service-account key -->
-            <TextView
-                style="@style/PairSectionHeader"
-                android:text="@string/pair_hdr_sa" />
+                    <!-- 2. The other device -->
+                    <TextView
+                        style="@style/PairSectionHeader"
+                        android:layout_marginTop="0dp"
+                        android:text="@string/pair_hdr_other" />
 
-            <TextView
-                android:id="@+id/txt_fb_status"
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_scan_qr"
+                        style="@style/Widget.Noti.Button.Tonal"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/btn_scan_qr"
+                        app:icon="@drawable/ic_qr_code" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Noti.TextInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="@string/hint_noti_token">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_noti_token"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textNoSuggestions"
+                            android:maxLines="3" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.Noti.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textAppearance="?attr/textAppearanceBodyMedium" />
+                android:layout_marginTop="16dp">
 
-            <TextView
-                android:id="@+id/txt_key_status"
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <!-- 4. Service-account key -->
+                    <TextView
+                        style="@style/PairSectionHeader"
+                        android:layout_marginTop="0dp"
+                        android:text="@string/pair_hdr_sa" />
+
+                    <TextView
+                        android:id="@+id/txt_fb_status"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+                    <TextView
+                        android:id="@+id/txt_key_status"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_import_key"
+                        style="@style/Widget.Noti.Button.Tonal"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/btn_import_key" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:lineSpacingExtra="2dp"
+                        android:text="@string/btn_import_key_hint"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textAppearance="?attr/textAppearanceBodySmall" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.Noti.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textAppearance="?attr/textAppearanceBodyMedium" />
+                android:layout_marginTop="16dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_import_key"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/btn_import_key" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:alpha="0.7"
-                android:lineSpacingExtra="2dp"
-                android:text="@string/btn_import_key_hint"
-                android:textAppearance="?attr/textAppearanceBodySmall" />
+                    <!-- 5. Options -->
+                    <TextView
+                        style="@style/PairSectionHeader"
+                        android:layout_marginTop="0dp"
+                        android:text="@string/pair_hdr_options" />
 
-            <!-- 5. Options -->
-            <TextView
-                style="@style/PairSectionHeader"
-                android:text="@string/pair_hdr_options" />
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/sw_fcm_enabled"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/sw_fcm_enabled" />
 
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/sw_fcm_enabled"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/sw_fcm_enabled" />
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/sw_accept_commands"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/sw_accept_commands" />
 
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/sw_accept_commands"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/sw_accept_commands" />
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/sw_heartbeat"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/sw_heartbeat" />
 
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/sw_heartbeat"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/sw_heartbeat" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:alpha="0.7"
-                android:lineSpacingExtra="2dp"
-                android:text="@string/sw_heartbeat_hint"
-                android:textAppearance="?attr/textAppearanceBodySmall" />
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:lineSpacingExtra="2dp"
+                        android:text="@string/cmp_sw_heartbeat_hint"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textAppearance="?attr/textAppearanceBodySmall" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_save"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="@string/btn_save" />
+                android:text="@string/cmp_btn_save" />
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

@@ -137,7 +137,7 @@ object MessageNotifier {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         return NotificationCompat.Action.Builder(
-            R.drawable.ic_status_active, context.getString(R.string.notif_action_mark_read), pending,
+            com.noti.sender.R.drawable.ic_status_active, context.getString(R.string.notif_action_mark_read), pending,
         ).build()
     }
 
@@ -156,16 +156,14 @@ object MessageNotifier {
     }
 
     private fun ensureChannel(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val mgr = context.getSystemService(NotificationManager::class.java)
-            if (mgr.getNotificationChannel(CHANNEL_ID) == null) {
-                val ch = NotificationChannel(
-                    CHANNEL_ID,
-                    "Relayed messages",
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply { description = "Messages pushed to this device (e.g. a forwarded SMS)" }
-                mgr.createNotificationChannel(ch)
-            }
+        val mgr = context.getSystemService(NotificationManager::class.java)
+        if (mgr.getNotificationChannel(CHANNEL_ID) == null) {
+            val ch = NotificationChannel(
+                CHANNEL_ID,
+                "Relayed messages",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply { description = "Messages pushed to this device (e.g. a forwarded SMS)" }
+            mgr.createNotificationChannel(ch)
         }
     }
 

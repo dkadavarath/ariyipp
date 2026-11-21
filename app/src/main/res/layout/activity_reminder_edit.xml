@@ -1,0 +1,419 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Add or edit a reminder by hand. One question per card: what it is, when it is, and the optional
+    extras. Save is pinned below the form so it never scrolls away on a long bill.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/screen_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize" />
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:id="@+id/form"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="16dp">
+
+            <!-- Bill or parking. Hidden when editing: an existing entry can't change kind. -->
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/toggle_kind"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_kind_bill"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/rm_manual_kind_bill" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_kind_parking"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/rm_manual_kind_parking" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <!-- Details -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.Noti.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        style="@style/SectionLabel"
+                        android:layout_marginBottom="12dp"
+                        android:text="@string/rm_section_details" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Noti.TextInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/rm_manual_name">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_name"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapWords"
+                            android:maxLines="1" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Amount and currency read as one value, so they share a row. -->
+                    <LinearLayout
+                        android:id="@+id/row_amount"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:baselineAligned="false"
+                        android:layout_marginTop="12dp"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/til_amount"
+                            style="@style/Widget.Noti.TextInput"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="2"
+                            android:hint="@string/rm_manual_amount">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_amount"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="numberDecimal"
+                                android:maxLines="1" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/til_currency"
+                            style="@style/Widget.Noti.TextInput"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:layout_weight="1"
+                            android:hint="@string/rm_manual_currency">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_currency"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textCapCharacters"
+                                android:maxLines="1" />
+                        </com.google.android.material.textfield.TextInputLayout>
+                    </LinearLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_zone"
+                        style="@style/Widget.Noti.TextInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="@string/rm_manual_zone">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_zone"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:maxLines="1" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- When -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.Noti.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        style="@style/SectionLabel"
+                        android:layout_marginBottom="12dp"
+                        android:text="@string/rm_section_when" />
+
+                    <!-- Bill: a due date, how it repeats, and a preview of the next dates. -->
+                    <LinearLayout
+                        android:id="@+id/til_due"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <!-- Picked, never typed: tapping the field opens the date picker. -->
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/til_due_date"
+                            style="@style/Widget.Noti.TextInput"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="@string/rm_manual_due_label"
+                            app:endIconDrawable="@drawable/ic_calendar"
+                            app:endIconMode="custom"
+                            app:endIconContentDescription="@string/rm_pick_date">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_due"
+                                style="@style/Widget.Noti.PickerField"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- How often it comes back: a real dropdown, not a button. -->
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/til_repeat"
+                            style="@style/Widget.Noti.TextInput.Dropdown"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:hint="@string/rm_repeats_label"
+                            app:helperText="@string/rm_repeats_helper">
+
+                            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                                android:id="@+id/dd_repeat"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="none" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- Only once something repeats: "every [3] months". -->
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/til_repeat_every"
+                            style="@style/Widget.Noti.TextInput"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:hint="@string/rm_repeats_every_hint"
+                            android:visibility="gone"
+                            app:helperText="@string/rm_repeats_every_helper">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_repeat_every"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="number"
+                                android:maxLines="1"
+                                android:text="1" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/sw_due_calculated"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/rm_due_calculated_switch" />
+
+                        <LinearLayout
+                            android:id="@+id/group_calculated"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:lineSpacingExtra="3dp"
+                                android:text="@string/rm_due_calculated_hint"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                style="@style/Widget.Noti.TextInput"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:hint="@string/rm_offset_days">
+
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/et_offset_days"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="number"
+                                    android:maxLines="1" />
+                            </com.google.android.material.textfield.TextInputLayout>
+                        </LinearLayout>
+
+                        <!-- The next due dates, as a tinted note; hidden until there is a date. -->
+                        <TextView
+                            android:id="@+id/tv_due_preview"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:background="@drawable/ds_note_bg"
+                            android:drawablePadding="12dp"
+                            android:gravity="center_vertical"
+                            android:lineSpacingExtra="3dp"
+                            android:paddingHorizontal="14dp"
+                            android:paddingVertical="12dp"
+                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textColor="?attr/colorOnPrimaryContainer"
+                            android:visibility="gone"
+                            app:drawableStartCompat="@drawable/ic_schedule"
+                            app:drawableTint="?attr/colorOnPrimaryContainer" />
+                    </LinearLayout>
+
+                    <!-- Parking: when the session runs out. Picked, like the due date. -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_expiry"
+                        style="@style/Widget.Noti.TextInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/rm_manual_expiry_label"
+                        app:endIconDrawable="@drawable/ic_schedule"
+                        app:endIconMode="custom"
+                        app:endIconContentDescription="@string/rm_pick_datetime">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_expiry"
+                            style="@style/Widget.Noti.PickerField"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Optional extras (bills only). -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_optional"
+                style="@style/Widget.Noti.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        style="@style/SectionLabel"
+                        android:layout_marginBottom="12dp"
+                        android:text="@string/rm_section_optional" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_category"
+                        style="@style/Widget.Noti.TextInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/rm_field_category">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_category"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapWords"
+                            android:maxLines="1" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_remind_days"
+                        style="@style/Widget.Noti.TextInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="@string/rm_field_remind_days"
+                        app:helperText="@string/rm_field_remind_days_helper">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_remind_days"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="number"
+                            android:maxLines="1" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_notes"
+                        style="@style/Widget.Noti.TextInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="@string/rm_field_notes">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_notes"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="top"
+                            android:inputType="textMultiLine|textCapSentences"
+                            android:minLines="3" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Pinned action bar: Save stays in reach however long the form gets. -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/notiHairline" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginVertical="10dp"
+        android:orientation="horizontal">
+
+        <!-- Shown only for a bill that came from a rule: opens that rule in the rule editor. -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_edit_rule"
+            style="@style/Widget.Noti.Button.Tonal"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="10dp"
+            android:layout_weight="1"
+            android:minHeight="52dp"
+            android:text="@string/rm_edit_rule"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_save"
+            style="@style/Widget.Noti.Button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:minHeight="52dp"
+            android:text="@string/rm_save_entry" />
+    </LinearLayout>
+</LinearLayout>

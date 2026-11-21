@@ -15,12 +15,12 @@ import com.noti.sender.util.Theming
 class HelpActivity : AppCompatActivity() {
 
     private val topics = listOf(
-        R.string.help_start_title to R.string.help_start_body,
+        R.string.help_start_title to R.string.cmp_help_start_body,
         R.string.help_pairing_title to R.string.help_pairing_body,
         R.string.help_reverse_title to R.string.help_reverse_body,
-        R.string.help_webhook_title to R.string.help_webhook_body,
+        R.string.cmp_help_webhook_title to R.string.cmp_help_webhook_body,
         R.string.help_sync_title to R.string.help_sync_body,
-        R.string.help_trouble_title to R.string.help_trouble_body,
+        R.string.help_trouble_title to R.string.cmp_help_trouble_body,
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {

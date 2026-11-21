@@ -33,13 +33,12 @@
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/card_main"
-            style="@style/Widget.Material3.CardView.Filled"
+            style="@style/Widget.Noti.Card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
             android:clickable="true"
-            android:focusable="true"
-            app:cardCornerRadius="20dp">
+            android:focusable="true">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -67,13 +66,12 @@
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/card_companion"
-            style="@style/Widget.Material3.CardView.Filled"
+            style="@style/Widget.Noti.Card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             android:clickable="true"
-            android:focusable="true"
-            app:cardCornerRadius="20dp">
+            android:focusable="true">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -103,8 +101,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:alpha="0.7"
             android:text="@string/onboarding_switch_hint"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:textAppearance="?attr/textAppearanceBodySmall" />
     </LinearLayout>
 </ScrollView>

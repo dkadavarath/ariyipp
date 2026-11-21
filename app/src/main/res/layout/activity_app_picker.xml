@@ -24,7 +24,7 @@
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="16dp"
         android:layout_marginTop="8dp"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        style="@style/Widget.Noti.TextInput"
         app:startIconDrawable="@android:drawable/ic_menu_search"
         app:endIconMode="clear_text">
 
@@ -44,8 +44,8 @@
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="16dp"
         android:layout_marginTop="4dp"
-        android:textAppearance="?attr/textAppearanceBodySmall"
-        android:alpha="0.7" />
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textAppearance="?attr/textAppearanceBodySmall" />
 
     <FrameLayout
         android:layout_width="match_parent"
@@ -71,7 +71,7 @@
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_done"
-        style="@style/Widget.Material3.Button"
+        style="@style/Widget.Noti.Button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"

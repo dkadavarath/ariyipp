@@ -45,7 +45,7 @@ object Theming {
      */
     fun applyAmoledIfEnabled(activity: Activity) {
         if (!amoledActive(activity)) return
-        activity.theme.applyStyle(R.style.ThemeOverlay_Sendi_Amoled, true)
+        activity.theme.applyStyle(R.style.ThemeOverlay_Noti_Amoled, true)
         activity.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.BLACK))
     }
 

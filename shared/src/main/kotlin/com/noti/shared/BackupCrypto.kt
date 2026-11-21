@@ -33,6 +33,8 @@ object BackupCrypto {
     private const val LEGACY_ITERATIONS = 120_000
     // OWASP's current floor for PBKDF2-HMAC-SHA256 (raised from the original 120k).
     private const val ITERATIONS = 600_000
+    /** Upper bound accepted on restore; well above [ITERATIONS] so it can be raised later. */
+    private const val MAX_ITERATIONS = 10_000_000
     private const val KEY_BITS = 256
 
     fun encrypt(plaintext: ByteArray, passphrase: String): ByteArray {
@@ -76,6 +78,9 @@ object BackupCrypto {
         val header = ivOffset + IV_LEN
         require(blob.size > header) { "Not a valid backup file." }
         val iterations = ByteBuffer.wrap(blob, iterOffset, 4).int
+        // The count comes from the file: a corrupt or crafted header near Int.MAX_VALUE would make
+        // the restore spin for hours (or a 0/negative one throw deep in PBKDF2). Bound it.
+        require(iterations in LEGACY_ITERATIONS..MAX_ITERATIONS) { "Not a valid backup file." }
         val salt = blob.copyOfRange(saltOffset, ivOffset)
         val iv = blob.copyOfRange(ivOffset, header)
         val ciphertext = blob.copyOfRange(header, blob.size)

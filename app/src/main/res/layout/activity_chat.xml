@@ -90,8 +90,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="?attr/colorOutlineVariant"
-        android:alpha="0.5" />
+        android:background="?attr/notiHairline" />
 
     <LinearLayout
         android:id="@+id/compose_bar"
@@ -127,7 +126,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_send"
-            style="@style/Widget.Material3.Button.IconButton.Filled"
+            style="@style/Widget.Noti.Button.Icon.Filled"
             android:layout_width="46dp"
             android:layout_height="46dp"
             android:layout_marginStart="8dp"

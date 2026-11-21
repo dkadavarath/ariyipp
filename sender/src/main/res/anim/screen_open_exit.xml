@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Outgoing screen recedes slightly left and fades (shared-axis X, forward). -->
+<!-- Outgoing screen: recedes slightly left and fades behind the incoming one. -->
 <set xmlns:android="http://schemas.android.com/apk/res/android"
-    android:interpolator="@interpolator/emphasized">
-    <translate android:fromXDelta="0" android:toXDelta="-10%p" android:duration="300" />
-    <alpha android:fromAlpha="1" android:toAlpha="0" android:duration="200" />
+    android:interpolator="@interpolator/ds_ease_out">
+    <translate android:fromXDelta="0" android:toXDelta="-4%p" android:duration="280" />
+    <alpha android:fromAlpha="1" android:toAlpha="0" android:duration="240" />
 </set>

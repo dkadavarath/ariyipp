@@ -31,9 +31,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:lineSpacingExtra="3dp"
-                android:alpha="0.8"
                 android:text="@string/app_rules_intro" />
 
             <TextView

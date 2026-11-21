@@ -31,6 +31,37 @@ data class FcmSendResult(val httpCode: Int, val ok: Boolean, val detail: String)
 class FcmSender(serviceAccountJson: String) {
 
     companion object {
+        /** FCM's own constraint on an analytics label; anything else is rejected with HTTP 400. */
+        private val LABEL_RE = Regex("^[a-zA-Z0-9-_.~%]{1,50}$")
+
+        /** The v1 `messages:send` body. Pure, so the wire shape is unit-testable. An invalid
+         *  [label] is dropped rather than sent - a bad tag must never cost a delivery. */
+        fun requestBody(
+            targetToken: String,
+            data: Map<String, String>,
+            validateOnly: Boolean,
+            label: String?,
+            highPriority: Boolean = true,
+        ): String =
+            buildJsonObject {
+                put("validate_only", validateOnly)
+                putJsonObject("message") {
+                    put("token", targetToken)
+                    // High priority so the data message wakes the receiver immediately, even under Doze /
+                    // App Standby / a locked screen — otherwise normal-priority data is deferred until the
+                    // device next becomes interactive (i.e. only shows on unlock).
+                    // [highPriority] = false is only for background housekeeping that may wait for the
+                    // receiver's next maintenance window (the routine heartbeat): FCM deprioritises
+                    // apps whose high-priority pushes never show anything, which would slow the
+                    // pushes that do matter (relays, commands, force-checks).
+                    putJsonObject("android") { put("priority", if (highPriority) "high" else "normal") }
+                    putJsonObject("data") { data.forEach { (k, v) -> put(k, v) } }
+                    if (label != null && LABEL_RE.matches(label)) {
+                        putJsonObject("fcm_options") { put("analytics_label", label) }
+                    }
+                }
+            }.toString()
+
         // One instance per service-account key, process-wide: keeps the parsed key, the derived RSA
         // private key, and the cached OAuth token (~1h) alive across all callers (heartbeat, command
         // sends, SMS relay). Without this, every send re-parses the JSON, re-signs a JWT, and pays an
@@ -77,20 +108,18 @@ class FcmSender(serviceAccountJson: String) {
     /**
      * Sends [data] to the device identified by [targetToken]. With [validateOnly] the message is
      * checked by FCM but not delivered — useful for verifying credentials without a live device.
+     * [label] (see [FcmLabel]) tags the message in Firebase's delivery reports and BigQuery export,
+     * so "accepted but never delivered" can be told apart per message type and direction.
      */
-    fun send(targetToken: String, data: Map<String, String>, validateOnly: Boolean = false): FcmSendResult {
+    fun send(
+        targetToken: String,
+        data: Map<String, String>,
+        validateOnly: Boolean = false,
+        label: String? = null,
+        highPriority: Boolean = true,
+    ): FcmSendResult {
         val token = accessToken()
-        val body = buildJsonObject {
-            put("validate_only", validateOnly)
-            putJsonObject("message") {
-                put("token", targetToken)
-                // High priority so the data message wakes the receiver immediately, even under Doze /
-                // App Standby / a locked screen — otherwise normal-priority data is deferred until the
-                // device next becomes interactive (i.e. only shows on unlock).
-                putJsonObject("android") { put("priority", "high") }
-                putJsonObject("data") { data.forEach { (k, v) -> put(k, v) } }
-            }
-        }.toString()
+        val body = requestBody(targetToken, data, validateOnly, label, highPriority)
 
         val (code, resp) = httpPost(
             url = "https://fcm.googleapis.com/v1/projects/${account.projectId}/messages:send",
@@ -98,10 +127,20 @@ class FcmSender(serviceAccountJson: String) {
             body = body.toByteArray(Charsets.UTF_8),
             bearer = token,
         )
+        // A 401 means the cached OAuth token is no longer accepted (revoked, or the device clock
+        // jumped and the expiry check was fooled). Drop it so the next send fetches a fresh one
+        // instead of failing for up to an hour.
+        if (code == 401) invalidateToken()
         return FcmSendResult(code, code in 200..299, summarize(resp))
     }
 
     // ---- OAuth2 (JWT bearer) ----
+
+    @Synchronized
+    private fun invalidateToken() {
+        cachedToken = null
+        tokenExpiryEpoch = 0
+    }
 
     @Synchronized
     private fun accessToken(): String {
@@ -161,11 +200,18 @@ class FcmSender(serviceAccountJson: String) {
         conn.doOutput = true
         conn.setRequestProperty("Content-Type", contentType)
         if (bearer != null) conn.setRequestProperty("Authorization", "Bearer $bearer")
-        conn.outputStream.use { it.write(body) }
-        val code = conn.responseCode
-        val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-        val resp = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-        return code to resp
+        try {
+            conn.outputStream.use { it.write(body) }
+            val code = conn.responseCode
+            val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+            val resp = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            return code to resp
+        } catch (e: IOException) {
+            // A timeout or reset mid-exchange leaves the socket unusable; release it rather than
+            // leaving it for the GC (the success path above keeps it pooled).
+            conn.disconnect()
+            throw e
+        }
     }
 
     /** Pulls the message id (success) or the error status (failure) out of an FCM response body. */

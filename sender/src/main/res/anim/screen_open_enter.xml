@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Incoming screen: slides in from the right and fades up (shared-axis X, forward). -->
+<!-- Incoming screen: slides in a short way from the right while it fades up. A short travel and a
+     strong ease-out make it feel instant without losing the sense of direction. -->
 <set xmlns:android="http://schemas.android.com/apk/res/android"
-    android:interpolator="@interpolator/emphasized">
-    <translate android:fromXDelta="22%p" android:toXDelta="0" android:duration="300" />
-    <alpha android:fromAlpha="0" android:toAlpha="1" android:duration="220" />
+    android:interpolator="@interpolator/ds_ease_out">
+    <translate android:fromXDelta="12%p" android:toXDelta="0" android:duration="280" />
+    <alpha android:fromAlpha="0" android:toAlpha="1" android:duration="180" />
 </set>

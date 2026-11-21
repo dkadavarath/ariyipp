@@ -21,8 +21,8 @@
         android:layout_height="wrap_content"
         android:paddingHorizontal="16dp"
         android:paddingTop="8dp"
-        android:alpha="0.8"
-        android:text="@string/diag_intro"
+        android:text="@string/cmp_diag_intro"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:textAppearance="?attr/textAppearanceBodyMedium" />
 
     <LinearLayout
@@ -33,7 +33,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_diag_copy"
-            style="@style/Widget.Material3.Button.TextButton"
+            style="@style/Widget.Noti.Button.Text"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
@@ -41,27 +41,36 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_diag_clear"
-            style="@style/Widget.Material3.Button.TextButton"
+            style="@style/Widget.Noti.Button.Text"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
             android:text="@string/diag_clear" />
     </LinearLayout>
 
-    <ScrollView
+    <!-- The log sits in a card, like the main device's diagnostics. -->
+    <com.google.android.material.card.MaterialCardView
+        style="@style/Widget.Noti.Card"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:fillViewport="true">
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="16dp">
 
-        <TextView
-            android:id="@+id/txt_diag"
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="16dp"
-            android:fontFamily="monospace"
-            android:textSize="12sp"
-            android:textIsSelectable="true"
-            android:textColor="?attr/colorOnSurface" />
-    </ScrollView>
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+
+            <TextView
+                android:id="@+id/txt_diag"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="16dp"
+                android:fontFamily="monospace"
+                android:textSize="12sp"
+                android:textIsSelectable="true"
+                android:textColor="?attr/colorOnSurface" />
+        </ScrollView>
+    </com.google.android.material.card.MaterialCardView>
 </LinearLayout>

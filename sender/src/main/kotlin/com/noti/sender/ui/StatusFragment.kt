@@ -8,7 +8,6 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import android.view.View
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -69,18 +68,19 @@ class StatusFragment : Fragment(R.layout.cmp_fragment_status) {
         v.findViewById<View>(R.id.card_hb_banner).visibility =
             if (disconnected) View.VISIBLE else View.GONE
 
-        val tv = v.findViewById<TextView>(R.id.tv_heartbeat_status)
-        val stateRes = when {
-            !s.heartbeatEnabled -> R.string.hb_state_disabled
-            !s.peerPaired() -> R.string.hb_state_unpaired
-            stale -> R.string.hb_state_failed
-            else -> R.string.hb_state_ok
+        val ctx = requireContext()
+        // "Main phone last seen 2 min. ago": the row is the heartbeat, the detail names who answered.
+        val peer = getString(R.string.st_main_phone)
+        val seen = if (s.lastPeerBeatAtMs > 0) getString(R.string.st_last_seen, peer, StatusRow.ago(ctx, s.lastPeerBeatAtMs, now))
+            else getString(R.string.st_never_seen, peer.lowercase())
+        val (badge, detail, tone) = when {
+            !s.heartbeatEnabled -> Triple(R.string.st_off, getString(R.string.st_hb_off_detail), StatusRow.Tone.NEUTRAL)
+            !s.peerPaired() -> Triple(R.string.st_not_paired, getString(R.string.st_unpaired_detail), StatusRow.Tone.WARN)
+            stale -> Triple(R.string.st_unreachable, seen, StatusRow.Tone.BAD)
+            else -> Triple(R.string.st_connected, seen, StatusRow.Tone.GOOD)
         }
-        tv.text = getString(R.string.hb_status, getString(stateRes))
-        val attr = if (stateRes == R.string.hb_state_failed)
-            com.google.android.material.R.attr.colorError
-        else com.google.android.material.R.attr.colorOnSurfaceVariant
-        tv.setTextColor(com.google.android.material.color.MaterialColors.getColor(tv, attr))
+        StatusRow(v.findViewById(R.id.row_main))
+            .bind(R.drawable.ic_connection, getString(R.string.st_heartbeat_title), detail, getString(badge), tone)
     }
 
     private fun confirmRepush() {
@@ -126,19 +126,23 @@ class StatusFragment : Fragment(R.layout.cmp_fragment_status) {
             ContextCompat.checkSelfPermission(requireContext(), p) == PackageManager.PERMISSION_GRANTED
         val canReceive = granted(Manifest.permission.RECEIVE_SMS)
         val canSend = granted(Manifest.permission.SEND_SMS)
-        v.findViewById<TextView>(R.id.txt_sms_status).setText(
-            when {
-                canReceive && canSend -> R.string.sms_status_granted
-                canReceive -> R.string.sms_status_send_denied
-                else -> R.string.sms_status_denied
-            }
-        )
+        val (badge, detail, tone) = when {
+            canReceive && canSend -> Triple(R.string.st_allowed, R.string.st_sms_ok_detail, StatusRow.Tone.GOOD)
+            canReceive -> Triple(R.string.st_receive_only, R.string.st_sms_receive_only_detail, StatusRow.Tone.WARN)
+            else -> Triple(R.string.st_needs_access, R.string.st_sms_missing_detail, StatusRow.Tone.BAD)
+        }
+        StatusRow(v.findViewById(R.id.row_sms))
+            .bind(R.drawable.ic_sim, getString(R.string.st_sms_title), getString(detail), getString(badge), tone)
         v.findViewById<MaterialButton>(R.id.btn_grant_sms).visibility =
             if (canReceive && canSend) View.GONE else View.VISIBLE
 
         val exempt = isBatteryExempt()
-        v.findViewById<TextView>(R.id.txt_battery_status).setText(
-            if (exempt) R.string.battery_exempt else R.string.battery_optimized
+        StatusRow(v.findViewById(R.id.row_battery)).bind(
+            R.drawable.ic_battery,
+            getString(R.string.st_battery_title),
+            getString(if (exempt) R.string.st_battery_ok_detail else R.string.st_battery_bad_detail),
+            getString(if (exempt) R.string.st_unrestricted else R.string.st_restricted),
+            if (exempt) StatusRow.Tone.GOOD else StatusRow.Tone.WARN,
         )
         v.findViewById<MaterialButton>(R.id.btn_battery).visibility = if (exempt) View.GONE else View.VISIBLE
     }

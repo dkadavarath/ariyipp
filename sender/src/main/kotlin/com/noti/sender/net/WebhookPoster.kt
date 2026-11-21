@@ -32,8 +32,15 @@ object WebhookPoster {
                 conn.setRequestProperty(authHeaderName, authHeaderValue)
             }
             conn.outputStream.use { it.write(body) }
-            conn.responseCode
+            val code = conn.responseCode
+            // Drain and close the body: an unread response can't go back to the keep-alive pool,
+            // so without this every post leaked a socket and paid a fresh TLS handshake.
+            runCatching {
+                (if (code in 200..299) conn.inputStream else conn.errorStream)?.use { it.readBytes() }
+            }
+            code
         } catch (e: Exception) {
+            conn.disconnect()
             -1
         }
     }

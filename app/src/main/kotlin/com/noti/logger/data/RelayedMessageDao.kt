@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
 /** Cheap fingerprint of the relayed_messages table, for change-driven UI refreshes. Room re-runs
  *  the query on every table invalidation; comparing values filters out no-op invalidations (e.g.
  *  this DAO's own markRead, which changes none of these). */
-data class ChatChangeToken(val rows: Int, val maxStatus: Int, val maxId: Long)
+data class ChatChangeToken(val rowCount: Int, val statusSum: Int, val maxId: Long)
 
 @Dao
 interface RelayedMessageDao {
@@ -155,10 +155,13 @@ interface RelayedMessageDao {
     @Query("DELETE FROM relayed_messages WHERE receivedAt < :cutoff")
     fun purgeOlderThan(cutoff: Long): Int
 
-    /** Change fingerprint for live refreshes: reacts to inserts/deletes (rows, maxId) AND to
-     *  delivery-status updates (maxStatus), unlike a plain COUNT. */
+    /** Change fingerprint for live refreshes: reacts to inserts/deletes (rowCount, maxId) AND to
+     *  delivery-status updates. Status uses SUM, not MAX: [updateStatus] only ever raises a row's
+     *  status, so every ack changes the sum, whereas MAX stopped changing once any one message in
+     *  the table had reached delivered/failed - and ticks then never updated live again. */
     @Query(
-        "SELECT COUNT(*) AS rows, IFNULL(MAX(status), 0) AS maxStatus, IFNULL(MAX(id), 0) AS maxId " +
+        // Not "AS rows": ROWS is an SQLite keyword (window frames), and Room 2.8's parser rejects it.
+        "SELECT COUNT(*) AS rowCount, IFNULL(SUM(status), 0) AS statusSum, IFNULL(MAX(id), 0) AS maxId " +
             "FROM relayed_messages"
     )
     fun changeToken(): Flow<ChatChangeToken>
@@ -174,4 +177,18 @@ interface RelayedMessageDao {
         clearAll()
         insertAll(messages)
     }
+
+    /** Inbound relayed messages since [since], for the Reminder rulebook scan. Outgoing messages
+     *  are excluded - a bill never arrives in something you sent. */
+    @Query("SELECT * FROM relayed_messages WHERE outgoing = 0 AND receivedAt >= :since ORDER BY receivedAt ASC")
+    fun receivedSince(since: Long): List<RelayedMessageEntity>
+
+    /** Inbound relayed messages stored after row [afterId], for the incremental Reminder scan.
+     *  By row id, not [RelayedMessageEntity.receivedAt]: that is the SMS's own timestamp, so a
+     *  message delivered late (missed-SMS sync, catch-up) carries a time older than the last scan
+     *  and a time window would skip it. Still floored at [notBefore]: a repush backfills the whole
+     *  SMS history as fresh rows, and without the floor one scan turned years of old statements
+     *  into a tab full of overdue bills. */
+    @Query("SELECT * FROM relayed_messages WHERE outgoing = 0 AND id > :afterId AND receivedAt >= :notBefore ORDER BY id ASC")
+    fun receivedAfterId(afterId: Long, notBefore: Long): List<RelayedMessageEntity>
 }

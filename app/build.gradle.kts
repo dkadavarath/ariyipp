@@ -2,7 +2,6 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
 }
@@ -18,20 +17,28 @@ val keystoreProps = Properties().apply {
 
 android {
     namespace = "com.noti.logger"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.noti.logger"
         minSdk = 26
         targetSdk = 35
-        // versionCode lives in its own range (100+) from the private dev repo's, which is a much
-        // lower/slower-climbing number - so a public release always installs as an upgrade over any
-        // private build, and the two can never collide. Bump by at least 1 (with headroom) each
-        // release; versionName is this public repo's own independent v1.x sequence.
-        versionCode = 120
-        versionName = "1.3"
+        // versionCode lives in its own range, kept above every build the private dev repo has made
+        // (300+ from v1.4), so a public release always installs as an upgrade and the two never
+        // collide. Bump by at least 1 each release; versionName is this public repo's own v1.x
+        // sequence.
+        versionCode = 300
+        versionName = "1.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    androidResources {
+        // The app's own text is English-only; without this, every library's translations (80+
+        // locales of Material/AppCompat strings) ship anyway - most of resources.arsc - and a
+        // non-English phone gets a mix of English screens and translated library dialogs.
+        // (localeFilters replaces defaultConfig.resourceConfigurations, gone in AGP 9's DSL.)
+        localeFilters += listOf("en")
     }
 
     signingConfigs {
@@ -67,21 +74,8 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
-    sourceSets {
-        getByName("main") {
-            kotlin.srcDirs("src/main/kotlin")
-        }
-        getByName("test") {
-            kotlin.srcDirs("src/test/kotlin")
-        }
-        getByName("androidTest") {
-            kotlin.srcDirs("src/androidTest/kotlin")
-        }
-    }
+    // Kotlin is built into AGP 9: jvmTarget follows compileOptions.targetCompatibility, and
+    // src/<set>/kotlin is a default source root, so no kotlinOptions / sourceSets needed.
 }
 
 dependencies {

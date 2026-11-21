@@ -13,11 +13,14 @@ import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.CollapsingToolbarLayout
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.color.MaterialColors
-import com.google.android.material.transition.MaterialSharedAxis
+import com.google.android.material.transition.MaterialFadeThrough
+import com.google.android.material.transition.ScaleProvider
 import com.noti.logger.R
 import com.noti.logger.config.Settings
 import com.noti.logger.data.NotiDatabase
+import com.noti.logger.util.BackToExit
 import com.noti.logger.util.Haptics
+import com.noti.logger.util.Motion
 import com.noti.logger.util.Theming
 import com.noti.shared.Role
 import com.noti.sender.ui.StatusFragment as CompanionStatusFragment
@@ -33,6 +36,10 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_START_TAB = "start_tab"
         const val TAB_MESSAGES = "messages"
+        const val TAB_REMINDERS = "reminders"
+
+        /** Which reminder a notification wants opened, as "bill:<id>" or "parking:<id>". */
+        const val EXTRA_REMINDER_FOCUS = "reminder_focus"
     }
 
     private var role: Role = Role.MAIN
@@ -60,36 +67,57 @@ class MainActivity : AppCompatActivity() {
         Theming.applyAmoledIfEnabled(this) // after super so AppCompat doesn't reset the overlay
         themedAmoled = Theming.amoledActive(this)
         setContentView(R.layout.activity_main)
+        // Before any tab's fragment exists: Back handlers run newest-first, so a fragment's own
+        // (search open, selection in progress) must be registered after this one to win.
+        BackToExit.install(this)
 
         applyWindowInsets()
         // No setSupportActionBar: the CollapsingToolbarLayout draws the title itself.
 
+        // The FAB serves whichever tab is showing: compose on Messages, add-a-one-off on
+        // Reminders. One button rather than two, because only one tab is ever visible.
         findViewById<View>(R.id.fab_compose).setOnClickListener {
-            startActivity(Intent(this, ComposeActivity::class.java))
+            if (currentNavId == R.id.nav_reminders) {
+                startActivity(Intent(this, ReminderEditActivity::class.java))
+            } else {
+                startActivity(Intent(this, ComposeActivity::class.java))
+            }
         }
 
         val companion = role == Role.COMPANION
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
         bottomNav.inflateMenu(if (companion) R.menu.bottom_nav_menu_companion else R.menu.bottom_nav_menu)
+        // The Reminders tab only exists while the module is on - a feature you haven't enabled
+        // shouldn't cost you a permanent slot in the nav bar.
+        if (!companion && !settings.reminderEnabled) bottomNav.menu.removeItem(R.id.nav_reminders)
         bottomNav.setOnItemSelectedListener { item ->
             if (navHapticsReady) Haptics.tabSelect(bottomNav)
-            val forward = NAV_ORDER.indexOf(item.itemId) >= NAV_ORDER.indexOf(currentNavId)
             currentNavId = item.itemId
             when (item.itemId) {
-                R.id.nav_status -> show(if (companion) CompanionStatusFragment() else StatusFragment(), R.string.nav_status, forward)
-                R.id.nav_messages -> show(MessagesFragment(), R.string.nav_messages, forward)
-                R.id.nav_settings -> show(if (companion) CompanionSettingsFragment() else SettingsFragment(), R.string.nav_settings, forward)
-                R.id.nav_about -> show(AboutFragment(), R.string.nav_about, forward)
+                R.id.nav_status -> show(if (companion) CompanionStatusFragment() else StatusFragment(), R.string.nav_status)
+                R.id.nav_messages -> show(MessagesFragment(), R.string.nav_messages)
+                R.id.nav_reminders -> show(RemindersFragment(), R.string.nav_reminders)
+                R.id.nav_settings -> show(if (companion) CompanionSettingsFragment() else SettingsFragment(), R.string.nav_settings)
+                R.id.nav_about -> show(AboutFragment(), R.string.nav_about)
                 else -> return@setOnItemSelectedListener false
             }
             true
         }
         if (savedInstanceState == null) {
-            bottomNav.selectedItemId =
-                if (!companion && intent.getStringExtra(EXTRA_START_TAB) == TAB_MESSAGES) R.id.nav_messages
-                else R.id.nav_status
+            bottomNav.selectedItemId = when {
+                companion -> R.id.nav_status
+                intent.getStringExtra(EXTRA_START_TAB) == TAB_MESSAGES -> R.id.nav_messages
+                intent.getStringExtra(EXTRA_START_TAB) == TAB_REMINDERS &&
+                    bottomNav.menu.findItem(R.id.nav_reminders) != null -> R.id.nav_reminders
+                else -> R.id.nav_status
+            }
         }
         navHapticsReady = true // don't buzz on the initial programmatic selection above
+
+        // A reminder notification names the thing it is about, so tapping it lands on that entry's
+        // editor rather than on a list the user then has to search. This is what makes the "needs
+        // your input" notification actually useful: it opens the form with the missing field.
+        openReminderFocus(intent)
 
         requestNotificationPermissionIfNeeded()
     }
@@ -100,8 +128,6 @@ class MainActivity : AppCompatActivity() {
     /** Gates tab-select haptics so the launch-time programmatic selection doesn't buzz. */
     private var navHapticsReady = false
 
-    /** Left-to-right tab order, so a tab change knows which way to slide (shared-axis X). */
-    private val NAV_ORDER = listOf(R.id.nav_status, R.id.nav_messages, R.id.nav_settings, R.id.nav_about)
     private var currentNavId = R.id.nav_status
 
     override fun onResume() {
@@ -119,6 +145,31 @@ class MainActivity : AppCompatActivity() {
         StatusCache.permissionsNeedRefresh = true
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        openReminderFocus(intent)
+    }
+
+    /** Opens the entry a reminder notification refers to, as "bill:<id>" or "parking:<id>". */
+    private fun openReminderFocus(intent: Intent) {
+        val focus = intent.getStringExtra(EXTRA_REMINDER_FOCUS) ?: return
+        // Consume it, so a rotation or a return to this activity doesn't reopen the editor.
+        intent.removeExtra(EXTRA_REMINDER_FOCUS)
+        val (kind, rawId) = focus.split(":", limit = 2).let {
+            if (it.size == 2) it[0] to it[1] else return
+        }
+        val id = rawId.toLongOrNull() ?: return
+        if (id <= 0) return
+        val edit = Intent(this, ReminderEditActivity::class.java)
+        when (kind) {
+            "bill" -> edit.putExtra(ReminderEditActivity.EXTRA_BILL_ID, id)
+            "parking" -> edit.putExtra(ReminderEditActivity.EXTRA_PARKING_ID, id)
+            else -> return
+        }
+        startActivity(edit)
+    }
+
     /** Shows the total unread count as a badge on the Messages tab. MAIN only. */
     fun updateMessagesBadge() {
         if (role != Role.MAIN) return
@@ -131,7 +182,7 @@ class MainActivity : AppCompatActivity() {
                 bottomNav.getOrCreateBadge(R.id.nav_messages).apply {
                     isVisible = true
                     number = unread
-                    backgroundColor = MaterialColors.getColor(bottomNav, com.google.android.material.R.attr.colorPrimary)
+                    backgroundColor = MaterialColors.getColor(bottomNav, androidx.appcompat.R.attr.colorPrimary)
                 }
             } else {
                 bottomNav.removeBadge(R.id.nav_messages)
@@ -139,28 +190,40 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun show(fragment: Fragment, titleRes: Int, forward: Boolean = true) {
+    private fun show(fragment: Fragment, titleRes: Int) {
+        val fab = findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.fab_compose)
+        // The FAB shows on the two tabs that can create something.
+        val wantsFab = fragment is MessagesFragment || fragment is RemindersFragment
         if (navHapticsReady) {
-            // A user-initiated tab change: slide the outgoing and incoming content along X.
-            supportFragmentManager.findFragmentById(R.id.nav_container)?.exitTransition =
-                MaterialSharedAxis(MaterialSharedAxis.X, forward)
-            fragment.enterTransition = MaterialSharedAxis(MaterialSharedAxis.X, forward)
+            // A user-initiated tab change: fade through. Tabs are siblings, not a sequence, so the
+            // content swaps in place rather than sliding; kept short because it runs on every tap.
+            supportFragmentManager.findFragmentById(R.id.nav_container)?.exitTransition = fadeThrough()
+            fragment.enterTransition = fadeThrough()
             supportFragmentManager.beginTransaction()
                 .setReorderingAllowed(true)
                 .replace(R.id.nav_container, fragment)
                 .commit()
+            Motion.setShown(fab, wantsFab, fromScale = 0.9f)
         } else {
             // Initial (programmatic) selection at launch: no animation.
             supportFragmentManager.beginTransaction()
                 .replace(R.id.nav_container, fragment)
                 .commitNow()
+            Motion.setShownNow(fab, wantsFab)
         }
         // The large collapsing header owns the title; start each tab fully expanded.
         findViewById<CollapsingToolbarLayout>(R.id.collapsing_toolbar).title = getString(titleRes)
         findViewById<AppBarLayout>(R.id.appbar).setExpanded(true, false)
-        // The compose FAB is only for the Messages tab.
-        findViewById<View>(R.id.fab_compose).visibility =
-            if (fragment is MessagesFragment) View.VISIBLE else View.GONE
+        fab.contentDescription = getString(
+            if (fragment is RemindersFragment) R.string.rm_add_manual else R.string.nav_messages
+        )
+    }
+
+    /** The outgoing tab fades out quickly, then the incoming one fades up from 96%. */
+    private fun fadeThrough() = MaterialFadeThrough().apply {
+        duration = 240
+        interpolator = Motion.EASE_OUT
+        (secondaryAnimatorProvider as? ScaleProvider)?.incomingStartScale = 0.96f
     }
 
     private fun applyWindowInsets() {

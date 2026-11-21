@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- cubic-bezier(0.77, 0, 0.175, 1): for things already on screen that move from A to B. -->
+<pathInterpolator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:controlX1="0.77"
+    android:controlY1="0"
+    android:controlX2="0.175"
+    android:controlY2="1" />

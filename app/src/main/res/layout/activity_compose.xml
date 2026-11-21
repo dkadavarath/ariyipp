@@ -49,7 +49,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_pick_contact"
-            style="@style/Widget.Material3.Button.IconButton"
+            style="@style/Widget.Noti.Button.Icon"
             android:layout_width="48dp"
             android:layout_height="48dp"
             app:icon="@drawable/ic_contacts"
@@ -60,8 +60,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="?attr/colorOutlineVariant"
-        android:alpha="0.5" />
+        android:background="?attr/notiHairline" />
 
     <!-- Empty middle (the message lives in the bar at the bottom, Google-Messages style) -->
     <LinearLayout
@@ -76,8 +75,7 @@
             android:layout_width="56dp"
             android:layout_height="56dp"
             android:src="@drawable/ic_account"
-            app:tint="?attr/colorOnSurfaceVariant"
-            android:alpha="0.35"
+            app:tint="?attr/colorOutline"
             android:contentDescription="@null" />
 
         <TextView
@@ -87,15 +85,13 @@
             android:gravity="center"
             android:text="@string/compose_empty_hint"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:alpha="0.8"
             android:textAppearance="?attr/textAppearanceBodyMedium" />
     </LinearLayout>
 
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="?attr/colorOutlineVariant"
-        android:alpha="0.5" />
+        android:background="?attr/notiHairline" />
 
     <!-- Compose bar (matches the chat screen) -->
     <LinearLayout
@@ -111,7 +107,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_sim"
-            style="@style/Widget.Material3.Button.TextButton"
+            style="@style/Widget.Noti.Button.Text"
             android:layout_width="wrap_content"
             android:layout_height="46dp"
             android:layout_gravity="bottom"
@@ -147,7 +143,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_send"
-            style="@style/Widget.Material3.Button.IconButton.Filled"
+            style="@style/Widget.Noti.Button.Icon.Filled"
             android:layout_width="46dp"
             android:layout_height="46dp"
             android:layout_marginStart="6dp"

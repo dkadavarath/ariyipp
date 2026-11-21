@@ -3,7 +3,7 @@
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84)
 ![minSdk](https://img.shields.io/badge/minSdk-26-1565c0)
 ![targetSdk](https://img.shields.io/badge/targetSdk-35-1565c0)
-![Release](https://img.shields.io/badge/release-v1.3-1565c0)
+![Release](https://img.shields.io/badge/release-v1.4-1565c0)
 ![Language](https://img.shields.io/badge/kotlin-100%25-7f52ff)
 ![License](https://img.shields.io/badge/license-GPL--3.0-1565c0)
 
@@ -37,22 +37,50 @@ source with your own signing key (see [below](#build-from-source)) works exactly
   the companion sends it from its SIM.
 - **End-to-end encrypted** — messages are AES-256-GCM encrypted with a pre-shared key; the transport
   (FCM) only ever carries ciphertext.
-- **Chat history retention** — how long relayed messages are kept locally is configurable, with old
-  ones purged automatically.
+- **Chat history retention** — relayed messages are kept forever by default, or for as long as you
+  set. A repush or catch-up of old SMS is stored quietly instead of buzzing once per message.
 - **One-way pairing by QR** — the main device owns and shows the shared key; the companion scans it
   and announces itself back automatically. No copying tokens by hand.
-- **Liveness heartbeat** — each device periodically checks the other is reachable and warns (with a
-  Retry action) if it goes offline. Toggle it off if you don't want it.
-- **Per-conversation mute**, unread badges, one-time-code copy, and inline reply from the notification.
+- **Liveness heartbeat** — each device periodically checks the other is reachable. Before warning,
+  it asks the other phone to answer straight away and only alerts (with a Retry action) if nothing
+  comes back, so a phone that was briefly quiet doesn't raise a false alarm. Any message from the
+  other phone counts as a sign of life. Toggle it off if you don't want it.
+- **Self-healing push** — when a device's push token rotates it tells the other one automatically,
+  and an SMS whose relay fails because of a setup problem is held and retried rather than dropped.
+- **Companion device status** — while the main device's Status screen is open, the companion reports
+  its battery, signal, network and VPN state as live gauges; it stops the moment you leave the
+  screen. Separately, the companion alerts the main device when its battery drops below a threshold
+  or its wifi has been down too long — those arrive whether or not the app is open.
+- **Reminders** (optional module, off by default) — a rulebook over the SMS and notifications ariyipp
+  already sees, tracking **bill due dates** and **parking expiry** in their own tab:
+  - **Rules from a message** — long-press any message → *Create reminder rule*. An auto-parser drafts
+    the sender filter, the amount, currency and due date; override anything, or select text in the
+    sample to build a pattern without writing regex. Dates with no year, and formats like
+    `06-OCT-26`, are understood.
+  - **Runs on arrival** — a matching SMS or notification is processed the moment it arrives; a
+    periodic scan backs it up.
+  - **Reminders and alarms** — bills remind you ahead at a time you choose, spaced apart when several
+    land together; parking sessions extend themselves on renewal and ring an alarm before expiry.
+  - **Auto mark-paid** — point a rule at the bank's payment confirmation and the bill it pays is
+    settled for you, optionally only when the amount matches. Works for hand-added bills too.
+  - **Manual bills** — one-off or repeating every N days/weeks/months/years, with notes, categories,
+    a per-bill reminder lead and a "skip next" flag.
+  - **30-day total** — one figure for everything due in the next 30 days, in AED, converted at daily
+    exchange rates from [open.er-api.com](https://open.er-api.com) (fetched at most once a day; the
+    request carries nothing about you or your bills). Hideable, and a Compact one-line view.
+- **Per-conversation mute**, unread badges, one-time-code copy, tappable links, and inline reply from
+  the notification.
 - **Share & multi-select** — share any message to another app (separate from Forward, which relays it
   as SMS through the companion), and bulk mark-as-read/mute/delete conversations from the Messages
   list.
 - **Encrypted backup & restore** through the system file picker, passphrase-protected (AES-256-GCM
-  over a PBKDF2-SHA256 key, 600k iterations; older backups still restore).
+  over a PBKDF2-SHA256 key, 600k iterations; older backups still restore). Covers chat history,
+  pairing, reminder rules and bills, and every setting.
 - **Optional extras:** capture this phone's notifications and forward them to a webhook (https only),
   and push the webhook config to the companion — opt-in on the companion, and it's notified of any
   remote change.
-- **Theming:** light/dark/system, Material You, and a true-black AMOLED mode.
+- **Theming:** light/dark/system, Material You, and a true-black AMOLED mode — with every text colour
+  checked against WCAG AA contrast in all three.
 
 ## How it works
 

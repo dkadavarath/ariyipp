@@ -30,11 +30,19 @@ import kotlinx.coroutines.launch
 /**
  * Multi-select picker over launchable apps. Seeded with the current selection via
  * [EXTRA_SELECTED]; returns the chosen package names in the same extra on OK.
+ *
+ * [EXTRA_LIMIT_TO] narrows the list to a given set of packages. The Reminder rulebook passes the
+ * notification-capture allowlist through it: a rule can only ever match an app whose notifications
+ * are actually being captured, so offering the rest would just be offering ways to write a rule
+ * that never fires.
  */
 class AppPickerActivity : AppCompatActivity() {
 
     private val selected = LinkedHashSet<String>()
     private var allApps: List<AppInfo> = emptyList()
+
+    /** When set, only these packages are offered (see [EXTRA_LIMIT_TO]). */
+    private var limitTo: Set<String>? = null
     private lateinit var adapter: AppAdapter
     private lateinit var countView: TextView
     private lateinit var progress: CircularProgressIndicator
@@ -57,6 +65,7 @@ class AppPickerActivity : AppCompatActivity() {
         }
 
         intent.getStringArrayExtra(EXTRA_SELECTED)?.let { selected.addAll(it) }
+        limitTo = intent.getStringArrayExtra(EXTRA_LIMIT_TO)?.toSet()
 
         countView = findViewById(R.id.txt_selected_count)
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
@@ -97,6 +106,7 @@ class AppPickerActivity : AppCompatActivity() {
         showLoading(true)
         lifecycleScope.launch {
             allApps = InstalledApps.loadLaunchableApps(this@AppPickerActivity)
+                .let { apps -> limitTo?.let { keep -> apps.filter { it.packageName in keep } } ?: apps }
             adapter.submit(allApps)
             showLoading(false)
         }
@@ -109,7 +119,8 @@ class AppPickerActivity : AppCompatActivity() {
     }
 
     private fun refresh() {
-        adapter.notifyDataSetChanged()
+        // Select all / clear only change the checkboxes, not which apps are listed.
+        adapter.notifyItemRangeChanged(0, adapter.itemCount)
         updateCount()
     }
 
@@ -122,8 +133,19 @@ class AppPickerActivity : AppCompatActivity() {
     private inner class AppAdapter : RecyclerView.Adapter<AppVH>() {
         private val items = ArrayList<AppInfo>()
 
+        /** Called on every keystroke of the search: diff by package so only rows entering or
+         *  leaving the filter are touched, instead of rebinding (and reloading icons for) every
+         *  installed app each time. */
         fun submit(list: List<AppInfo>) {
-            items.clear(); items.addAll(list); notifyDataSetChanged()
+            val old = ArrayList(items)
+            val diff = androidx.recyclerview.widget.DiffUtil.calculateDiff(object : androidx.recyclerview.widget.DiffUtil.Callback() {
+                override fun getOldListSize() = old.size
+                override fun getNewListSize() = list.size
+                override fun areItemsTheSame(o: Int, n: Int) = old[o].packageName == list[n].packageName
+                override fun areContentsTheSame(o: Int, n: Int) = old[o] == list[n]
+            }, false)
+            items.clear(); items.addAll(list)
+            diff.dispatchUpdatesTo(this)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppVH {
@@ -183,5 +205,8 @@ class AppPickerActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_SELECTED = "selected_packages"
+
+        /** Restrict the offered apps to these packages. Absent ⇒ every launchable app. */
+        const val EXTRA_LIMIT_TO = "limit_to_packages"
     }
 }
