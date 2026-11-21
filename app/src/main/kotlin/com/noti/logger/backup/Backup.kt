@@ -79,6 +79,8 @@ object Backup {
         val reminderHistoryDays: Int? = null,
         val remindersCompact: Boolean? = null,
         val remindersShowTotal: Boolean? = null,
+        /** "" = follow the phone's region; carried as chosen so a restore keeps "automatic". */
+        val defaultCurrency: String? = null,
     )
 
     @Serializable
@@ -160,6 +162,7 @@ object Backup {
                 parkingLeadMinutes = s.parkingLeadMinutes, parkingAlarmMode = s.parkingAlarmMode,
                 reminderHistoryDays = s.reminderHistoryDays,
                 remindersCompact = s.remindersCompact, remindersShowTotal = s.remindersShowTotal,
+                defaultCurrency = s.defaultCurrency,
             ),
             messages = dao.allMessages().map {
                 MessageData(it.sender, it.sim, it.body, it.receivedAt, it.outgoing, it.read, it.dedupe)
@@ -239,6 +242,7 @@ object Backup {
             reminderHistoryDays?.let { s.reminderHistoryDays = it }
             remindersCompact?.let { s.remindersCompact = it }
             remindersShowTotal?.let { s.remindersShowTotal = it }
+            defaultCurrency?.let { s.defaultCurrency = it; s.fxAttemptAtMs = 0L }
         }
         val db = NotiDatabase.get(context)
         val dao = db.relayedMessageDao()

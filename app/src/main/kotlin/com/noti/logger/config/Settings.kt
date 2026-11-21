@@ -437,7 +437,13 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean(KEY_RM_SHOW_TOTAL, true)
         set(value) { prefs.edit().putBoolean(KEY_RM_SHOW_TOTAL, value).apply() }
 
-    /** Cached exchange rates (the API's JSON, AED base) for that total, when they were fetched,
+    /** The currency the user chose for Reminders totals (ISO code), or "" to follow the phone's
+     *  region - see [com.noti.logger.reminder.FxRates.home], which resolves the effective one. */
+    var defaultCurrency: String
+        get() = prefs.getString(KEY_DEFAULT_CURRENCY, "") ?: ""
+        set(value) { prefs.edit().putString(KEY_DEFAULT_CURRENCY, value).apply() }
+
+    /** Cached exchange rates (the API's JSON, based on the default currency) for that total, when they were fetched,
      *  and when a fetch was last tried - see [com.noti.logger.reminder.FxRates]. */
     var fxRatesJson: String
         get() = prefs.getString(KEY_FX_JSON, "") ?: ""
@@ -593,6 +599,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_FX_JSON = "fx_rates_json"
         private const val KEY_FX_AT = "fx_rates_fetched_at"
         private const val KEY_FX_TRIED = "fx_rates_attempt_at"
+        private const val KEY_DEFAULT_CURRENCY = "default_currency"
 
         @Volatile
         private var INSTANCE: Settings? = null

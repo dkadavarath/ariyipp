@@ -48,9 +48,13 @@ class RemindersCompactTest {
 
     private fun midnight(d: LocalDate) = d.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
+    private var savedCurrency = ""
+
     @Before fun seed() {
         val s = Settings.get(ctx)
         savedRole = s.role; savedEnabled = s.reminderEnabled; savedCompact = s.remindersCompact
+        savedCurrency = s.defaultCurrency
+        s.defaultCurrency = "AED" // the totals below are asserted in AED, whatever the emulator's region
         s.role = Role.MAIN
         s.reminderEnabled = true
         db.billOccurrenceDao().deleteAll()
@@ -74,6 +78,7 @@ class RemindersCompactTest {
         db.reminderRuleDao().deleteAll()
         val s = Settings.get(ctx)
         s.role = savedRole; s.reminderEnabled = savedEnabled; s.remindersCompact = savedCompact
+        s.defaultCurrency = savedCurrency
         Thread.sleep(3000) // encrypted prefs apply() is async; let it land before the next test
     }
 

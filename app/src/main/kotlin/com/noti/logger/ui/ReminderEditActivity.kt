@@ -75,6 +75,10 @@ class ReminderEditActivity : ScreenActivity() {
     override fun onScreenCreated() {
         billId = intent.getLongExtra(EXTRA_BILL_ID, 0L)
         parkingId = intent.getLongExtra(EXTRA_PARKING_ID, 0L)
+        // A bill left without a currency is in the default one; say which, without writing it in -
+        // left blank it keeps following the setting.
+        (findViewById<View>(R.id.et_currency).parent?.parent as? com.google.android.material.textfield.TextInputLayout)
+            ?.placeholderText = com.noti.logger.reminder.FxRates.home(this)
 
         findViewById<MaterialButtonToggleGroup>(R.id.toggle_kind).addOnButtonCheckedListener { _, _, checked ->
             if (checked) updateKindUi()

@@ -177,7 +177,9 @@ class BackupRemindersTest {
         val saved = listOf(s.reminderHour, s.reminderDaysBefore, s.companionBatteryPct)
         val savedFlags = listOf(s.otpCopyEnabled, s.heartbeatEnabled, s.remindersCompact, s.remindersShowTotal)
         val savedMode = s.parkingAlarmMode
+        val savedCurrency = s.defaultCurrency
         try {
+            s.defaultCurrency = "EUR"
             s.reminderHour = 7; s.reminderDaysBefore = 4; s.companionBatteryPct = 25
             s.otpCopyEnabled = false; s.heartbeatEnabled = false; s.remindersCompact = true; s.remindersShowTotal = false
             s.parkingAlarmMode = "SYSTEM_CLOCK"
@@ -185,8 +187,11 @@ class BackupRemindersTest {
             s.reminderHour = 9; s.reminderDaysBefore = 1; s.companionBatteryPct = 50
             s.otpCopyEnabled = true; s.heartbeatEnabled = true; s.remindersCompact = false; s.remindersShowTotal = true
             s.parkingAlarmMode = "IN_APP"
+            s.defaultCurrency = ""
 
             Backup.import(ctx, json)
+
+            assertEquals("EUR", s.defaultCurrency)
 
             assertEquals(7, s.reminderHour)
             assertEquals(4, s.reminderDaysBefore)
@@ -201,6 +206,7 @@ class BackupRemindersTest {
             s.otpCopyEnabled = savedFlags[0]; s.heartbeatEnabled = savedFlags[1]
             s.remindersCompact = savedFlags[2]; s.remindersShowTotal = savedFlags[3]
             s.parkingAlarmMode = savedMode
+            s.defaultCurrency = savedCurrency
             Thread.sleep(3000)
         }
     }

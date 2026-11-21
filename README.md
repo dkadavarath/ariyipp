@@ -3,7 +3,7 @@
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84)
 ![minSdk](https://img.shields.io/badge/minSdk-26-1565c0)
 ![targetSdk](https://img.shields.io/badge/targetSdk-35-1565c0)
-![Release](https://img.shields.io/badge/release-v1.4-1565c0)
+![Release](https://img.shields.io/badge/release-v1.5-1565c0)
 ![Language](https://img.shields.io/badge/kotlin-100%25-7f52ff)
 ![License](https://img.shields.io/badge/license-GPL--3.0-1565c0)
 
@@ -65,9 +65,11 @@ source with your own signing key (see [below](#build-from-source)) works exactly
     settled for you, optionally only when the amount matches. Works for hand-added bills too.
   - **Manual bills** — one-off or repeating every N days/weeks/months/years, with notes, categories,
     a per-bill reminder lead and a "skip next" flag.
-  - **30-day total** — one figure for everything due in the next 30 days, in AED, converted at daily
-    exchange rates from [open.er-api.com](https://open.er-api.com) (fetched at most once a day; the
-    request carries nothing about you or your bills). Hideable, and a Compact one-line view.
+  - **30-day total** — one figure for everything due in the next 30 days, in your **default
+    currency**: your phone's own (from its SIM, network or region) unless you pick another in
+    Reminders settings. Other currencies are converted at daily exchange rates from
+    [open.er-api.com](https://open.er-api.com) (fetched at most once a day; the request names only
+    your default currency, nothing about you or your bills). Hideable, and a Compact one-line view.
 - **Per-conversation mute**, unread badges, one-time-code copy, tappable links, and inline reply from
   the notification.
 - **Share & multi-select** — share any message to another app (separate from Forward, which relays it

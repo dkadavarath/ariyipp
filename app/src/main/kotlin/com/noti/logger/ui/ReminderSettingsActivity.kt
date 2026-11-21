@@ -11,6 +11,7 @@ import com.google.android.material.color.MaterialColors
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.noti.logger.R
 import com.noti.logger.config.Settings
+import com.noti.logger.reminder.FxRates
 import com.noti.logger.reminder.ParkingAlarm
 import com.noti.logger.reminder.ParkingAlarmMode
 import com.noti.logger.reminder.ReminderNotifier
@@ -51,6 +52,11 @@ class ReminderSettingsActivity : ScreenActivity() {
         remindTime.setText(String.format(Locale.ROOT, "%02d:%02d", s.reminderHour, s.reminderMinute))
         spacing.setText(s.reminderSpacingMinutes.toString())
         lead.setText(s.parkingLeadMinutes.toString())
+        val currency = findViewById<EditText>(R.id.et_home_currency)
+        // Blank means "follow the phone's region", and the helper line names what that resolves
+        // to - so the field never claims a choice the user didn't make.
+        currency.setText(s.defaultCurrency)
+        refreshCurrencyHelp()
         when (ParkingAlarmMode.of(s.parkingAlarmMode)) {
             ParkingAlarmMode.IN_APP -> findViewById<RadioButton>(R.id.rb_alarm_inapp).isChecked = true
             else -> findViewById<RadioButton>(R.id.rb_alarm_clock).isChecked = true
@@ -110,7 +116,7 @@ class ReminderSettingsActivity : ScreenActivity() {
         // lose focus and again in onPause, since a field still under the cursor has no other moment
         // that counts as "done".
         enabled.setOnCheckedChangeListener { _, _ -> commit() }
-        for (field in listOf(scanHours, daysBefore, remindTime, spacing, lead)) {
+        for (field in listOf(scanHours, daysBefore, remindTime, spacing, lead, currency)) {
             field.setOnFocusChangeListener { _, hasFocus -> if (!hasFocus) commit() }
         }
 
@@ -186,6 +192,35 @@ class ReminderSettingsActivity : ScreenActivity() {
             if (mode == ParkingAlarmMode.IN_APP && !ParkingAlarm.canScheduleExact(this)) View.VISIBLE else View.GONE
     }
 
+    /** Saves the default-currency field: blank = automatic, a known code (or "Rs", "₹"...) = that
+     *  code, anything else is refused with the old value put back. */
+    private fun commitCurrency() {
+        val s = Settings.get(this)
+        val field = findViewById<EditText>(R.id.et_home_currency) ?: return
+        val typed = field.text?.toString().orEmpty().trim()
+        val chosen = if (typed.isEmpty()) "" else FxRates.normalize(typed)
+        if (chosen == null) {
+            Toast.makeText(this, getString(R.string.rm_default_currency_bad, FxRates.home(this)), Toast.LENGTH_LONG).show()
+            field.setText(s.defaultCurrency)
+        } else {
+            if (chosen != typed) field.setText(chosen)
+            if (chosen != s.defaultCurrency) {
+                s.defaultCurrency = chosen
+                FxRates.onHomeChanged(this)
+            }
+        }
+        refreshCurrencyHelp()
+    }
+
+    private fun refreshCurrencyHelp() {
+        val til = findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.til_home_currency) ?: return
+        val chosen = Settings.get(this).defaultCurrency
+        val regional = FxRates.regional(this)
+        til.helperText = if (chosen.isBlank()) getString(R.string.rm_default_currency_auto, regional)
+        else getString(R.string.rm_default_currency_set, chosen, regional)
+        til.placeholderText = regional
+    }
+
     override fun onPause() {
         super.onPause()
         commit()
@@ -208,6 +243,7 @@ class ReminderSettingsActivity : ScreenActivity() {
         }
         s.reminderSpacingMinutes = text(R.id.et_spacing)?.toIntOrNull() ?: s.reminderSpacingMinutes
         s.parkingLeadMinutes = text(R.id.et_parking_lead)?.toIntOrNull() ?: s.parkingLeadMinutes
+        commitCurrency()
 
         ReminderScanWorker.applyFromSettings(this)
         if (s.reminderEnabled) {

@@ -266,7 +266,7 @@ class RemindersFragment : Fragment(R.layout.fragment_reminders) {
      */
     /**
      * One figure: everything due in the next 30 days - overdue included, since it still has to be
-     * paid - in AED, converted at the day's cached rates. The line under it only speaks up when
+     * paid - in the default currency, converted at the day's cached rates. The line under it only speaks up when
      * something is missing from the figure, so it is never quietly smaller than it looks.
      */
     private fun renderTotals(ctx: android.content.Context) {
@@ -287,7 +287,7 @@ class RemindersFragment : Fragment(R.layout.fragment_reminders) {
             // shoving it.
             if (card.visibility != View.VISIBLE) Motion.animateNextLayout(v as android.view.ViewGroup)
             card.visibility = View.VISIBLE
-            val total = money(FxRates.HOME, t.aed)
+            val total = money(t.home, t.inHome)
             val notes = buildList {
                 add(resources.getQuantityString(R.plurals.rm_total_bills, t.bills, t.bills))
                 if (t.withoutAmount > 0) add(getString(
@@ -334,43 +334,45 @@ class RemindersFragment : Fragment(R.layout.fragment_reminders) {
     }
 
     private class Totals(
-        val aed: Double,
+        val home: String,
+        val inHome: Double,
         val bills: Int,
         val withoutAmount: Int,
-        /** Amounts that couldn't be put into AED, by their own currency. */
+        /** Amounts that couldn't be put into [home], by their own currency. */
         val unconverted: Map<String, Double>,
-        /** Whether any foreign amount went into [aed] - only then is the rates date worth showing. */
+        /** Whether any foreign amount went into [inHome] - only then is the rates date worth showing. */
         val converted: Boolean,
         val ratesAtMs: Long,
     )
 
     private fun computeTotals(ctx: android.content.Context): Totals {
+        val home = FxRates.home(ctx)
         return try {
             val horizon = System.currentTimeMillis() + 30L * 86_400_000L
             val due = NotiDatabase.get(ctx).billOccurrenceDao().active().filter { it.dueAt in 1..horizon }
             // Only touch the network (at most daily) when something actually needs converting.
-            val needsRates = due.any { b -> b.amount != null && FxRates.isoOf(b.currency) != FxRates.HOME }
-            val fx = if (needsRates) FxRates.current(ctx) else null
-            var aed = 0.0
+            val needsRates = due.any { b -> b.amount != null && FxRates.isoOf(b.currency, home) != home }
+            val fx = if (needsRates) FxRates.current(ctx, home) else null
+            var inHome = 0.0
             var withoutAmount = 0
             var converted = false
             val unconverted = LinkedHashMap<String, Double>()
             for (b in due) {
                 val amount = b.amount
                 if (amount == null) { withoutAmount++; continue }
-                val iso = FxRates.isoOf(b.currency)
-                val inAed = iso?.let { FxRates.toHome(amount, it, fx?.rates.orEmpty()) }
-                if (inAed == null) {
+                val iso = FxRates.isoOf(b.currency, home)
+                val value = iso?.let { FxRates.toHome(amount, it, home, fx?.rates.orEmpty()) }
+                if (value == null) {
                     val key = b.currency.ifBlank { "?" }
                     unconverted[key] = (unconverted[key] ?: 0.0) + amount
                 } else {
-                    aed += inAed
-                    if (iso != FxRates.HOME) converted = true
+                    inHome += value
+                    if (iso != home) converted = true
                 }
             }
-            Totals(aed, due.size, withoutAmount, unconverted, converted, fx?.fetchedAtMs ?: 0L)
+            Totals(home, inHome, due.size, withoutAmount, unconverted, converted, fx?.fetchedAtMs ?: 0L)
         } catch (e: Exception) {
-            Totals(0.0, 0, 0, emptyMap(), false, 0L)
+            Totals(home, 0.0, 0, 0, emptyMap(), false, 0L)
         }
     }
 

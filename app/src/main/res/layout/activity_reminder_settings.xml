@@ -141,6 +141,23 @@
                             android:layout_height="wrap_content"
                             android:inputType="number" />
                     </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_home_currency"
+                        style="@style/Widget.Noti.TextInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="@string/rm_home_currency">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_home_currency"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapCharacters|textNoSuggestions"
+                            android:maxLength="5"
+                            android:maxLines="1" />
+                    </com.google.android.material.textfield.TextInputLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
