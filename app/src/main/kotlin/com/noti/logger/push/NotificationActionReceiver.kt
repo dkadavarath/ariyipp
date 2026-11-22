@@ -64,33 +64,45 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 }.start()
             }
 
-            ACTION_REPLY -> {
-                val text = RemoteInput.getResultsFromIntent(intent)
-                    ?.getCharSequence(KEY_REPLY)?.toString()?.trim().orEmpty()
-                val pending = goAsync()
-                Thread {
-                    try {
-                        if (text.isEmpty()) {
-                            NotificationManagerCompat.from(app).cancel(notifId)
-                            return@Thread
-                        }
-                        val dao = NotiDatabase.get(app).relayedMessageDao()
-                        // Optimistically record the outgoing message (same as in-chat compose).
-                        val msgId = dao.insert(
-                            RelayedMessageEntity(
-                                sender = sender, sim = "", body = text,
-                                receivedAt = System.currentTimeMillis(), outgoing = 1,
-                            )
-                        )
-                        dao.markRead(sender)
-                        // The send itself goes to a job: it can take longer than a receiver may run.
-                        com.noti.logger.work.ReplyWorker.enqueue(app, sender, text, msgId, notifId)
-                    } finally {
-                        pending.finish()
-                    }
-                }.start()
-            }
+            ACTION_REPLY -> onReply(app, intent, sender, notifId)
         }
+    }
+
+    /** An inline reply: sent to [sender] only if the action's signature still names them. */
+    private fun onReply(app: Context, intent: Intent, sender: String, notifId: Int) {
+        // The reply action has to be a mutable PendingIntent (the system adds the typed
+        // text), so whoever fires it can also replace its extras - and notification
+        // listeners get it with the notification. Only the sender this notification was
+        // posted for may be replied to: the signature over it proves that.
+        if (!ReplySignature.verify(app, sender, notifId, intent.getStringExtra(EXTRA_SIG))) {
+            com.noti.shared.Diag.log("notification reply REFUSED - its recipient was changed after posting")
+            NotificationManagerCompat.from(app).cancel(notifId)
+            return
+        }
+        val text = RemoteInput.getResultsFromIntent(intent)
+            ?.getCharSequence(KEY_REPLY)?.toString()?.trim().orEmpty()
+        val pending = goAsync()
+        Thread {
+            try {
+                if (text.isEmpty()) {
+                    NotificationManagerCompat.from(app).cancel(notifId)
+                    return@Thread
+                }
+                val dao = NotiDatabase.get(app).relayedMessageDao()
+                // Optimistically record the outgoing message (same as in-chat compose).
+                val msgId = dao.insert(
+                    RelayedMessageEntity(
+                        sender = sender, sim = "", body = text,
+                        receivedAt = System.currentTimeMillis(), outgoing = 1,
+                    )
+                )
+                dao.markRead(sender)
+                // The send itself goes to a job: it can take longer than a receiver may run.
+                com.noti.logger.work.ReplyWorker.enqueue(app, sender, text, msgId, notifId)
+            } finally {
+                pending.finish()
+            }
+        }.start()
     }
 
     private fun copyCode(context: Context, code: String) {
@@ -117,6 +129,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         const val EXTRA_SENDER = "sender"
         const val EXTRA_NOTIF_ID = "notif_id"
         const val EXTRA_CODE = "code"
+        const val EXTRA_SIG = "sig"
         const val KEY_REPLY = "reply_text"
     }
 }

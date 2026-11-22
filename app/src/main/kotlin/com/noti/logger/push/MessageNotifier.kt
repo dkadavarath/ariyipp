@@ -120,6 +120,9 @@ object MessageNotifier {
             .setAction(NotificationActionReceiver.ACTION_REPLY)
             .putExtra(NotificationActionReceiver.EXTRA_SENDER, sender)
             .putExtra(NotificationActionReceiver.EXTRA_NOTIF_ID, id)
+            // Binds the reply to this conversation: the extras of this mutable intent can be
+            // replaced by whoever fires it (see ReplySignature).
+            .putExtra(NotificationActionReceiver.EXTRA_SIG, ReplySignature.sign(context, sender, id))
         // RemoteInput requires a mutable PendingIntent so the system can attach the typed text.
         val pending = PendingIntent.getBroadcast(
             context, id + 1_000_000, intent,

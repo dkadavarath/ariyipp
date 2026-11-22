@@ -11,8 +11,9 @@ class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
-            Intent.ACTION_BOOT_COMPLETED,
-            "android.intent.action.QUICKBOOT_POWERON" -> {
+            // Only the system's own (protected) broadcasts: this receiver is exported, and a vendor
+            // action like QUICKBOOT_POWERON could be sent by any app.
+            Intent.ACTION_BOOT_COMPLETED -> {
                 UploadScheduler.applyFromSettings(context)
                 // Alarms do not survive a reboot - every pending reminder has to be re-armed from
                 // the database, or a bill scheduled last week silently never fires.

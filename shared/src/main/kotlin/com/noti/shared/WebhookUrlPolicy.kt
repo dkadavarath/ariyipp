@@ -11,7 +11,11 @@ import java.net.URL
  * policy already in effect at the OS level.
  */
 object WebhookUrlPolicy {
-    private val CLEARTEXT_ALLOWED_HOSTS = setOf("localhost", "127.0.0.1", "10.0.2.2")
+    private val LOOPBACK = setOf("localhost", "127.0.0.1")
+
+    /** Also allow plain http to the emulator's host (10.0.2.2): debug builds set this at start.
+     *  On a real phone that address is an ordinary private-network one, so release builds don't. */
+    @Volatile var allowEmulatorHost = false
 
     fun isAllowed(url: String): Boolean {
         val parsed = try {
@@ -20,6 +24,7 @@ object WebhookUrlPolicy {
             return false
         }
         return parsed.protocol.equals("https", ignoreCase = true) ||
-            (parsed.protocol.equals("http", ignoreCase = true) && parsed.host in CLEARTEXT_ALLOWED_HOSTS)
+            (parsed.protocol.equals("http", ignoreCase = true) &&
+                (parsed.host in LOOPBACK || (allowEmulatorHost && parsed.host == "10.0.2.2")))
     }
 }

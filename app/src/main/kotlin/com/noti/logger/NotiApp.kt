@@ -29,6 +29,9 @@ class NotiApp : Application() {
         // Cheap, and needed before any reminder work runs: the clock-app alarm route can only be
         // attempted while an activity is on screen (see AppForeground).
         com.noti.logger.reminder.AppForeground.register(this)
+        // Plain http to the emulator's host address only in a debuggable build (see WebhookUrlPolicy).
+        com.noti.shared.WebhookUrlPolicy.allowEmulatorHost =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
         com.noti.logger.reminder.ReminderExtractor.attach(this)
 
         // Tell the :sender library which role this phone plays, before any of its receivers,

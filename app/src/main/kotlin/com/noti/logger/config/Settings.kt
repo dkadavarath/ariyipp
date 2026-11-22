@@ -3,6 +3,7 @@ package com.noti.logger.config
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
+import androidx.core.content.edit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.noti.logger.redact.AppRule
@@ -237,6 +238,20 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         get() = prefs.getString(KEY_SNDI_TOKEN, "") ?: ""
         set(value) {
             prefs.edit().putString(KEY_SNDI_TOKEN, value.trim()).apply()
+        }
+
+    /** The secret that signs notification-reply actions (see ReplySignature): 32 random bytes,
+     *  made on first use. Never leaves the phone (not in backups: a new phone signs anew). */
+    val replySecret: String
+        // commit: two replies signed before an apply() lands must not get two different secrets.
+        @android.annotation.SuppressLint("ApplySharedPref")
+        @Synchronized get() {
+            prefs.getString(KEY_REPLY_SECRET, null)?.takeIf { it.isNotBlank() }?.let { return it }
+            val fresh = android.util.Base64.encodeToString(
+                ByteArray(32).also { java.security.SecureRandom().nextBytes(it) }, android.util.Base64.NO_WRAP,
+            )
+            prefs.edit(commit = true) { putString(KEY_REPLY_SECRET, fresh) }
+            return fresh
         }
 
     /** When the companion sent the endpoint in [sndiFcmToken]: an older copy of an announcement is
@@ -518,6 +533,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_SA_JSON = "sa_json"
         private const val KEY_FIREBASE_CONFIG_JSON = "firebase_config_json"
         private const val KEY_SNDI_TOKEN = "sndi_token"
+        private const val KEY_REPLY_SECRET = "reply_secret"
         private const val KEY_SNDI_TOKEN_SENT_AT = "sndi_token_sent_at"
         private const val KEY_SNDI_TOKEN_SEEN_AT = "sndi_token_seen_at"
         private const val KEY_PEER_STAMP_SENT_AT = "peer_stamp_sent_at"

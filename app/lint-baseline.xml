@@ -74,7 +74,7 @@
         errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings.xml"
-            line="315"
+            line="316"
             column="5"/>
     </issue>
 
@@ -85,7 +85,7 @@
         errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings.xml"
-            line="334"
+            line="335"
             column="5"/>
     </issue>
 
@@ -96,7 +96,7 @@
         errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings.xml"
-            line="449"
+            line="450"
             column="5"/>
     </issue>
 
@@ -107,7 +107,7 @@
         errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings.xml"
-            line="451"
+            line="452"
             column="5"/>
     </issue>
 
@@ -118,7 +118,7 @@
         errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings.xml"
-            line="513"
+            line="514"
             column="5"/>
     </issue>
 
@@ -129,7 +129,7 @@
         errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings.xml"
-            line="551"
+            line="552"
             column="5"/>
     </issue>
 
@@ -140,7 +140,7 @@
         errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings.xml"
-            line="552"
+            line="553"
             column="5"/>
     </issue>
 
@@ -151,7 +151,7 @@
         errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings.xml"
-            line="577"
+            line="578"
             column="5"/>
     </issue>
 
@@ -162,7 +162,7 @@
         errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings.xml"
-            line="585"
+            line="586"
             column="5"/>
     </issue>
 
@@ -173,7 +173,7 @@
         errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings.xml"
-            line="586"
+            line="587"
             column="5"/>
     </issue>
 
@@ -184,7 +184,7 @@
         errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings.xml"
-            line="587"
+            line="588"
             column="5"/>
     </issue>
 
@@ -437,7 +437,7 @@
         errorLine2="                        ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="54"
+            line="55"
             column="25"/>
     </issue>
 
@@ -448,7 +448,7 @@
         errorLine2="            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="73"
+            line="74"
             column="13"/>
     </issue>
 
@@ -459,7 +459,7 @@
         errorLine2="            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="80"
+            line="81"
             column="13"/>
     </issue>
 
@@ -470,7 +470,7 @@
         errorLine2="            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="97"
+            line="98"
             column="13"/>
     </issue>
 
@@ -481,7 +481,7 @@
         errorLine2="            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="109"
+            line="110"
             column="13"/>
     </issue>
 
@@ -492,7 +492,7 @@
         errorLine2="            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="123"
+            line="124"
             column="13"/>
     </issue>
 
@@ -503,7 +503,7 @@
         errorLine2="            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="130"
+            line="131"
             column="13"/>
     </issue>
 
@@ -514,7 +514,7 @@
         errorLine2="            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="139"
+            line="140"
             column="13"/>
     </issue>
 
@@ -525,7 +525,7 @@
         errorLine2="            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="152"
+            line="153"
             column="13"/>
     </issue>
 
@@ -536,7 +536,7 @@
         errorLine2="            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="160"
+            line="161"
             column="13"/>
     </issue>
 
@@ -547,7 +547,7 @@
         errorLine2="            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="169"
+            line="170"
             column="13"/>
     </issue>
 
@@ -558,7 +558,7 @@
         errorLine2="                       ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="198"
+            line="199"
             column="24"/>
     </issue>
 
@@ -569,7 +569,7 @@
         errorLine2="            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="227"
+            line="228"
             column="13"/>
     </issue>
 
@@ -580,7 +580,7 @@
         errorLine2="            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="239"
+            line="240"
             column="13"/>
     </issue>
 
@@ -591,7 +591,7 @@
         errorLine2="            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="249"
+            line="264"
             column="13"/>
     </issue>
 
@@ -602,7 +602,7 @@
         errorLine2="            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="260"
+            line="275"
             column="13"/>
     </issue>
 
@@ -613,7 +613,7 @@
         errorLine2="            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="271"
+            line="286"
             column="13"/>
     </issue>
 
@@ -624,7 +624,7 @@
         errorLine2="                           ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="286"
+            line="301"
             column="28"/>
     </issue>
 
@@ -635,7 +635,7 @@
         errorLine2="                     ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="325"
+            line="340"
             column="22"/>
     </issue>
 
@@ -646,7 +646,7 @@
         errorLine2="                     ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="329"
+            line="344"
             column="22"/>
     </issue>
 
@@ -657,7 +657,7 @@
         errorLine2="                     ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="333"
+            line="348"
             column="22"/>
     </issue>
 
@@ -668,7 +668,7 @@
         errorLine2="                     ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="356"
+            line="371"
             column="22"/>
     </issue>
 
@@ -679,7 +679,7 @@
         errorLine2="                     ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="361"
+            line="376"
             column="22"/>
     </issue>
 
@@ -690,7 +690,7 @@
         errorLine2="                     ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="365"
+            line="380"
             column="22"/>
     </issue>
 
@@ -701,7 +701,7 @@
         errorLine2="                     ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="370"
+            line="385"
             column="22"/>
     </issue>
 
@@ -712,7 +712,7 @@
         errorLine2="                     ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="375"
+            line="390"
             column="22"/>
     </issue>
 
@@ -723,7 +723,7 @@
         errorLine2="                     ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="380"
+            line="395"
             column="22"/>
     </issue>
 
@@ -734,7 +734,7 @@
         errorLine2="                     ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="419"
+            line="434"
             column="22"/>
     </issue>
 
@@ -745,7 +745,7 @@
         errorLine2="            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="430"
+            line="445"
             column="13"/>
     </issue>
 
@@ -756,7 +756,7 @@
         errorLine2="            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/com/noti/logger/config/Settings.kt"
-            line="455"
+            line="470"
             column="13"/>
     </issue>
 

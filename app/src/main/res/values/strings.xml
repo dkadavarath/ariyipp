@@ -205,6 +205,7 @@
     <string name="restore_working">Restoring…</string>
     <string name="restore_bad_pass">Wrong passphrase, or not a valid backup file.</string>
     <string name="restore_confirm_title">Restore this backup?</string>
+    <string name="restore_confirm_webhook">Captured notifications will be uploaded to %1$s. Restore only a backup you made yourself.</string>
     <string name="restore_confirm_msg">This replaces all current settings and messages on this device with the backup\'s contents. This can\'t be undone.</string>
     <string name="restore_confirm_yes">Restore</string>
     <string name="restore_done">Restored. Reopen the app for all changes to take effect.</string>

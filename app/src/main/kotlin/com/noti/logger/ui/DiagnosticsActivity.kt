@@ -53,7 +53,16 @@ class DiagnosticsActivity : ScreenActivity() {
         findViewById<View>(R.id.btn_diag_clear).setOnClickListener { Diag.clear() }
         findViewById<View>(R.id.btn_diag_copy).setOnClickListener {
             val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            cm.setPrimaryClip(ClipData.newPlainText("diagnostics", Diag.snapshot().joinToString("\n")))
+            cm.setPrimaryClip(
+                ClipData.newPlainText("diagnostics", Diag.snapshot().joinToString("\n")).apply {
+                    // Sensitive: no clipboard preview, and keyboards/clipboard apps are told not to keep it.
+                    if (android.os.Build.VERSION.SDK_INT >= 33) {
+                        description.extras = android.os.PersistableBundle().apply {
+                            putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true)
+                        }
+                    }
+                },
+            )
             Toast.makeText(this, R.string.diag_copied, Toast.LENGTH_SHORT).show()
         }
     }

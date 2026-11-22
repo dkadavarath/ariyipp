@@ -199,6 +199,14 @@ object Backup {
 
     private const val MESSAGE_PAGE = 2_000
 
+    /** The host the backup's webhook uploads to, or null if it has none - shown before a restore,
+     *  since restoring sets it (and the service-account key) without another prompt. */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    fun webhookHostOf(jsonBytes: ByteArray): String? = try {
+        val url = java.io.ByteArrayInputStream(jsonBytes).use { json.decodeFromStream<Payload>(it) }.settings.webhookUrl
+        url.takeIf { it.isNotBlank() }?.let { java.net.URI(it).host ?: it }
+    } catch (e: Exception) { null }
+
     /** Replaces settings + message history from a backup JSON string (call off the main thread). */
     fun import(context: Context, jsonText: String) = import(context, jsonText.toByteArray(Charsets.UTF_8))
 

@@ -132,11 +132,16 @@ class BackupActivity : ScreenActivity() {
                 withContext(Dispatchers.Main) { setStatus(""); toast(getString(R.string.restore_bad_pass)); feedback(false) }
                 return@launch
             }
+            // Say where uploads will go: a restore sets the webhook (and the service-account key)
+            // with no further prompt, so a backup from someone else would quietly redirect them.
+            val host = Backup.webhookHostOf(plain)
             withContext(Dispatchers.Main) {
                 setStatus("")
+                val msg = getString(R.string.restore_confirm_msg) +
+                    (host?.let { "\n\n" + getString(R.string.restore_confirm_webhook, it) } ?: "")
                 MaterialAlertDialogBuilder(this@BackupActivity)
                     .setTitle(R.string.restore_confirm_title)
-                    .setMessage(R.string.restore_confirm_msg)
+                    .setMessage(msg)
                     .setNegativeButton(android.R.string.cancel, null)
                     .setPositiveButton(R.string.restore_confirm_yes) { _, _ -> applyRestore(plain) }
                     .show()
