@@ -3,7 +3,7 @@
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84)
 ![minSdk](https://img.shields.io/badge/minSdk-26-1565c0)
 ![targetSdk](https://img.shields.io/badge/targetSdk-35-1565c0)
-![Release](https://img.shields.io/badge/release-v1.7-1565c0)
+![Release](https://img.shields.io/badge/release-v1.8-1565c0)
 ![Language](https://img.shields.io/badge/kotlin-100%25-7f52ff)
 ![License](https://img.shields.io/badge/license-GPL--3.0-1565c0)
 
@@ -96,7 +96,8 @@ review or security audit. Read the code before trusting it with your SMS, and ex
   pairing, reminder rules and bills, and every setting.
 - **Optional extras:** capture this phone's notifications and forward them to a webhook (https only),
   and push the webhook config to the companion (opt-in on the companion, and it's notified of any
-  remote change).
+  remote change). Uploads hide one-time codes and full card numbers (a card keeps its last four
+  digits); on by default, under Settings > Privacy.
 - **Theming:** light/dark/system, Material You, and a true-black AMOLED mode, with every text colour
   checked against WCAG AA contrast in all three.
 

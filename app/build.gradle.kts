@@ -38,8 +38,8 @@ android {
         // (300+ from v1.4), so a public release always installs as an upgrade and the two never
         // collide. Bump by at least 1 each release; versionName is this public repo's own v1.x
         // sequence.
-        versionCode = 303
-        versionName = "1.7"
+        versionCode = 304
+        versionName = "1.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
