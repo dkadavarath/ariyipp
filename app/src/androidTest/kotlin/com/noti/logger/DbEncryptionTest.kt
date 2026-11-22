@@ -317,4 +317,55 @@ class DbEncryptionTest {
             assertTrue(System.currentTimeMillis() - com.noti.logger.data.DbKeyStore.asideSince(f) < 60_000L)
         } finally { f.delete() }
     }
+
+    @Test
+    fun a_recovered_history_never_rolls_back_reminders_made_since() {
+        seedV13()
+        DbEncryption.prepare(ctx, key, name, oldKeys = { emptyList() })
+        openRoom().also { it.reminderRuleDao().all() }.close()
+        val other = ByteArray(32).also { SecureRandom().nextBytes(it) }
+        DbEncryption.prepare(ctx, other, name, oldKeys = { emptyList() }) // key "lost"
+        // Since the reset: the user restored a backup / rebuilt the rulebook.
+        Room.databaseBuilder(ctx, NotiDatabase::class.java, name)
+            .openHelperFactory(SupportOpenHelperFactory(DbEncryption.passphrase(other))).build().also { fresh ->
+                fresh.reminderRuleDao().insert(com.noti.logger.data.ReminderRuleEntity(name = "rebuilt", type = "BILL", source = "SMS"))
+            }.close()
+        DbEncryption.prepare(ctx, other, name, oldKeys = { listOf(key) })
+        val db = Room.databaseBuilder(ctx, NotiDatabase::class.java, name)
+            .openHelperFactory(SupportOpenHelperFactory(DbEncryption.passphrase(other))).build()
+        assertEquals("today's rulebook kept", listOf("rebuilt"), db.reminderRuleDao().all().map { it.name })
+        assertTrue("the old messages are back", db.relayedMessageDao().allMessages().any { it.body == "body 7" })
+        db.close()
+        assertFalse("nothing left aside", dir.listFiles()!!.any { it.name.startsWith("$name-unreadable-") || it.name.contains("-replaced-") })
+    }
+
+    @Test
+    fun an_older_schema_copy_is_upgraded_then_merged() {
+        // Set aside while still v13 (never opened by Room after encryption).
+        seedV13()
+        DbEncryption.prepare(ctx, key, name, oldKeys = { emptyList() })
+        val other = ByteArray(32).also { SecureRandom().nextBytes(it) }
+        DbEncryption.prepare(ctx, other, name, oldKeys = { emptyList() })
+        Room.databaseBuilder(ctx, NotiDatabase::class.java, name)
+            .openHelperFactory(SupportOpenHelperFactory(DbEncryption.passphrase(other))).build().also { fresh ->
+                fresh.relayedMessageDao().insert(com.noti.logger.data.RelayedMessageEntity(sender = "+1", sim = "", body = "new", receivedAt = 1, dedupe = "n"))
+            }.close()
+        val saved = DbEncryption.upgrader
+        DbEncryption.upgrader = { file ->
+            Room.databaseBuilder(ctx, NotiDatabase::class.java, file.name)
+                .openHelperFactory(SupportOpenHelperFactory(DbEncryption.passphrase(other)))
+                .addMigrations(NotiDatabase.migration13To14({ "AED" }, fallbackZone = ZoneId.of("Asia/Dubai"))).build()
+                .also { it.openHelper.writableDatabase }.close()
+        }
+        try {
+            DbEncryption.prepare(ctx, other, name, oldKeys = { listOf(key) })
+        } finally { DbEncryption.upgrader = saved }
+        val db = Room.databaseBuilder(ctx, NotiDatabase::class.java, name)
+            .openHelperFactory(SupportOpenHelperFactory(DbEncryption.passphrase(other))).build()
+        val bodies = db.relayedMessageDao().allMessages().map { it.body }
+        assertTrue("old history merged after the upgrade", "body 7" in bodies && "new" in bodies)
+        assertEquals("card", db.reminderRuleDao().all().single().name) // none since the reset: the old ones come back
+        db.close()
+        assertFalse(dir.listFiles()!!.any { it.name.startsWith("$name-unreadable-") })
+    }
 }

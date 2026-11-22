@@ -290,8 +290,25 @@ abstract class NotiDatabase : RoomDatabase() {
         }
 
         /** Opens the encrypted database (see DbEncryption), encrypting a plaintext one first. */
+        private fun migrations(app: Context): Array<Migration> = arrayOf(
+            MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
+            MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
+            migration13To14({ com.noti.logger.reminder.FxRates.home(app) }),
+        )
+
+        // Room takes migrations as varargs; spreading this 13-item array once per start is nothing.
+        @Suppress("SpreadOperator")
         private fun build(app: Context): NotiDatabase {
             val key = DbEncryption.key(app)
+            // A set-aside copy on an older schema is brought up to date the way this database is:
+            // opened once through Room with the same migrations (it sits in the same directory).
+            DbEncryption.upgrader = { file ->
+                Room.databaseBuilder(app, NotiDatabase::class.java, file.name)
+                    .openHelperFactory(net.zetetic.database.sqlcipher.SupportOpenHelperFactory(DbEncryption.passphrase(key)))
+                    .addMigrations(*migrations(app)).build()
+                    .also { it.openHelper.writableDatabase }
+                    .close()
+            }
             val encrypted = try {
                 DbEncryption.prepare(app, key, onEvent = { e ->
                     when (e) {
@@ -311,11 +328,7 @@ abstract class NotiDatabase : RoomDatabase() {
                     // A fresh array: the factory may wipe the one it's given once the database is open.
                     if (encrypted) openHelperFactory(net.zetetic.database.sqlcipher.SupportOpenHelperFactory(DbEncryption.passphrase(key)))
                 }
-                .addMigrations(
-                    MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-                    MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
-                    migration13To14({ com.noti.logger.reminder.FxRates.home(app) }),
-                ).build()
+                .addMigrations(*migrations(app)).build()
         }
     }
 }

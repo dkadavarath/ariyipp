@@ -81,6 +81,10 @@ object DbEncryption {
         loadLibrary()
         val db = context.getDatabasePath(name)
         recover(db)
+        // Leftovers of an interrupted restore by an earlier build (it set the current file aside
+        // as -empty-/-replaced- before swapping); nothing ever reads them.
+        db.parentFile?.listFiles { f -> f.name.startsWith(db.name + "-empty-") || f.name.startsWith(db.name + "-replaced-") }
+            ?.forEach { it.delete() }
         if (isPlaintext(db)) {
             try {
                 encrypt(db, key, failAfter)
@@ -149,80 +153,103 @@ object DbEncryption {
     }
 
     /**
-     * Puts the set-aside [f] back as [db]. What arrived in the fresh database since the reset comes
-     * along (see [carryOver]); if that can't be done safely, both stay as they are and the next
-     * start tries again. False when nothing was swapped.
+     * Brings the history in the set-aside [f] back. If the current [db] holds nothing, [f] simply
+     * takes its place. Otherwise [db] stays - it is what the user has been using since the reset -
+     * and [f]'s history is merged into it ([mergeOld]): messages and notifications it lacks, and
+     * the reminders only if [db] has none (a rulebook rebuilt, or restored from a backup, since the
+     * reset is newer than the old one and must not be rolled back). An older-schema [f] is first
+     * upgraded with the app's own migrations ([upgrader]). One that still can't be merged gets the
+     * same [ASIDE_KEEP_MS] as an unreadable one, then goes. False when nothing was restored.
      */
     private fun restoreAside(f: File, db: File, key: ByteArray, now: Long): Boolean {
-        if (db.exists() && !isEmpty(db, key) && !carryOver(db, f, key)) return false
-        val replaced = sibling(db, "-replaced-$now")
-        if (db.exists()) { db.renameTo(replaced); moveLogs(db, replaced) }
-        if (!f.renameTo(db)) {
-            // Couldn't swap: put the fresh one back.
-            if (replaced.exists()) { replaced.renameTo(db); moveLogs(replaced, db) }
-            return false
+        if (!db.exists() || isEmpty(db, key)) {
+            // Nothing to keep in the current one: delete it (not set it aside - an interrupted
+            // swap would otherwise leave that copy behind) and move [f] into place. Killed in
+            // between, the next start finds no database and [f] still aside, and does this again.
+            if (db.exists()) { db.delete(); LOG_SUFFIXES.forEach { sibling(db, it).delete() } }
+            if (!f.renameTo(db)) return false
+            moveLogs(f, db)
+            Diag.log("database: an earlier set-aside copy opens again - restored it")
+            return true
         }
-        moveLogs(f, db)
-        Diag.log("database: an earlier set-aside copy opens again - restored it")
-        replaced.delete(); LOG_SUFFIXES.forEach { sibling(replaced, it).delete() }
-        return true
+        if (versionOf(f, key) < versionOf(db, key)) try { upgrader?.invoke(f) } catch (e: Exception) {
+            Diag.log("database: upgrading a set-aside copy failed (${e.javaClass.simpleName})")
+        }
+        if (versionOf(f, key) == versionOf(db, key) && mergeOld(db, f, key)) {
+            f.delete(); LOG_SUFFIXES.forEach { sibling(f, it).delete() }
+            Diag.log("database: an earlier set-aside copy opens again - its history merged into the current one")
+            return true
+        }
+        if (now - asideSince(f, db) > ASIDE_KEEP_MS) {
+            f.delete(); LOG_SUFFIXES.forEach { sibling(f, it).delete() }
+            Diag.log("database: a set-aside copy that couldn't be merged for 30 days was deleted")
+        }
+        return false
     }
 
     /**
-     * Copies what the fresh database [from] gathered since the reset - relayed messages and captured
-     * notifications - into the recovered [into], skipping ones it already holds (a notification by
-     * its unique uid, a message by sender, time, body and dedupe key). Reminder rules and bills
-     * made in between aren't merged: the recovered rulebook is the one with the history. Only when
-     * both are on the same schema; false (nothing changed) otherwise or on any error.
+     * Upgrades a set-aside database file (in the databases directory) to the current schema with
+     * the app's migrations - they live with the Room database, so it sets this. Blocking.
      */
-    private fun carryOver(from: File, into: File, key: ByteArray): Boolean = try {
+    @Volatile var upgrader: ((File) -> Unit)? = null
+
+    private fun versionOf(f: File, key: ByteArray): Int = try {
+        SQLiteDatabase.openDatabase(f.path, passphrase(key), null, SQLiteDatabase.OPEN_READONLY, null, null).use { it.version }
+    } catch (e: Exception) { -1 }
+
+    /**
+     * Merges [from]'s history into [into], in one transaction (all or nothing): relayed messages it
+     * lacks (by sender, time, body and dedupe key), captured notifications (by their unique uid),
+     * and - only when [into] has no reminders at all - the rules, bills and parking sessions, ids
+     * kept so bills stay linked to their rules.
+     */
+    private fun mergeOld(into: File, from: File, key: ByteArray): Boolean = try {
         SQLiteDatabase.openDatabase(into.path, passphrase(key), null, SQLiteDatabase.OPEN_READWRITE, null, null).use { d ->
-            d.execSQL("ATTACH DATABASE ? AS fresh KEY \"x'${hex(key)}'\"", arrayOf(from.path))
-            try {
-                val freshVersion = d.rawQuery("PRAGMA fresh.user_version", null).use { it.moveToFirst(); it.getInt(0) }
-                val ownVersion = d.rawQuery("PRAGMA main.user_version", null).use { it.moveToFirst(); it.getInt(0) }
-                if (freshVersion != ownVersion) {
-                    Diag.log("database: recovered copy is schema v$ownVersion, the current one v$freshVersion - not merged yet")
-                    false
-                } else {
-                    mergeFresh(d)
-                }
-            } finally {
-                d.execSQL("DETACH DATABASE fresh")
-            }
+            d.execSQL("ATTACH DATABASE ? AS old KEY \"x'${hex(key)}'\"", arrayOf(from.path))
+            try { copyOldRows(d) } finally { d.execSQL("DETACH DATABASE old") }
         }
+        true
     } catch (e: Exception) {
-        Diag.log("database: couldn't merge into the recovered copy (${e.javaClass.simpleName}) - will retry")
+        Diag.log("database: couldn't merge a set-aside copy (${e.javaClass.simpleName}) - will retry")
         false
     }
 
-    /** The row copies of [carryOver], in one transaction, with `fresh` attached to [d]. */
-    private fun mergeFresh(d: SQLiteDatabase): Boolean {
+    private val REMINDER_TABLES = listOf("reminder_rules", "reminder_bills", "reminder_parking")
+
+    /** The row copies of [mergeOld], with `old` attached to [d]. */
+    private fun copyOldRows(d: SQLiteDatabase) {
         d.beginTransaction()
         try {
-            val msgCols = sharedColumns(d, "relayed_messages")
+            val msgCols = sharedColumns(d, "relayed_messages", withId = false)
             d.execSQL(
-                "INSERT INTO main.relayed_messages ($msgCols) SELECT $msgCols FROM fresh.relayed_messages f " +
-                    "WHERE NOT EXISTS (SELECT 1 FROM main.relayed_messages m WHERE m.sender = f.sender " +
-                    "AND m.receivedAt = f.receivedAt AND m.body = f.body AND m.dedupe = f.dedupe)",
+                "INSERT INTO main.relayed_messages ($msgCols) SELECT $msgCols FROM old.relayed_messages o " +
+                    "WHERE NOT EXISTS (SELECT 1 FROM main.relayed_messages m WHERE m.sender = o.sender " +
+                    "AND m.receivedAt = o.receivedAt AND m.body = o.body AND m.dedupe = o.dedupe)",
             )
-            val notifCols = sharedColumns(d, "notifications")
-            d.execSQL("INSERT OR IGNORE INTO main.notifications ($notifCols) SELECT $notifCols FROM fresh.notifications")
+            val notifCols = sharedColumns(d, "notifications", withId = false)
+            d.execSQL("INSERT OR IGNORE INTO main.notifications ($notifCols) SELECT $notifCols FROM old.notifications")
+            val noReminders = REMINDER_TABLES.all { t ->
+                d.rawQuery("SELECT COUNT(*) FROM main.\"$t\"", null).use { it.moveToFirst(); it.getLong(0) } == 0L
+            }
+            if (noReminders) {
+                for (t in REMINDER_TABLES) {
+                    val cols = sharedColumns(d, t, withId = true)
+                    d.execSQL("INSERT INTO main.\"$t\" ($cols) SELECT $cols FROM old.\"$t\"")
+                }
+            }
             d.setTransactionSuccessful()
         } finally {
             d.endTransaction()
         }
-        Diag.log("database: carried what arrived since the reset into the recovered copy")
-        return true
     }
 
-    /** The columns of [table] in both main and fresh, except the row id (it's reassigned). */
-    private fun sharedColumns(d: SQLiteDatabase, table: String): String {
-        fun cols(schema: String) = d.rawQuery("PRAGMA $schema.table_info($table)", null).use { c ->
+    /** The columns of [table] in both main and old - with or without the row id. */
+    private fun sharedColumns(d: SQLiteDatabase, table: String, withId: Boolean): String {
+        fun cols(schema: String) = d.rawQuery("PRAGMA $schema.table_info(\"$table\")", null).use { c ->
             buildList { while (c.moveToNext()) add(c.getString(1)) }
         }
-        val fresh = cols("fresh").toSet()
-        return cols("main").filter { it != "id" && it in fresh }.joinToString(", ") { "\"$it\"" }
+        val old = cols("old").toSet()
+        return cols("main").filter { (withId || it != "id") && it in old }.joinToString(", ") { "\"$it\"" }
     }
 
     private val LOG_SUFFIXES = listOf("-wal", "-shm", "-journal")
