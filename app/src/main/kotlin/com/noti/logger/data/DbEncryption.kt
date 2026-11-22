@@ -156,9 +156,8 @@ object DbEncryption {
      * Brings the history in the set-aside [f] back. If the current [db] holds nothing, [f] simply
      * takes its place. Otherwise [db] stays - it is what the user has been using since the reset -
      * and [f]'s history is merged into it ([mergeOld]): messages and notifications it lacks, and
-     * the reminders only if [db] has none (a rulebook rebuilt, or restored from a backup, since the
-     * reset is newer than the old one and must not be rolled back). An older-schema [f] is first
-     * upgraded with the app's own migrations ([upgrader]). One that still can't be merged gets the
+     * the reminders row by row (HistoryMerge: nothing on either side is discarded). An
+     * older-schema [f] is first upgraded with the app's own migrations ([upgrader]). One that still can't be merged gets the
      * same [ASIDE_KEEP_MS] as an unreadable one, then goes. False when nothing was restored.
      */
     private fun restoreAside(f: File, db: File, key: ByteArray, now: Long): Boolean {
@@ -200,8 +199,7 @@ object DbEncryption {
     /**
      * Merges [from]'s history into [into], in one transaction (all or nothing): relayed messages it
      * lacks (by sender, time, body and dedupe key), captured notifications (by their unique uid),
-     * and - only when [into] has no reminders at all - the rules, bills and parking sessions, ids
-     * kept so bills stay linked to their rules.
+     * and the reminders row by row (HistoryMerge).
      */
     private fun mergeOld(into: File, from: File, key: ByteArray): Boolean = try {
         SQLiteDatabase.openDatabase(into.path, passphrase(key), null, SQLiteDatabase.OPEN_READWRITE, null, null).use { d ->
@@ -213,8 +211,6 @@ object DbEncryption {
         Diag.log("database: couldn't merge a set-aside copy (${e.javaClass.simpleName}) - will retry")
         false
     }
-
-    private val REMINDER_TABLES = listOf("reminder_rules", "reminder_bills", "reminder_parking")
 
     /** The row copies of [mergeOld], with `old` attached to [d]. */
     private fun copyOldRows(d: SQLiteDatabase) {
@@ -228,15 +224,8 @@ object DbEncryption {
             )
             val notifCols = sharedColumns(d, "notifications", withId = false)
             d.execSQL("INSERT OR IGNORE INTO main.notifications ($notifCols) SELECT $notifCols FROM old.notifications")
-            val noReminders = REMINDER_TABLES.all { t ->
-                d.rawQuery("SELECT COUNT(*) FROM main.\"$t\"", null).use { it.moveToFirst(); it.getLong(0) } == 0L
-            }
-            if (noReminders) {
-                for (t in REMINDER_TABLES) {
-                    val cols = sharedColumns(d, t, withId = true)
-                    d.execSQL("INSERT INTO main.\"$t\" ($cols) SELECT $cols FROM old.\"$t\"")
-                }
-            }
+            // Reminders row by row, neither side's thrown away (see HistoryMerge).
+            HistoryMerge.mergeReminders(d)
             d.setTransactionSuccessful()
         } finally {
             d.endTransaction()

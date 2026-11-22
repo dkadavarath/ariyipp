@@ -333,7 +333,7 @@ class DbEncryptionTest {
         DbEncryption.prepare(ctx, other, name, oldKeys = { listOf(key) })
         val db = Room.databaseBuilder(ctx, NotiDatabase::class.java, name)
             .openHelperFactory(SupportOpenHelperFactory(DbEncryption.passphrase(other))).build()
-        assertEquals("today's rulebook kept", listOf("rebuilt"), db.reminderRuleDao().all().map { it.name })
+        assertEquals("today's rule kept, the old one back too", setOf("rebuilt", "card"), db.reminderRuleDao().all().map { it.name }.toSet())
         assertTrue("the old messages are back", db.relayedMessageDao().allMessages().any { it.body == "body 7" })
         db.close()
         assertFalse("nothing left aside", dir.listFiles()!!.any { it.name.startsWith("$name-unreadable-") || it.name.contains("-replaced-") })
@@ -367,5 +367,36 @@ class DbEncryptionTest {
         assertEquals("card", db.reminderRuleDao().all().single().name) // none since the reset: the old ones come back
         db.close()
         assertFalse(dir.listFiles()!!.any { it.name.startsWith("$name-unreadable-") })
+    }
+
+    @Test
+    fun a_bill_paid_before_the_reset_stays_paid() {
+        seedV13()
+        DbEncryption.prepare(ctx, key, name, oldKeys = { emptyList() })
+        // Before the reset: the card's bill was paid.
+        openRoom().also { old ->
+            val bill = old.billOccurrenceDao().active().single()
+            old.billOccurrenceDao().update(bill.copy(status = com.noti.logger.reminder.BillStatus.PAID, settledAt = 777L))
+        }.close()
+        val other = ByteArray(32).also { SecureRandom().nextBytes(it) }
+        DbEncryption.prepare(ctx, other, name, oldKeys = { emptyList() }) // key "lost"
+        // After it: the rule rebuilt, and the re-read statement made the same bill again, unpaid.
+        val oldDue = DueDates.toMs(feb7)
+        Room.databaseBuilder(ctx, NotiDatabase::class.java, name)
+            .openHelperFactory(SupportOpenHelperFactory(DbEncryption.passphrase(other))).build().also { fresh ->
+                val rule = fresh.reminderRuleDao().insert(com.noti.logger.data.ReminderRuleEntity(name = "card", type = "BILL", source = "SMS"))
+                fresh.billOccurrenceDao().insert(
+                    com.noti.logger.data.BillOccurrenceEntity(ruleId = rule, name = "card", dueAt = oldDue, amount = 18402.75, sourceKey = "again"),
+                )
+            }.close()
+        DbEncryption.prepare(ctx, other, name, oldKeys = { listOf(key) })
+        val db = Room.databaseBuilder(ctx, NotiDatabase::class.java, name)
+            .openHelperFactory(SupportOpenHelperFactory(DbEncryption.passphrase(other))).build()
+        val bills = db.billOccurrenceDao().let { it.active() + it.history(limit = 100) }.filter { it.dueAt == oldDue }
+        assertEquals("one bill, not two", 1, bills.size)
+        assertEquals("and paid, as it was", com.noti.logger.reminder.BillStatus.PAID, bills.single().status)
+        assertEquals(777L, bills.single().settledAt)
+        assertEquals("one rule named card", 1, db.reminderRuleDao().all().count { it.name == "card" })
+        db.close()
     }
 }
