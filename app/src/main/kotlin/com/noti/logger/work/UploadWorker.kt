@@ -48,7 +48,7 @@ class UploadWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                 val drained = page.size < 100
 
                 val uploadBatch = UploadBatch(
-                    batch = page.map { it.toUploadItem(settings.deviceId) }
+                    batch = page.map { it.toUploadItem(settings.deviceId, mask = settings.maskSensitive) }
                 )
 
                 when (val outcome = uploader.upload(

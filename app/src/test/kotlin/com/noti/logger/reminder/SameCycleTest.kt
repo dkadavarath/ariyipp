@@ -55,5 +55,8 @@ class MentionsAmountTest {
         assertFalse(m("Total AED 2,300. Credit limit 15000", 15000.0))
         assertFalse(m("Ref no. 4821 - AED 2,300 due", 4821.0))
         assertTrue(m("Min due AED 115 of total AED 1500", 1500.0))
+        // Another card's available limit equal to this card's bill is not this bill.
+        assertFalse(m("Statement: AED 2,300 due on the 5th. Available limit AED 1,500.00", 1500.0))
+        assertFalse(m("Balance 1500 as of today", 1500.0))
     }
 }

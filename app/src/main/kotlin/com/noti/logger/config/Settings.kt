@@ -132,7 +132,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         }
 
     /** Mask one-time codes and card numbers in captured notifications before they're stored or
-     *  uploaded (see SensitiveMask). On by default. */
+     *  uploaded (see SensitiveMask): masked in the upload only, stored as captured. On by default. */
     var maskSensitive: Boolean
         get() = prefs.getBoolean(KEY_MASK_SENSITIVE, true)
         set(value) {

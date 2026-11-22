@@ -293,7 +293,15 @@ abstract class NotiDatabase : RoomDatabase() {
         private fun build(app: Context): NotiDatabase {
             val key = DbEncryption.key(app)
             val encrypted = try {
-                DbEncryption.prepare(app, key, onReset = { com.noti.logger.alert.Alerter.alertDatabaseReset(app) })
+                DbEncryption.prepare(app, key, onEvent = { e ->
+                    when (e) {
+                        DbEncryption.Event.RESET -> com.noti.logger.alert.Alerter.alertDatabaseReset(app)
+                        // Row ids changed: the reminder scan's id marks fall back to its time window.
+                        DbEncryption.Event.RESTORED -> com.noti.logger.config.Settings.get(app).let {
+                            it.lastReminderScanSmsId = -1L; it.lastReminderScanNotifId = -1L
+                        }
+                    }
+                })
                 true
             } catch (e: DbEncryption.EncryptionPending) {
                 false // the plaintext stays usable for this run; the next start tries again

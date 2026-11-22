@@ -22,7 +22,7 @@ import net.zetetic.database.sqlcipher.SQLiteDatabase
  * step 3 [recover] finishes the swap from whichever files survived.
  *
  * If the key is ever lost the database can't be opened. The unreadable file is moved aside with its
- * log files, untouched, Room starts an empty one, and [onReset] tells the user to restore a backup -
+ * log files, untouched, Room starts an empty one, and [onEvent] (RESET) tells the user to restore a backup -
  * capture and relay carry on regardless. Every later start tries the set-aside file again, with the
  * current key and with any earlier key still on file (see [readoptOrCleanAside]).
  */
@@ -74,7 +74,7 @@ object DbEncryption {
         context: Context,
         key: ByteArray,
         name: String = DB_NAME,
-        onReset: () -> Unit = {},
+        onEvent: (Event) -> Unit = {},
         failAfter: Int = 0,
         oldKeys: () -> List<ByteArray> = { DbKeyStore.asideKeys(context, ASIDE_KEEP_MS) },
     ) {
@@ -94,7 +94,7 @@ object DbEncryption {
             }
             return
         }
-        readoptOrCleanAside(db, key, oldKeys)
+        if (readoptOrCleanAside(db, key, oldKeys)) onEvent(Event.RESTORED)
         // Only a genuine wrong key ("file is not a database") counts as a lost key. Any other
         // failure - I/O, a locked file, low storage - is left alone: Room tries again, and so does
         // the next start, rather than an ordinary hiccup costing the history.
@@ -106,7 +106,7 @@ object DbEncryption {
             // copy brought back without it would be missing them.
             moveLogs(db, aside)
             Diag.log("database: couldn't be decrypted (key lost) - started empty; old file kept as ${aside.name}")
-            onReset()
+            onEvent(Event.RESET)
         }
     }
 
@@ -118,39 +118,119 @@ object DbEncryption {
      * One opened by an earlier key is first re-encrypted to the current one. One that still doesn't
      * open after [ASIDE_KEEP_MS] is deleted.
      */
-    private fun readoptOrCleanAside(db: File, key: ByteArray, oldKeys: () -> List<ByteArray>) {
-        val dir = db.parentFile ?: return
-        val aside = dir.listFiles { f -> f.name.startsWith(db.name + UNREADABLE_SUFFIX) && LOG_SUFFIXES.none { f.name.endsWith(it) } && !f.name.endsWith(TMP_SUFFIX) }
-            ?.sortedByDescending { it.lastModified() } ?: return
-        if (aside.isEmpty()) return
+    private fun readoptOrCleanAside(db: File, key: ByteArray, oldKeys: () -> List<ByteArray>): Boolean {
+        val dir = db.parentFile ?: return false
+        val aside = dir.listFiles { f -> isAsideDatabase(f, db) }?.sortedByDescending { it.lastModified() } ?: return false
+        if (aside.isEmpty()) return false
         val earlier by lazy { oldKeys() }
         val now = System.currentTimeMillis()
         for (f in aside) {
-            var state = probe(f, key)
-            if (state == Probe.WRONG_KEY) {
-                val old = earlier.firstOrNull { probe(f, it) == Probe.OK }
-                if (old != null && rekeyInPlace(f, old, key)) state = probe(f, key)
-            }
-            when (state) {
-                Probe.OK -> if (!db.exists() || isEmpty(db, key)) {
-                    val empty = sibling(db, "-empty-$now")
-                    if (db.exists()) { db.renameTo(empty); moveLogs(db, empty) }
-                    if (f.renameTo(db)) {
-                        moveLogs(f, db)
-                        Diag.log("database: an earlier set-aside copy opens again - restored it")
-                        empty.delete(); LOG_SUFFIXES.forEach { sibling(empty, it).delete() }
-                        return
-                    }
-                }
-                Probe.WRONG_KEY -> if (now - f.lastModified() > ASIDE_KEEP_MS) {
+            when (probeWithAnyKey(f, key) { earlier }) {
+                Probe.OK -> if (restoreAside(f, db, key, now)) return true
+                Probe.WRONG_KEY -> if (now - asideSince(f, db) > ASIDE_KEEP_MS) {
                     f.delete(); LOG_SUFFIXES.forEach { sibling(f, it).delete() }
                 }
                 Probe.OTHER -> Unit
             }
         }
+        return false
+    }
+
+    private fun isAsideDatabase(f: File, db: File) =
+        f.name.startsWith(db.name + UNREADABLE_SUFFIX) && LOG_SUFFIXES.none { f.name.endsWith(it) } && !f.name.endsWith(TMP_SUFFIX)
+
+    /** [probe] with [key]; on a wrong key, tries each earlier key and re-encrypts to [key] with the
+     *  one that opens it. */
+    private fun probeWithAnyKey(f: File, key: ByteArray, earlier: () -> List<ByteArray>): Probe {
+        val state = probe(f, key)
+        if (state != Probe.WRONG_KEY) return state
+        val old = earlier().firstOrNull { probe(f, it) == Probe.OK } ?: return state
+        return if (rekeyInPlace(f, old, key)) probe(f, key) else state
+    }
+
+    /**
+     * Puts the set-aside [f] back as [db]. What arrived in the fresh database since the reset comes
+     * along (see [carryOver]); if that can't be done safely, both stay as they are and the next
+     * start tries again. False when nothing was swapped.
+     */
+    private fun restoreAside(f: File, db: File, key: ByteArray, now: Long): Boolean {
+        if (db.exists() && !isEmpty(db, key) && !carryOver(db, f, key)) return false
+        val replaced = sibling(db, "-replaced-$now")
+        if (db.exists()) { db.renameTo(replaced); moveLogs(db, replaced) }
+        if (!f.renameTo(db)) {
+            // Couldn't swap: put the fresh one back.
+            if (replaced.exists()) { replaced.renameTo(db); moveLogs(replaced, db) }
+            return false
+        }
+        moveLogs(f, db)
+        Diag.log("database: an earlier set-aside copy opens again - restored it")
+        replaced.delete(); LOG_SUFFIXES.forEach { sibling(replaced, it).delete() }
+        return true
+    }
+
+    /**
+     * Copies what the fresh database [from] gathered since the reset - relayed messages and captured
+     * notifications - into the recovered [into], skipping ones it already holds (a notification by
+     * its unique uid, a message by sender, time, body and dedupe key). Reminder rules and bills
+     * made in between aren't merged: the recovered rulebook is the one with the history. Only when
+     * both are on the same schema; false (nothing changed) otherwise or on any error.
+     */
+    private fun carryOver(from: File, into: File, key: ByteArray): Boolean = try {
+        SQLiteDatabase.openDatabase(into.path, passphrase(key), null, SQLiteDatabase.OPEN_READWRITE, null, null).use { d ->
+            d.execSQL("ATTACH DATABASE ? AS fresh KEY \"x'${hex(key)}'\"", arrayOf(from.path))
+            try {
+                val freshVersion = d.rawQuery("PRAGMA fresh.user_version", null).use { it.moveToFirst(); it.getInt(0) }
+                val ownVersion = d.rawQuery("PRAGMA main.user_version", null).use { it.moveToFirst(); it.getInt(0) }
+                if (freshVersion != ownVersion) {
+                    Diag.log("database: recovered copy is schema v$ownVersion, the current one v$freshVersion - not merged yet")
+                    false
+                } else {
+                    mergeFresh(d)
+                }
+            } finally {
+                d.execSQL("DETACH DATABASE fresh")
+            }
+        }
+    } catch (e: Exception) {
+        Diag.log("database: couldn't merge into the recovered copy (${e.javaClass.simpleName}) - will retry")
+        false
+    }
+
+    /** The row copies of [carryOver], in one transaction, with `fresh` attached to [d]. */
+    private fun mergeFresh(d: SQLiteDatabase): Boolean {
+        d.beginTransaction()
+        try {
+            val msgCols = sharedColumns(d, "relayed_messages")
+            d.execSQL(
+                "INSERT INTO main.relayed_messages ($msgCols) SELECT $msgCols FROM fresh.relayed_messages f " +
+                    "WHERE NOT EXISTS (SELECT 1 FROM main.relayed_messages m WHERE m.sender = f.sender " +
+                    "AND m.receivedAt = f.receivedAt AND m.body = f.body AND m.dedupe = f.dedupe)",
+            )
+            val notifCols = sharedColumns(d, "notifications")
+            d.execSQL("INSERT OR IGNORE INTO main.notifications ($notifCols) SELECT $notifCols FROM fresh.notifications")
+            d.setTransactionSuccessful()
+        } finally {
+            d.endTransaction()
+        }
+        Diag.log("database: carried what arrived since the reset into the recovered copy")
+        return true
+    }
+
+    /** The columns of [table] in both main and fresh, except the row id (it's reassigned). */
+    private fun sharedColumns(d: SQLiteDatabase, table: String): String {
+        fun cols(schema: String) = d.rawQuery("PRAGMA $schema.table_info($table)", null).use { c ->
+            buildList { while (c.moveToNext()) add(c.getString(1)) }
+        }
+        val fresh = cols("fresh").toSet()
+        return cols("main").filter { it != "id" && it in fresh }.joinToString(", ") { "\"$it\"" }
     }
 
     private val LOG_SUFFIXES = listOf("-wal", "-shm", "-journal")
+
+    /** When [f] was set aside: the time in its name ("noti.db-unreadable-<ms>"), else its file
+     *  time (a rename keeps the last write time, which v1.7 didn't reset). */
+    private fun asideSince(f: File, db: File): Long =
+        f.name.removePrefix(db.name + UNREADABLE_SUFFIX).takeWhile { it.isDigit() }.toLongOrNull() ?: f.lastModified()
 
     /** Moves [from]'s log files to sit beside [to] (replacing any there). */
     private fun moveLogs(from: File, to: File) {
@@ -195,6 +275,10 @@ object DbEncryption {
     }
 
     internal enum class Probe { OK, WRONG_KEY, OTHER }
+
+    /** What [prepare] did that the caller should know about: started an empty database because
+     *  the key was lost, or brought a set-aside history back (row ids changed: drop id marks). */
+    enum class Event { RESET, RESTORED }
 
     /** Opens [db] with [key] and reads its schema: OK, the wrong key, or some other failure. */
     internal fun probe(db: File, key: ByteArray): Probe = try {

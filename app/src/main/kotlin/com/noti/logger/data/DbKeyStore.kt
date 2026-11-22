@@ -87,11 +87,19 @@ object DbKeyStore {
         val files = dir.listFiles { f -> f.name.startsWith(FILE + ASIDE) && !f.name.endsWith(".tmp") } ?: return emptyList()
         val out = ArrayList<ByteArray>()
         for (f in files) {
-            if (now - f.lastModified() > keepMs) { f.delete(); continue }
+            if (now - asideSince(f) > keepMs) { f.delete(); continue }
             try { out.add(unwrap(f.readBytes())) } catch (ignored: Exception) { /* still unreadable: next start */ }
         }
         return out
     }
+
+    /**
+     * When [f] was set aside: the time in its name ("db.key.unreadable-<ms>", written by every
+     * version that sets one aside), else its file time. Not the file time first - a rename keeps
+     * the key's original time, and v1.7 didn't reset it, so its set-aside keys looked months old.
+     */
+    internal fun asideSince(f: File): Long =
+        f.name.substringAfter(ASIDE, "").takeWhile { it.isDigit() }.toLongOrNull() ?: f.lastModified()
 
     /** Test hook: forget the in-memory copy. */
     internal fun clearCache() { cached = null }

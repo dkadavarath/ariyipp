@@ -34,15 +34,23 @@ fun List<String>.alreadyExistsUids(): Set<String> =
 fun List<String>.genuineFailures(): List<String> =
     filter { !it.contains("already exists", ignoreCase = true) }
 
-fun NotificationEntity.toUploadItem(deviceId: String): UploadItem = UploadItem(
-    deviceId = deviceId,
-    uid = uid,
-    pkg = packageName,
-    appLabel = appLabel,
-    postTime = epochMillisToIso(postTime),
-    title = title,
-    text = text,
-    bigText = bigText,
-    subText = subText,
-    category = category
-)
+/**
+ * The webhook's copy of a captured notification. With [mask] on, one-time codes and card numbers
+ * are masked here, in what leaves the phone - not in the stored row, which reminder rules read and
+ * which a parking zone "code is 4521" or a delivery PIN must reach intact.
+ */
+fun NotificationEntity.toUploadItem(deviceId: String, mask: Boolean = false): UploadItem {
+    val m: (String?) -> String? = if (mask) com.noti.logger.redact.SensitiveMask::apply else { t -> t }
+    return UploadItem(
+        deviceId = deviceId,
+        uid = uid,
+        pkg = packageName,
+        appLabel = appLabel,
+        postTime = epochMillisToIso(postTime),
+        title = m(title),
+        text = m(text),
+        bigText = m(bigText),
+        subText = m(subText),
+        category = category
+    )
+}

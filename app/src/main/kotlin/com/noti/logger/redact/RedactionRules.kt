@@ -25,7 +25,8 @@ data class RedactionConfig(
     val captureBody: Boolean,
     /** Per-package keyword filters and notes, keyed by package name. */
     val appRules: Map<String, AppRule> = emptyMap(),
-    /** Mask one-time codes and card numbers in what's kept (see [SensitiveMask]). */
+    /** Mask one-time codes and card numbers in what's uploaded (see [SensitiveMask]); applied
+     *  at upload, not here - what's kept stays as captured, for reminder rules to read. */
     val maskSensitive: Boolean = true,
 )
 
@@ -83,12 +84,11 @@ class RedactionRules(private val config: RedactionConfig) {
                 subText = null
             )
         } else {
-            val mask: (String?) -> String? = if (config.maskSensitive) SensitiveMask::apply else { t -> t }
             RedactedResult.Kept(
-                title = mask(raw.title),
-                text = appendNotes(mask(raw.text), notes),
-                bigText = mask(raw.bigText),
-                subText = mask(raw.subText)
+                title = raw.title,
+                text = appendNotes(raw.text, notes),
+                bigText = raw.bigText,
+                subText = raw.subText
             )
         }
     }

@@ -146,7 +146,7 @@ class DbEncryptionTest {
         DbEncryption.prepare(ctx, key, name)
         var reset = false
         val otherKey = ByteArray(32).also { SecureRandom().nextBytes(it) }
-        DbEncryption.prepare(ctx, otherKey, name, onReset = { reset = true })
+        DbEncryption.prepare(ctx, otherKey, name, onEvent = { if (it == DbEncryption.Event.RESET) reset = true })
         assertTrue(reset)
         assertFalse(file().exists())
         assertTrue("unreadable file kept", dir.listFiles()!!.any { it.name.startsWith("$name-unreadable-") })
@@ -279,5 +279,42 @@ class DbEncryptionTest {
         } finally {
             live.close()
         }
+    }
+
+    @Test
+    fun a_recovered_history_comes_back_with_what_arrived_since() {
+        seedV13()
+        DbEncryption.prepare(ctx, key, name, oldKeys = { emptyList() })
+        openRoom().also { it.reminderRuleDao().all() }.close() // opened (Room migrates on first use) to v14
+        val other = ByteArray(32).also { SecureRandom().nextBytes(it) }
+        DbEncryption.prepare(ctx, other, name, oldKeys = { emptyList() }) // key "lost": fresh database
+        // An SMS lands in the fresh database before the key comes back.
+        Room.databaseBuilder(ctx, NotiDatabase::class.java, name)
+            .openHelperFactory(SupportOpenHelperFactory(DbEncryption.passphrase(other))).build().also { fresh ->
+                fresh.relayedMessageDao().insert(com.noti.logger.data.RelayedMessageEntity(sender = "+1", sim = "", body = "arrived meanwhile", receivedAt = 99, dedupe = "mw"))
+            }.close()
+        // The old key comes back as an earlier key; the current one is still `other`.
+        var restored = false
+        DbEncryption.prepare(ctx, other, name, oldKeys = { listOf(key) }, onEvent = { if (it == DbEncryption.Event.RESTORED) restored = true })
+        assertTrue("restored; log: " + com.noti.shared.Diag.snapshot().take(4).joinToString(" / "), restored)
+        val db = Room.databaseBuilder(ctx, NotiDatabase::class.java, name)
+            .openHelperFactory(SupportOpenHelperFactory(DbEncryption.passphrase(other))).build()
+        assertEquals("card", db.reminderRuleDao().all().single().name)
+        val bodies = db.relayedMessageDao().allMessages().map { it.body }
+        assertEquals(26, bodies.size)
+        assertTrue("old history back", "body 7" in bodies)
+        assertTrue("and the new message kept", "arrived meanwhile" in bodies)
+        db.close()
+        assertFalse("nothing left aside", dir.listFiles()!!.any { it.name.startsWith("$name-unreadable-") })
+    }
+
+    @Test
+    fun an_old_set_aside_key_is_aged_by_its_name_not_its_file_time() {
+        val f = File(dir, "db.key.unreadable-${System.currentTimeMillis()}")
+        f.writeText("x")
+        f.setLastModified(System.currentTimeMillis() - 200L * 24 * 60 * 60_000L) // a months-old key, renamed by v1.7
+        try {
+            assertTrue(System.currentTimeMillis() - com.noti.logger.data.DbKeyStore.asideSince(f) < 60_000L)
+        } finally { f.delete() }
     }
 }

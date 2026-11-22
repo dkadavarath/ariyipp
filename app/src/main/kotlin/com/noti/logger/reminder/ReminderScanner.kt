@@ -419,9 +419,14 @@ object ReminderScanner {
      *  separator, so "5-Mar-2027" and "10:30" aren't read as amounts. */
     private val AMOUNT_TOKEN = Regex("""(?<![\d.,/:\-])\d[\d,.]*(?<![.,])(?![\d/:\-])""")
 
+    /** Words that introduce what a bill asks for, with at most a currency in between. */
+    private val AMOUNT_CONTEXT = Regex(
+        "(?i)\\b(total|due|outstanding|payable|amount|amt|balance due|statement balance)\\b[^\\d]{0,15}$",
+    )
+
     /** Words that make the number after them something other than a bill amount: a card's last
      *  digits ("ending 1500", "XX1500"), its limit, an account or reference number. */
-    private val NOT_AN_AMOUNT = Regex("(?i)(ending( in| with)?|\\bx{2,}|\\*{2,}|limit( of| is)?|a/c( no)?|acc(oun)?t( no)?|ref(erence)?( no)?)[\\s.:#-]*$")
+    private val NOT_AN_AMOUNT = Regex("(?i)(ending( in| with)?|\\bx{2,}|\\*{2,}|limit|available|a/c( no)?|acc(oun)?t( no)?|ref(erence)?( no)?)[^\\d]{0,15}$")
 
     /** Whether [text] states [amount] anywhere. A bare whole number under 32 never counts: it is as
      *  likely a day of the month as an amount. */
@@ -429,7 +434,11 @@ object ReminderScanner {
         if (amount == null) return false
         if (amount < 32 && amount == kotlin.math.floor(amount)) return false
         return AMOUNT_TOKEN.findAll(text).any { t ->
-            !NOT_AN_AMOUNT.containsMatchIn(text.substring(maxOf(0, t.range.first - 14), t.range.first)) &&
+            val before = text.substring(maxOf(0, t.range.first - 30), t.range.first)
+            // Only a number the message presents as what's owed counts: right after "total",
+            // "due", "outstanding", "amount"... An available limit, a card's digits or a reference
+            // that happens to equal the bill on file would otherwise merge two cards' bills.
+            AMOUNT_CONTEXT.containsMatchIn(before) && !NOT_AN_AMOUNT.containsMatchIn(before) &&
                 ReminderPolicy.parseAmount(t.value)?.let { sameCycle(amount, it) } == true
         }
     }

@@ -325,7 +325,7 @@
     <string name="sw_require_charging">Require charging</string>
     <string name="sw_capture_body">Capture notification body</string>
     <string name="sw_mask_sensitive">Mask codes and card numbers</string>
-    <string name="sw_mask_sensitive_desc">One-time codes and full card numbers in captured notifications are replaced with •••• before they are stored or uploaded. A card keeps its last 4 digits.</string>
+    <string name="sw_mask_sensitive_desc">One-time codes and full card numbers are replaced with •••• in what is uploaded to your webhook. A card keeps its last 4 digits. The copy on this phone is kept as captured (it is encrypted), so reminder rules can read it.</string>
     <string name="switch_gzip">Gzip upload body (off for webhook compatibility)</string>
 
     <!-- Toasts / feedback -->
