@@ -10,6 +10,7 @@ import android.provider.Settings
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.google.android.material.button.MaterialButton
@@ -20,7 +21,6 @@ import com.noti.sender.RepushWorker
 import com.noti.sender.SenderPipeline
 import com.noti.sender.SmsSyncWorker
 import com.noti.sender.config.SenderSettings
-import androidx.core.app.NotificationManagerCompat
 import com.noti.shared.HeartbeatPolicy
 
 /** Status tab: SMS-access state, battery-optimization exemption, keep-alive, and a missed-SMS sync. */
@@ -33,13 +33,14 @@ class StatusFragment : Fragment(R.layout.cmp_fragment_status) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         view.findViewById<MaterialButton>(R.id.btn_grant_sms).setOnClickListener {
             requestSms.launch(
-                arrayOf(
+                listOfNotNull(
                     Manifest.permission.RECEIVE_SMS,
                     Manifest.permission.SEND_SMS,
                     Manifest.permission.READ_PHONE_STATE,
                     Manifest.permission.READ_SMS,
-                    Manifest.permission.POST_NOTIFICATIONS,
-                )
+                    // Only a permission from Android 13; before that, notifications need none.
+                    Manifest.permission.POST_NOTIFICATIONS.takeIf { android.os.Build.VERSION.SDK_INT >= 33 },
+                ).toTypedArray()
             )
         }
         view.findViewById<MaterialButton>(R.id.btn_battery).setOnClickListener { requestBatteryExemption() }

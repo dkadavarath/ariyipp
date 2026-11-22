@@ -24,6 +24,18 @@ object Diag {
         listener?.invoke()
     }
 
+    /**
+     * [address] as it may appear in the log: a phone number shows only its last 4 digits
+     * ("…4321"), so a shared or screenshotted log doesn't hand out whom you text. Named senders
+     * (a bank's "VM-HDFCBK") stay as they are: they're not anyone's number, and they're what
+     * tells you which rule a line is about.
+     */
+    fun mask(address: String): String {
+        val digits = address.count { it.isDigit() }
+        if (digits < 5 || address.any { it.isLetter() }) return address
+        return "…" + address.filter { it.isDigit() }.takeLast(4)
+    }
+
     /** Newest first. */
     @Synchronized
     fun snapshot(): List<String> = lines.toList().asReversed()

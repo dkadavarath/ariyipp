@@ -40,10 +40,33 @@ object SendGuard {
         }
     }
 
-    /** Whether [to] is the same number (or sender name) as one of [known]. Pure. */
-    fun isKnown(to: String, known: Collection<String>): Boolean = known.any { k ->
-        k.equals(to, ignoreCase = true) || PhoneNumberUtils.compare(k, to)
+    /**
+     * Whether [to] is the same number (or sender name) as one of [known]. Numbers are compared whole,
+     * in international form, reading local ones ("050...") as [countryIso]'s. Not
+     * PhoneNumberUtils.compare: that matches on the last 7 digits, so a number abroad sharing them
+     * with someone who texted this phone passed the allowlist.
+     */
+    fun isKnown(to: String, known: Collection<String>, countryIso: String?): Boolean {
+        val target = e164(to, countryIso)
+        return known.any { k ->
+            k.equals(to, ignoreCase = true) ||
+                (target != null && target == e164(k, countryIso)) ||
+                digits(k).let { it.length >= 7 && it == digits(to) }
+        }
     }
+
+    private fun digits(s: String) = s.filter { it.isDigit() }
+
+    private fun e164(number: String, iso: String?): String? {
+        if (number.any { it.isLetter() }) return null
+        return try { PhoneNumberUtils.formatNumberToE164(number, (iso ?: "").uppercase()) } catch (e: Exception) { null }
+    }
+
+    /** The country local numbers on this phone belong to: the SIM's, else the network's. */
+    private fun countryIso(context: Context): String? = try {
+        val tm = context.getSystemService(android.telephony.TelephonyManager::class.java)
+        tm?.simCountryIso?.takeIf { it.isNotBlank() } ?: tm?.networkCountryIso?.takeIf { it.isNotBlank() }
+    } catch (e: Exception) { null }
 
     /**
      * Checks a command-send to [to] against the limits and the allowlist. Returns the refusal reason,
@@ -82,7 +105,7 @@ object SendGuard {
         } catch (e: Exception) {
             return false
         }
-        return isKnown(to, known)
+        return isKnown(to, known, countryIso(context))
     }
 
     /** Tells the person holding the companion that a send was refused. */

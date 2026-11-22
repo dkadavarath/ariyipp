@@ -1,19 +1,19 @@
 package com.noti.logger
 
 import android.content.Context
+import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.google.android.material.textfield.TextInputLayout
 import com.noti.logger.config.Settings
 import com.noti.logger.reminder.FxRates
+import com.noti.logger.ui.ReminderSettingsActivity
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import androidx.test.core.app.ActivityScenario
-import com.google.android.material.textfield.TextInputLayout
-import com.noti.logger.ui.ReminderSettingsActivity
 
 /** The default currency follows the phone's region until the user picks one. */
 @RunWith(AndroidJUnit4::class)

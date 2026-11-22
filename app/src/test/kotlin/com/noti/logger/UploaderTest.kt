@@ -1,19 +1,19 @@
 package com.noti.logger
 
-import com.noti.shared.UploadBatch
-import com.noti.shared.UploadItem
 import com.noti.logger.upload.UploadOutcome
 import com.noti.logger.upload.Uploader
-import kotlinx.serialization.json.Json
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import com.noti.shared.UploadBatch
+import com.noti.shared.UploadItem
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPInputStream
+import kotlinx.serialization.json.Json
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
 
 class UploaderTest {
 

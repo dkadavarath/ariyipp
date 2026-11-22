@@ -25,6 +25,40 @@ object PeerVersionNotice {
         val s = SenderSettings.get(context)
         if (s.peerOutdatedNotified) return
         s.peerOutdatedNotified = true
+        show(context, peerIsMain)
+    }
+
+    /** A push with no send time arrived: the peer is on a version from before pushes were stamped.
+     *  Its heartbeats and endpoint announcements are refused (a replay can't be told apart) and
+     *  nothing it sends counts as a sign of life; other messages still go through. */
+    fun onUnstamped(context: Context, peerIsMain: Boolean) {
+        val peer = if (peerIsMain) "main" else "companion"
+        Diag.log("push from $peer has no send time - it's on an older version; update it (heartbeats and endpoint changes from it are ignored)")
+        val s = SenderSettings.get(context)
+        if (s.peerUnstampedNotified) return
+        s.peerUnstampedNotified = true
+        show(context, peerIsMain)
+    }
+
+    /** A tagged push arrived: the peer is current, so a later regression may be reported again. */
+    fun onTagged(context: Context) {
+        val s = SenderSettings.get(context)
+        if (s.peerOutdatedNotified) {
+            s.peerOutdatedNotified = false
+            if (!s.peerUnstampedNotified) NotificationManagerCompat.from(context).cancel(NOTIF_ID)
+        }
+    }
+
+    /** A stamped heartbeat or announcement arrived: likewise, for [onUnstamped]. */
+    fun onStamped(context: Context) {
+        val s = SenderSettings.get(context)
+        if (s.peerUnstampedNotified) {
+            s.peerUnstampedNotified = false
+            if (!s.peerOutdatedNotified) NotificationManagerCompat.from(context).cancel(NOTIF_ID)
+        }
+    }
+
+    private fun show(context: Context, peerIsMain: Boolean) {
         val mgr = context.getSystemService(NotificationManager::class.java) ?: return
         if (mgr.getNotificationChannel(CHANNEL) == null) {
             mgr.createNotificationChannel(
@@ -41,14 +75,5 @@ object PeerVersionNotice {
             .setAutoCancel(true)
             .build()
         try { NotificationManagerCompat.from(context).notify(NOTIF_ID, n) } catch (e: SecurityException) { }
-    }
-
-    /** A tagged push arrived: the peer is current, so a later regression may be reported again. */
-    fun onTagged(context: Context) {
-        val s = SenderSettings.get(context)
-        if (s.peerOutdatedNotified) {
-            s.peerOutdatedNotified = false
-            NotificationManagerCompat.from(context).cancel(NOTIF_ID)
-        }
     }
 }

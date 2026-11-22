@@ -6,7 +6,7 @@ import com.noti.logger.data.ChatRetention
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.RelayedMessageEntity
 import com.noti.shared.Diag
-import com.noti.shared.MessageCrypto
+import com.noti.shared.Envelope
 import com.noti.shared.Wire
 import com.noti.shared.WireMessage
 
@@ -18,10 +18,11 @@ import com.noti.shared.WireMessage
  */
 object PushMessageHandler {
 
-    const val PAYLOAD_KEY = "payload"
+    const val PAYLOAD_KEY = Envelope.PAYLOAD_KEY
 
-    /** How long to wait for missing relay parts before giving up on an incomplete chunked body. */
-    private const val PART_TTL_MS = 5 * 60_000L
+    /** How long to wait for missing relay parts before giving up on an incomplete chunked body.
+     *  The parts are on disk (see [RelayParts]), so this can outlast a Doze window. */
+    private const val PART_TTL_MS = 30 * 60_000L
 
     /** Sanity bound on a chunked relay's part count. A real long SMS splits into a handful of parts;
      *  this only guards against a malformed or hostile [WireMessage.Relay.parts] value. */
@@ -30,13 +31,6 @@ object PushMessageHandler {
     /** Sanity bound on how many distinct in-flight multi-part groups are buffered at once - on top
      *  of [PART_TTL_MS] eviction, this caps memory even if many groups open within the TTL window. */
     private const val MAX_PENDING_GROUPS = 20
-
-    /** In-flight chunks of multi-part relays, keyed by the message's identity. */
-    private class PendingParts(val atMs: Long) {
-        val parts = HashMap<Int, WireMessage.Relay>()
-    }
-
-    private val pendingRels = LinkedHashMap<String, PendingParts>()
 
     fun handle(context: Context, data: Map<String, String>): Boolean {
         val ciphertext = data[PAYLOAD_KEY]?.takeIf { it.isNotBlank() } ?: return false
@@ -48,42 +42,36 @@ object PushMessageHandler {
             return false
         }
 
-        val plaintext = try {
-            MessageCrypto.decrypt(ciphertext, key)
-        } catch (e: Exception) {
-            Diag.log("inbound push: DECRYPT FAILED - shared key doesn't match the companion's (re-pair)")
-            com.noti.logger.alert.Alerter.alertKeyMismatch(context)
-            return false
+        val opened = when (val r = Envelope.openOrWhy(data, key, Wire.Direction.COMPANION_TO_MAIN)) {
+            is Envelope.Result.Ok -> r.opened
+            is Envelope.Result.Failed -> {
+                when (r.why) {
+                    Envelope.Failure.WRONG_KEY -> {
+                        Diag.log("inbound push: DECRYPT FAILED - shared key doesn't match the companion's (re-pair)")
+                        com.noti.logger.alert.Alerter.alertKeyMismatch(context)
+                    }
+                    Envelope.Failure.UNTAGGED -> com.noti.sender.PeerVersionNotice.onUntagged(context, peerIsMain = false)
+                    Envelope.Failure.WRONG_DIRECTION ->
+                        Diag.log("inbound push REFUSED - tagged main → companion: a message reflected back to this phone")
+                    else -> Diag.log("inbound push: unrecognized payload")
+                }
+                return false
+            }
         }
-
-        val wire = try {
-            Wire.decodeFrom(plaintext, com.noti.shared.Wire.Direction.COMPANION_TO_MAIN)
-        } catch (e: Wire.UntaggedException) {
-            com.noti.sender.PeerVersionNotice.onUntagged(context, peerIsMain = false)
-            return false
-        } catch (e: Wire.WrongDirectionException) {
-            Diag.log("inbound push REFUSED - tagged main → companion: a message reflected back to this phone")
-            return false
-        } catch (e: Exception) {
-            Diag.log("inbound push: unrecognized payload")
-            return false
-        }
+        val wire = opened.message
         com.noti.sender.PeerVersionNotice.onTagged(context)
 
-        // It decrypted with the shared key, so the companion sent it: proof of life on its own.
-        if (wire !is WireMessage.Heartbeat) Heartbeat.notePeerAlive(context)
+        // It decrypted with the shared key, so the companion sent it: proof of life on its own, if
+        // it's newer than the last thing heard (a replayed copy decrypts too).
+        val sentAt = opened.sentAt
+        if (wire !is WireMessage.Heartbeat && wire !is WireMessage.Token) Heartbeat.notePeerAlive(context, sentAt)
 
         return when (wire) {
-            is WireMessage.Token -> {
-                // The companion announced its push endpoint - store it so reverse-send can reach it.
-                settings.sndiFcmToken = wire.endpoint
-                Diag.log("companion endpoint received - reverse-send ready")
-                true
-            }
-            is WireMessage.Relay -> showRelay(context, settings, wire)
+            is WireMessage.Token -> onCompanionEndpoint(context, settings, wire, sentAt)
+            is WireMessage.Relay -> showRelay(context, settings, wire, ciphertext, key)
             is WireMessage.DeliveryAck -> applyAck(context, wire)
             is WireMessage.Heartbeat -> {
-                Heartbeat.onBeatReceived(context, wire.request, wire.off)
+                Heartbeat.onBeatReceived(context, wire.request, wire.off, sentAt)
                 true
             }
             is WireMessage.StatusReport -> {
@@ -92,6 +80,25 @@ object PushMessageHandler {
             }
             else -> false
         }
+    }
+
+    /** The companion announced its push endpoint: stored so reverse-send can reach it - unless it's
+     *  an older copy, since replaying one would point commands at a dead endpoint. */
+    private fun onCompanionEndpoint(context: Context, settings: Settings, wire: WireMessage.Token, sentAt: Long): Boolean {
+        val now = System.currentTimeMillis()
+        if (sentAt <= 0) {
+            com.noti.sender.PeerVersionNotice.onUnstamped(context, peerIsMain = false)
+            return false
+        }
+        if (!com.noti.shared.ReplayGuard.isNew(sentAt, settings.sndiTokenMark, now)) {
+            Diag.log("companion endpoint ignored - older than the one on file (a replayed copy)")
+            return false
+        }
+        settings.sndiTokenMark = com.noti.shared.ReplayGuard.next(settings.sndiTokenMark, sentAt, now)
+        Heartbeat.notePeerAlive(context, sentAt)
+        settings.sndiFcmToken = wire.endpoint
+        Diag.log("companion endpoint received - reverse-send ready")
+        return true
     }
 
     /** Updates a sent message's ticks. A stale/unknown msgId (e.g. the row was since deleted) is a
@@ -113,36 +120,41 @@ object PushMessageHandler {
      * Buffers one chunk of a multi-part relay ([msg.parts] > 1) until all parts have arrived, then
      * returns the assembled message. Single-part messages pass straight through. Returns null while
      * parts are still missing (or for a stale/incomplete group that just got evicted).
+     *
+     * The parts wait on disk, as the [ciphertext] they arrived in: kept in memory only, a process
+     * death between two parts (Android reclaims a background app at will) lost the whole message.
+     * Ciphertext, so nothing readable is written outside the encrypted database.
      */
     @Synchronized
-    private fun assemble(msg: WireMessage.Relay): WireMessage.Relay? {
+    private fun assemble(context: Context, msg: WireMessage.Relay, ciphertext: String, key: String): WireMessage.Relay? {
         if (msg.parts <= 1) return msg
-
-        // Evict groups we've waited too long on - FCM high-priority delivery is near-instant, so
-        // anything this old means a part was lost; holding it forever would leak memory.
+        val store = RelayParts(context)
         val now = System.currentTimeMillis()
-        pendingRels.entries.removeAll { now - it.value.atMs > PART_TTL_MS }
-        // Cap on top of TTL eviction: bounds memory even if many groups open within the TTL window.
-        while (pendingRels.size >= MAX_PENDING_GROUPS) {
-            val oldestKey = pendingRels.entries.minByOrNull { it.value.atMs }?.key ?: break
-            pendingRels.remove(oldestKey)
-        }
+        store.evict(now, PART_TTL_MS, MAX_PENDING_GROUPS)
 
-        val key = msg.dedupe.ifBlank { "${msg.title}|${msg.time}" }
-        val bucket = pendingRels.getOrPut(key) { PendingParts(now) }
-        bucket.parts[msg.part] = msg
-        if (bucket.parts.size < msg.parts) {
+        val group = msg.dedupe.ifBlank { "${msg.title}|${msg.time}" }
+        val stored = store.put(group, msg.part, ciphertext, now)
+        if (stored.size < msg.parts) {
             Diag.log("inbound: buffered part ${msg.part + 1}/${msg.parts}")
             return null
         }
-
-        pendingRels.remove(key)
-        val first = bucket.parts[0] ?: bucket.parts.values.first()
-        val body = (0 until msg.parts).joinToString("") { bucket.parts[it]?.body.orEmpty() }
+        store.remove(group)
+        val parts = HashMap<Int, WireMessage.Relay>()
+        for ((index, text) in stored) {
+            val part = Envelope.open(mapOf(PAYLOAD_KEY to text), key, Wire.Direction.COMPANION_TO_MAIN)?.message as? WireMessage.Relay
+            if (part == null || part.parts != msg.parts) {
+                // Waited across a re-pair (another key), or not the same message after all.
+                Diag.log("inbound: a buffered part couldn't be read back - long message dropped")
+                return null
+            }
+            parts[index] = part
+        }
+        val first = parts[0] ?: parts.values.first()
+        val body = (0 until msg.parts).joinToString("") { parts[it]?.body.orEmpty() }
         return first.copy(body = body, part = 0, parts = 1)
     }
 
-    private fun showRelay(context: Context, settings: Settings, incoming: WireMessage.Relay): Boolean {
+    private fun showRelay(context: Context, settings: Settings, incoming: WireMessage.Relay, ciphertext: String, key: String): Boolean {
         if (!settings.pushInboundEnabled) {
             Diag.log("inbound push DROPPED - \"Receive relayed messages\" is OFF (Settings → Relay)")
             return false
@@ -151,7 +163,7 @@ object PushMessageHandler {
             Diag.log("inbound: dropped relay with invalid part=${incoming.part}/${incoming.parts}")
             return false
         }
-        val msg = assemble(incoming) ?: return true // part buffered; nothing to show yet
+        val msg = assemble(context, incoming, ciphertext, key) ?: return true // part buffered; nothing to show yet
 
         val title = msg.title.ifBlank { "Message" }
 
@@ -169,12 +181,14 @@ object PushMessageHandler {
         // in the timeline; fall back to arrival time for older senders that don't send it.
         val now = System.currentTimeMillis()
         val receivedAt = if (msg.time > 0) msg.time else now
-        val (sender, sim) = RelayTitle.parse(title)
+        // The fields themselves when the companion sends them; the title split only for one that
+        // doesn't (an older version).
+        val (sender, sim) = if (msg.from.isNotBlank()) msg.from to msg.sim else RelayTitle.parse(title)
 
         // Already past the chat-history window: storing it would only get it purged straight back
         // out, and notifying for it would announce a message that then isn't in the chat.
         if (!ChatRetention.keeps(receivedAt, settings.chatRetentionDays, now)) {
-            Diag.log("inbound: skipped - older than the chat history window (from $sender)")
+            Diag.log("inbound: skipped - older than the chat history window (from ${Diag.mask(sender)})")
             return true
         }
 
@@ -212,12 +226,12 @@ object PushMessageHandler {
         // it just doesn't raise a notification. Nor does a backfill: an SMS that was hours or months
         // old by the time it got here (a repush, a catch-up) is stored unread, quietly.
         if (!ChatRetention.notifies(receivedAt, now)) {
-            Diag.log("inbound: stored quietly (backfill) - from $sender")
+            Diag.log("inbound: stored quietly (backfill) - from ${Diag.mask(sender)}")
         } else if (!settings.isMuted(sender)) {
             MessageNotifier.show(context, title, msg.body, sender, messageId)
-            Diag.log("inbound: shown - from $sender (${msg.body.length} chars)")
+            Diag.log("inbound: shown - from ${Diag.mask(sender)} (${msg.body.length} chars)")
         } else {
-            Diag.log("inbound: stored (muted) - from $sender")
+            Diag.log("inbound: stored (muted) - from ${Diag.mask(sender)}")
         }
         return true
     }

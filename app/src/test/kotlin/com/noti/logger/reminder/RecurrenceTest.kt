@@ -1,9 +1,9 @@
 package com.noti.logger.reminder
 
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
-import java.time.LocalDate
 
 /**
  * Recurrence with an interval, and the two shapes a manual bill can take: a date that repeats, and

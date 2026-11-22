@@ -10,6 +10,8 @@ import com.noti.logger.config.TriggerMode
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.NotificationEntity
 import com.noti.logger.work.UploadWorker
+import java.net.ServerSocket
+import kotlin.concurrent.thread
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -17,8 +19,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.net.ServerSocket
-import kotlin.concurrent.thread
 
 /**
  * Verifies the failure contract: a 4xx from the webhook must NOT delete records (only 2xx does)

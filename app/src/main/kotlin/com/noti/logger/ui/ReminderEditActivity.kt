@@ -17,25 +17,24 @@ import com.noti.logger.R
 import com.noti.logger.data.BillOccurrenceEntity
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.ReminderRuleEntity
+import com.noti.logger.reminder.DueDates
 import com.noti.logger.reminder.DueMode
 import com.noti.logger.reminder.ParkingTracker
 import com.noti.logger.reminder.Recurrence
-import com.noti.logger.reminder.DueDates
 import com.noti.logger.reminder.ReminderPolicy
 import com.noti.logger.reminder.ReminderScanner
 import com.noti.logger.reminder.ReminderScheduler
 import com.noti.logger.reminder.RuleType
 import com.noti.logger.reminder.SourceType
 import com.noti.logger.util.Motion
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Adds a reminder by hand, and edits one that already exists.

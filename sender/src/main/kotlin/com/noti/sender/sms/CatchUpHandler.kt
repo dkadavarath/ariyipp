@@ -2,7 +2,7 @@ package com.noti.sender.sms
 
 import android.content.Context
 import com.noti.sender.config.SenderSettings
-import com.noti.shared.MessageCrypto
+import com.noti.shared.Envelope
 import com.noti.shared.Wire
 import com.noti.shared.WireMessage
 
@@ -22,13 +22,11 @@ object CatchUpHandler {
     /** Whether a catch-up may run now, given when the last one did. Pure. */
     fun mayRun(lastAtMs: Long, now: Long): Boolean = now - lastAtMs !in 0 until REPEAT_WINDOW_MS
 
-    fun parse(context: Context, data: Map<String, String>): WireMessage.CatchUp? {
-        val ciphertext = data[HeartbeatHandler.PAYLOAD_KEY]?.takeIf { it.isNotBlank() } ?: return null
-        val key = SenderSettings.get(context).relayKey.takeIf { it.isNotBlank() } ?: return null
-        val plaintext = try { MessageCrypto.decrypt(ciphertext, key) } catch (e: Exception) { return null }
-        val wire = try { Wire.decodeFrom(plaintext, com.noti.shared.Wire.Direction.MAIN_TO_COMPANION) } catch (e: Exception) { return null }
-        return wire as? WireMessage.CatchUp
-    }
+    fun parse(context: Context, data: Map<String, String>): WireMessage.CatchUp? =
+        Envelope.open(data, SenderSettings.get(context).relayKey, Wire.Direction.MAIN_TO_COMPANION)?.let { from(it.message) }
+
+    /** The catch-up request [message] is, if it is one. */
+    fun from(message: WireMessage): WireMessage.CatchUp? = message as? WireMessage.CatchUp
 
     /** The received-time to re-send from, on this phone's clock. Pure. */
     fun startMs(request: WireMessage.CatchUp, now: Long): Long {

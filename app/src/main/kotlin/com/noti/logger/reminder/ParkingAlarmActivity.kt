@@ -180,5 +180,4 @@ class ParkingAlarmActivity : AppCompatActivity() {
         vibrator = null
         super.onDestroy()
     }
-
 }

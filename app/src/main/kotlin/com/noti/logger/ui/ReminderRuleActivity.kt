@@ -3,7 +3,6 @@ package com.noti.logger.ui
 import android.app.Activity
 import android.content.Intent
 import android.view.View
-import android.view.LayoutInflater
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.RadioButton
@@ -20,8 +19,8 @@ import com.noti.logger.config.Settings
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.ReminderRuleEntity
 import com.noti.logger.reminder.DueMode
-import com.noti.logger.reminder.Recurrence
 import com.noti.logger.reminder.PatternBuilder
+import com.noti.logger.reminder.Recurrence
 import com.noti.logger.reminder.ReminderExtractor
 import com.noti.logger.reminder.RuleType
 import com.noti.logger.reminder.SourceType
@@ -247,32 +246,41 @@ class ReminderRuleActivity : ScreenActivity() {
 
     /** What the scan would make of the sample: a payment (and how much), the statement itself, or
      *  nothing - checked the same way [com.noti.logger.reminder.ReminderScanner] checks it. */
+    private var payTestJob: kotlinx.coroutines.Job? = null
+
     private fun runPayTest() {
         val out = findViewById<TextView>(R.id.tv_pay_test_result)
         val sample = findViewById<EditText>(R.id.et_pay_sample).text.toString()
         if (sample.isBlank()) return
-        for ((label, id) in listOf(
+        val fields = listOf(
             getString(R.string.rm_pay_match) to R.id.et_pay_match,
             getString(R.string.rm_pay_amount) to R.id.et_pay_amount,
-        )) {
-            val err = ReminderExtractor.patternError(text(id))
-            if (err != null) {
-                out.text = getString(R.string.rm_bad_pattern, "$label - $err")
-                out.setTextColor(MaterialColors.getColor(out, androidx.appcompat.R.attr.colorError))
-                return
-            }
-        }
-        out.setTextColor(MaterialColors.getColor(out, com.google.android.material.R.attr.colorOnSurfaceVariant))
+        ).map { (label, id) -> label to text(id) }
         val pattern = text(R.id.et_pay_match)
-        out.text = when {
-            pattern.isBlank() || !ReminderExtractor.matches(pattern, sample) -> getString(R.string.rm_test_no_match)
-            text(R.id.et_match).isNotBlank() && ReminderExtractor.matches(text(R.id.et_match), sample) &&
-                sourceType() != SourceType.MANUAL -> getString(R.string.rm_pay_test_statement)
-            else -> {
-                val raw = ReminderExtractor.capture(text(R.id.et_pay_amount), sample)
-                val amount = com.noti.logger.reminder.ReminderPolicy.parseAmount(raw)
-                getString(R.string.rm_pay_test_result, amount?.toString() ?: raw?.let { "$it (unreadable)" } ?: getString(R.string.cs_unknown))
+        val payAmount = text(R.id.et_pay_amount)
+        val billMatch = text(R.id.et_match)
+        val fromBillSource = sourceType() != SourceType.MANUAL
+
+        // Matched off the main thread, like [runTest].
+        payTestJob?.cancel()
+        payTestJob = lifecycleScope.launch {
+            val (isError, result) = withContext(Dispatchers.Default) {
+                fields.firstNotNullOfOrNull { (label, p) -> ReminderExtractor.patternError(p)?.let { "$label - $it" } }
+                    ?.let { return@withContext true to getString(R.string.rm_bad_pattern, it) }
+                false to when {
+                    pattern.isBlank() || !ReminderExtractor.matches(pattern, sample) -> getString(R.string.rm_test_no_match)
+                    billMatch.isNotBlank() && ReminderExtractor.matches(billMatch, sample) && fromBillSource ->
+                        getString(R.string.rm_pay_test_statement)
+                    else -> {
+                        val raw = ReminderExtractor.capture(payAmount, sample)
+                        val amount = com.noti.logger.reminder.ReminderPolicy.parseAmount(raw)
+                        getString(R.string.rm_pay_test_result, amount?.toString() ?: raw?.let { "$it (unreadable)" } ?: getString(R.string.cs_unknown))
+                    }
+                }
             }
+            out.setTextColor(MaterialColors.getColor(out,
+                if (isError) androidx.appcompat.R.attr.colorError else com.google.android.material.R.attr.colorOnSurfaceVariant))
+            out.text = result
         }
     }
 
@@ -518,90 +526,9 @@ class ReminderRuleActivity : ScreenActivity() {
             button.setText(R.string.rm_help_show)
             return
         }
-        if (container.childCount == 0) buildHelp(container)
+        if (container.childCount == 0) RuleHelp.build(container, isParking())
         container.visibility = View.VISIBLE
         button.setText(R.string.rm_help_hide)
-    }
-
-    /** Built lazily and rebuilt when the rule type changes, so a parking rule is never taught the
-     *  bill fields and vice versa. */
-    private fun buildHelp(container: LinearLayout) {
-        container.removeAllViews()
-        val inflater = LayoutInflater.from(this)
-        fun block(title: String, body: String, code: String? = null) {
-            val v = inflater.inflate(R.layout.item_help_block, container, false)
-            v.findViewById<TextView>(R.id.tv_block_title).text = title
-            v.findViewById<TextView>(R.id.tv_block_body).text = body
-            v.findViewById<TextView>(R.id.tv_block_code).apply {
-                if (code == null) visibility = View.GONE else { text = code; visibility = View.VISIBLE }
-            }
-            container.addView(v)
-        }
-
-        if (isParking()) {
-            block(
-                "Start from a real ticket",
-                "Paste an actual parking notification into the test box at the bottom, then press " +
-                    "Test to see exactly what each pattern pulled out. The field examples below " +
-                    "are written against this one:",
-                "Parking started. Zone: ZONE-4B North Lot.\nYour session is valid until 14:30.",
-            )
-            block(
-                "Two fields",
-                "One pattern finds the zone, one finds the expiry. Each keeps whatever is inside " +
-                    "its brackets ( ). If a ticket only gives a time that is fine - it is taken as " +
-                    "today, rolling to tomorrow if the time has already passed.",
-            )
-        } else {
-            block(
-                "Start from a real message",
-                "Paste an actual statement into the test box at the bottom, then press Test to see " +
-                    "exactly what each pattern pulled out. The field examples below are written " +
-                    "against this one:",
-                "Dear Customer, your HDFC Bank Credit Card\nstatement for Jan 2026 is generated.\n" +
-                    "Total Amount Due INR 12,480.50.\nPayment due by 07-Feb-2026.",
-            )
-            block(
-                "Four fields",
-                "One pattern decides the message is yours, then one each for the amount, the " +
-                    "currency and the due date. Each keeps whatever is inside its brackets ( ). " +
-                    "Keeping them separate means a bank changing one line only breaks one field.",
-            )
-        }
-
-        block(
-            "The pieces you'll actually use",
-            "\\d   a digit\n" +
-                "\\w   a letter or digit\n" +
-                "\\s   a space\n" +
-                "+    one or more of the thing before it\n" +
-                "*    any number of them, including none\n" +
-                "{2}  exactly two of them\n" +
-                ".    any character at all\n" +
-                ".*   anything, of any length\n" +
-                "( )  the part you want to keep\n" +
-                "|    or, as in (INR|AED)",
-        )
-        block(
-            "Matching is forgiving",
-            "Case is ignored, so \"DUE BY\" and \"due by\" both match, and a pattern can run across " +
-                "line breaks - which matters for notifications where the amount and the date sit " +
-                "on different lines.",
-        )
-        block(
-            "If nothing matches",
-            "Press Test with a sample pasted in. \"No match\" means the identify pattern is the " +
-                "problem - shorten it until it matches, then tighten it. If it matches but a field " +
-                "comes back with a dash, only that field's pattern is wrong; the rest still work.",
-        )
-        if (!isParking()) {
-            block(
-                "Due dates with no date in the message",
-                "Some bills never state one. \"Same day each month\" is for a bill always due on, " +
-                    "say, the 15th. \"Days after a fixed day\" is how card statements work: " +
-                    "statement on the 10th, payment due 28 days later.",
-            )
-        }
     }
 
     /** The example under each field, and tapping it fills the field in. */
@@ -707,7 +634,7 @@ class ReminderRuleActivity : ScreenActivity() {
         // The guide is type-specific, so a visible one is rebuilt rather than left describing the
         // fields the user just switched away from.
         val help = findViewById<LinearLayout>(R.id.help_container)
-        if (help.visibility == View.VISIBLE) buildHelp(help) else help.removeAllViews()
+        if (help.visibility == View.VISIBLE) RuleHelp.build(help, isParking()) else help.removeAllViews()
     }
 
     private fun updateSourceUi() {
@@ -740,50 +667,56 @@ class ReminderRuleActivity : ScreenActivity() {
 
     private fun text(id: Int): String = findViewById<EditText>(id).text.toString().trim()
 
+    /** A test run in progress: a newer one replaces it, so typing doesn't queue stale results. */
+    private var testJob: kotlinx.coroutines.Job? = null
+
     private fun runTest() {
         val out = findViewById<TextView>(R.id.tv_test_result)
         val sample = findViewById<EditText>(R.id.et_sample).text.toString()
         if (sample.isBlank()) return
 
-        // Report a broken pattern by name before running anything, so the failure is attributable.
-        for ((label, id) in listOf(
+        // Read the fields here; match off the main thread (a fallback-engine pattern may take up
+        // to its time budget), then show the result here.
+        val fields = listOf(
             getString(R.string.rm_pattern_match) to R.id.et_match,
             getString(R.string.rm_pattern_amount) to R.id.et_amount,
             getString(R.string.rm_pattern_currency) to R.id.et_currency,
             getString(R.string.rm_pattern_date) to R.id.et_date,
             getString(R.string.rm_pattern_zone) to R.id.et_zone,
             getString(R.string.rm_pattern_expiry) to R.id.et_expiry,
-        )) {
-            val err = ReminderExtractor.patternError(text(id))
-            if (err != null) {
-                out.text = getString(R.string.rm_bad_pattern, "$label - $err")
-                out.setTextColor(MaterialColors.getColor(out, androidx.appcompat.R.attr.colorError))
-                return
-            }
-        }
-        out.setTextColor(MaterialColors.getColor(out, com.google.android.material.R.attr.colorOnSurfaceVariant))
-
+        ).map { (label, id) -> label to text(id) }
+        val match = text(R.id.et_match); val zone = text(R.id.et_zone); val expiry = text(R.id.et_expiry)
+        val amount = text(R.id.et_amount); val currency = text(R.id.et_currency); val date = text(R.id.et_date)
+        val format = text(R.id.et_format)
+        val parking = isParking()
         val dash = getString(R.string.cs_unknown)
-        if (isParking()) {
-            val m = ReminderExtractor.extractParking(
-                sample, text(R.id.et_match), text(R.id.et_zone), text(R.id.et_expiry), text(R.id.et_format),
-            )
-            out.text = if (m == null) getString(R.string.rm_test_no_match) else getString(
-                R.string.rm_test_result_parking,
-                m.zone?.ifBlank { dash } ?: dash,
-                m.expiry?.toString() ?: (m.expiryRaw?.let { "$it (unreadable)" } ?: dash),
-            )
-        } else {
-            val m = ReminderExtractor.extractBill(
-                sample, text(R.id.et_match), text(R.id.et_amount), text(R.id.et_currency),
-                text(R.id.et_date), text(R.id.et_format),
-            )
-            out.text = if (m == null) getString(R.string.rm_test_no_match) else getString(
-                R.string.rm_test_result,
-                m.amount?.toString() ?: (m.amountRaw?.let { "$it (unreadable)" } ?: dash),
-                m.currency?.ifBlank { dash } ?: dash,
-                m.dueDate?.toString() ?: (m.dueDateRaw?.let { "$it (unreadable)" } ?: dash),
-            )
+
+        testJob?.cancel()
+        testJob = lifecycleScope.launch {
+            val (isError, result) = withContext(Dispatchers.Default) {
+                // Report a broken pattern by name before running anything, so the failure is attributable.
+                fields.firstNotNullOfOrNull { (label, p) -> ReminderExtractor.patternError(p)?.let { "$label - $it" } }
+                    ?.let { return@withContext true to getString(R.string.rm_bad_pattern, it) }
+                false to if (parking) {
+                    val m = ReminderExtractor.extractParking(sample, match, zone, expiry, format)
+                    if (m == null) getString(R.string.rm_test_no_match) else getString(
+                        R.string.rm_test_result_parking,
+                        m.zone?.ifBlank { dash } ?: dash,
+                        m.expiry?.toString() ?: (m.expiryRaw?.let { "$it (unreadable)" } ?: dash),
+                    )
+                } else {
+                    val m = ReminderExtractor.extractBill(sample, match, amount, currency, date, format)
+                    if (m == null) getString(R.string.rm_test_no_match) else getString(
+                        R.string.rm_test_result,
+                        m.amount?.toString() ?: (m.amountRaw?.let { "$it (unreadable)" } ?: dash),
+                        m.currency?.ifBlank { dash } ?: dash,
+                        m.dueDate?.toString() ?: (m.dueDateRaw?.let { "$it (unreadable)" } ?: dash),
+                    )
+                }
+            }
+            out.setTextColor(MaterialColors.getColor(out,
+                if (isError) androidx.appcompat.R.attr.colorError else com.google.android.material.R.attr.colorOnSurfaceVariant))
+            out.text = result
         }
     }
 
@@ -796,13 +729,27 @@ class ReminderRuleActivity : ScreenActivity() {
             return
         }
         // A pattern that won't compile, or that runs away on long text, never reaches the scan.
-        for (id in listOf(R.id.et_match, R.id.et_amount, R.id.et_currency, R.id.et_date, R.id.et_zone,
-            R.id.et_expiry, R.id.et_pay_match, R.id.et_pay_amount)) {
-            val err = ReminderExtractor.patternError(text(id)) ?: continue
-            findViewById<EditText>(id).error = err
-            Toast.makeText(this, getString(R.string.rm_bad_pattern, err), Toast.LENGTH_LONG).show()
-            return
+        // Checked off the main thread: the runaway test can take a quarter of a second.
+        val patterns = listOf(R.id.et_match, R.id.et_amount, R.id.et_currency, R.id.et_date, R.id.et_zone,
+            R.id.et_expiry, R.id.et_pay_match, R.id.et_pay_amount).map { it to text(it) }
+        lifecycleScope.launch {
+            val bad = withContext(Dispatchers.Default) {
+                patterns.firstNotNullOfOrNull { (id, p) -> ReminderExtractor.patternError(p)?.let { id to it } }
+            }
+            when {
+                bad != null -> {
+                    findViewById<EditText>(bad.first).error = bad.second
+                    Toast.makeText(this@ReminderRuleActivity, getString(R.string.rm_bad_pattern, bad.second), Toast.LENGTH_LONG).show()
+                }
+                // Edited while being checked: check what's there now, not what was.
+                patterns.any { (id, p) -> text(id) != p } -> save()
+                else -> saveChecked(name)
+            }
         }
+    }
+
+    /** [save] once the patterns passed. */
+    private fun saveChecked(name: String) {
         val payOn = payEnabled()
         val payFromApp = findViewById<RadioButton>(R.id.rb_pay_app).isChecked
         if (payOn && text(R.id.et_pay_match).isBlank()) {

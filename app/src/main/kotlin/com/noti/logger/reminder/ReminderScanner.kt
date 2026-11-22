@@ -4,13 +4,10 @@ import android.content.Context
 import com.noti.logger.config.Settings
 import com.noti.logger.data.BillOccurrenceEntity
 import com.noti.logger.data.NotiDatabase
-import com.noti.logger.data.ParkingSessionEntity
 import com.noti.logger.data.ReminderRuleEntity
 import com.noti.shared.Diag
 import java.security.MessageDigest
 import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.ZoneId
 
 /**
  * Runs the rulebook over captured notifications and relayed SMS, and turns what it finds into bills
@@ -51,99 +48,40 @@ object ReminderScanner {
             else -> now - ReminderPolicy.FIRST_SCAN_LOOKBACK_DAYS * 86_400_000L
         }
 
-        var bills = 0
-        var parking = 0
-        var scanned = 0
-        // A read that fails must not advance the watermark, or that window is skipped for good.
-        var readFailed = false
+        // Counts, and whether a read failed: one that did must not advance the watermark, or that
+        // window is skipped for good.
+        val tally = Tally()
 
-        // --- Notification-sourced rules, grouped by package so the table is read once per package.
-        // Read by row id up to a ceiling fixed now: per-package reads happen one after another, and
-        // without the ceiling a row landing between two of them could sit below the new watermark
-        // without either read having seen it.
+        // --- Notification-sourced rules. Read by row id up to a ceiling fixed now: per-package reads
+        // happen one after another, and without the ceiling a row landing between two of them could
+        // sit below the new watermark without either read having seen it.
         val notifDao = db.notificationDao()
         val lastNotifId = settings.lastReminderScanNotifId
-        val notifCeiling = try { notifDao.maxId() ?: 0L } catch (e: Exception) { readFailed = true; 0L }
+        val notifCeiling = try { notifDao.maxId() ?: 0L } catch (e: Exception) { tally.readFailed = true; 0L }
         val lookbackFloor = now - ReminderPolicy.FIRST_SCAN_LOOKBACK_DAYS * 86_400_000L
         val readNotifs: (String) -> List<com.noti.logger.data.NotificationEntity> = { pkg ->
             if (fullRescan || lastNotifId < 0) notifDao.forPackageSince(pkg, since).filter { it.id <= notifCeiling }
             else notifDao.forPackageInIds(pkg, lastNotifId, notifCeiling, lookbackFloor)
         }
-        val byPackage = rules.filter { SourceType.valueOf(it.source) == SourceType.NOTIFICATION }
-            .groupBy { it.sourcePackage }
-        for ((pkg, pkgRules) in byPackage) {
-            if (pkg.isBlank()) continue
-            val rows = try {
-                readNotifs(pkg)
-            } catch (e: Exception) {
-                readFailed = true
-                emptyList()
-            }
-            for (row in rows) {
-                scanned++
-                val text = ReminderExtractor.notificationText(row.title, row.text, row.bigText, row.subText)
-                if (text.isBlank()) continue
-                for (rule in pkgRules) {
-                    when (apply(context, rule, text, row.postTime, "n:${row.uid}")) {
-                        Applied.BILL -> bills++
-                        Applied.PARKING -> parking++
-                        Applied.NONE -> Unit
-                    }
-                }
-            }
-        }
+        scanNotifications(context, rules, readNotifs, tally)
 
-        // --- SMS-sourced rules, from the relayed chat history.
-        var maxSmsId = -1L
-        val smsRules = rules.filter { SourceType.valueOf(it.source) == SourceType.SMS }
-        // Payment watchers are read from the same rows, so an SMS-settled rule needs them fetched
-        // even when no rule takes its *bill* from SMS (a manual rent bill paid by bank debit SMS).
-        val payRules = rules.filter {
-            it.payEnabled == 1 && it.payMatchPattern.isNotBlank() && RuleType.valueOf(it.type) == RuleType.BILL
-        }
-        val paySmsRules = payRules.filter { it.paySource == SourceType.SMS.name }
-        var smsRows: List<com.noti.logger.data.RelayedMessageEntity> = emptyList()
-        if (smsRules.isNotEmpty() || paySmsRules.isNotEmpty()) {
-            val lastSmsId = settings.lastReminderScanSmsId
-            val rows = try {
-                val dao = db.relayedMessageDao()
-                if (fullRescan || lastSmsId < 0) dao.receivedSince(since)
-                // Late arrivals up to the first-scan lookback are still caught; a backfilled
-                // message older than that is history, not a bill to chase.
-                else dao.receivedAfterId(lastSmsId, now - ReminderPolicy.FIRST_SCAN_LOOKBACK_DAYS * 86_400_000L)
-            } catch (e: Exception) {
-                readFailed = true
-                emptyList()
-            }
-            maxSmsId = rows.maxOfOrNull { it.id } ?: -1L
-            smsRows = rows
-            for (row in rows) {
-                scanned++
-                if (row.body.isBlank()) continue
-                for (rule in smsRules) {
-                    // The sender filter is a plain substring, not a regex: it is matched against a
-                    // phone number or short code, where regex buys nothing and costs clarity.
-                    if (rule.sourceSender.isNotBlank() && !row.sender.contains(rule.sourceSender, ignoreCase = true)) continue
-                    when (apply(context, rule, "${row.sender}\n${row.body}", row.receivedAt, "s:${row.id}")) {
-                        Applied.BILL -> bills++
-                        Applied.PARKING -> parking++
-                        Applied.NONE -> Unit
-                    }
-                }
-            }
-        }
+        // --- SMS-sourced rules, from the relayed chat history. Payment watchers are read from the
+        // same rows, so an SMS-settled rule needs them fetched even when no rule takes its *bill*
+        // from SMS (a manual rent bill paid by bank debit SMS).
+        val payRules = payRulesOf(rules)
+        val (smsRows, maxSmsId) = scanSms(context, settings, rules, Window(fullRescan, since, now), tally)
 
         // --- Payments, after every bill is in: a statement and its payment can land in one window,
         // and the payment must find the bill it settles. Then manual rules roll on past what was paid.
         val (paid, payReadFailed) = payPass(context, payRules, smsRows, readNotifs)
-        if (payReadFailed) readFailed = true
+        if (payReadFailed) tally.readFailed = true
 
         rollManualRules(context)
 
         // Stamp the window end from before the scan started, not from now: a message that arrived
         // while the scan was running would otherwise fall in the gap between the two and never be
         // looked at by either run.
-        if (readFailed) {
+        if (tally.readFailed) {
             Diag.log("reminder scan: a read failed - window kept, will rescan it next run")
         } else {
             settings.lastReminderScanAtMs = now
@@ -152,11 +90,97 @@ object ReminderScanner {
             if (notifCeiling > settings.lastReminderScanNotifId) settings.lastReminderScanNotifId = notifCeiling
         }
         ReminderScheduler.rebuildAll(context)
-        Diag.log("reminder scan: $scanned message(s) → $bills bill(s), $parking parking event(s), $paid paid automatically")
-        return Result(bills, parking, scanned)
+        Diag.log("reminder scan: ${tally.scanned} message(s) → ${tally.bills} bill(s), ${tally.parking} parking event(s), $paid paid automatically")
+        return Result(tally.bills, tally.parking, tally.scanned)
     }
 
     private enum class Applied { NONE, BILL, PARKING }
+
+    /** What one scan found, counted as it goes. */
+    private class Tally {
+        var bills = 0
+        var parking = 0
+        var scanned = 0
+        var readFailed = false
+
+        fun count(applied: Applied) {
+            when (applied) {
+                Applied.BILL -> bills++
+                Applied.PARKING -> parking++
+                Applied.NONE -> Unit
+            }
+        }
+    }
+
+    /** Notification-sourced rules, grouped by package so the table is read once per package. */
+    private fun scanNotifications(
+        context: Context,
+        rules: List<ReminderRuleEntity>,
+        readNotifs: (String) -> List<com.noti.logger.data.NotificationEntity>,
+        tally: Tally,
+    ) {
+        val byPackage = rules.filter { SourceType.valueOf(it.source) == SourceType.NOTIFICATION }
+            .groupBy { it.sourcePackage }
+        for ((pkg, pkgRules) in byPackage) {
+            if (pkg.isBlank()) continue
+            val rows = try {
+                readNotifs(pkg)
+            } catch (e: Exception) {
+                tally.readFailed = true
+                emptyList()
+            }
+            for (row in rows) {
+                tally.scanned++
+                val text = ReminderExtractor.notificationText(row.title, row.text, row.bigText, row.subText)
+                if (text.isBlank()) continue
+                for (rule in pkgRules) tally.count(apply(context, rule, text, row.postTime, "n:${row.uid}"))
+            }
+        }
+    }
+
+    /** Which rows a scan reads: a full rescan of the lookback, or what came since [since]. */
+    private class Window(val fullRescan: Boolean, val since: Long, val now: Long)
+
+    /** Rules that settle their bills from payment messages. */
+    private fun payRulesOf(rules: List<ReminderRuleEntity>) = rules.filter {
+        it.payEnabled == 1 && it.payMatchPattern.isNotBlank() && RuleType.valueOf(it.type) == RuleType.BILL
+    }
+
+    /** SMS-sourced rules over the relayed chat history. Returns the rows read (the payment pass
+     *  reads them too) and the highest row id among them (-1 if none). */
+    private fun scanSms(
+        context: Context,
+        settings: Settings,
+        rules: List<ReminderRuleEntity>,
+        window: Window,
+        tally: Tally,
+    ): Pair<List<com.noti.logger.data.RelayedMessageEntity>, Long> {
+        val smsRules = rules.filter { SourceType.valueOf(it.source) == SourceType.SMS }
+        val paySmsRules = payRulesOf(rules).filter { it.paySource == SourceType.SMS.name }
+        if (smsRules.isEmpty() && paySmsRules.isEmpty()) return emptyList<com.noti.logger.data.RelayedMessageEntity>() to -1L
+        val lastSmsId = settings.lastReminderScanSmsId
+        val rows = try {
+            val dao = NotiDatabase.get(context).relayedMessageDao()
+            if (window.fullRescan || lastSmsId < 0) dao.receivedSince(window.since)
+            // Late arrivals up to the first-scan lookback are still caught; a backfilled
+            // message older than that is history, not a bill to chase.
+            else dao.receivedAfterId(lastSmsId, window.now - ReminderPolicy.FIRST_SCAN_LOOKBACK_DAYS * 86_400_000L)
+        } catch (e: Exception) {
+            tally.readFailed = true
+            emptyList()
+        }
+        for (row in rows) {
+            tally.scanned++
+            if (row.body.isBlank()) continue
+            for (rule in smsRules) {
+                // The sender filter is a plain substring, not a regex: it is matched against a
+                // phone number or short code, where regex buys nothing and costs clarity.
+                if (rule.sourceSender.isNotBlank() && !row.sender.contains(rule.sourceSender, ignoreCase = true)) continue
+                tally.count(apply(context, rule, "${row.sender}\n${row.body}", row.receivedAt, "s:${row.id}"))
+            }
+        }
+        return rows to (rows.maxOfOrNull { it.id } ?: -1L)
+    }
 
     private fun apply(context: Context, rule: ReminderRuleEntity, text: String, atMs: Long, msgKey: String): Applied =
         when (RuleType.valueOf(rule.type)) {
@@ -190,12 +214,17 @@ object ReminderScanner {
         val dao = NotiDatabase.get(context).billOccurrenceDao()
         val messageKey = key("${rule.id}|$msgKey")
         // The same message again, or - a bank re-sending the reminder - another message about the
-        // same bill: same rule, same due date and the same amount (see sameCycle). Either way it's
-        // the bill already on file, not a second one that doubled the total. Two cards from one
-        // bank both due on the 5th differ in amount, and stay two bills.
+        // same bill: same rule, same due date and the same amount (see sameCycle), or a message
+        // that states the amount on file next to the one the rule read (a reminder leading with the
+        // minimum due, then the total). Either way it's the bill already on file, not a second one
+        // that doubled the total. Two cards from one bank both due on the 5th differ in amount, and
+        // neither message names the other's, so they stay two bills.
+        var byMention = false
         val existing = try {
             dao.bySourceKey(messageKey) ?: due?.let { d ->
-                dao.forRuleAndDue(rule.id, midnightMs(d)).firstOrNull { sameCycle(it.amount, match.amount) }
+                val sameDay = dao.forRuleAndDue(rule.id, midnightMs(d))
+                sameDay.firstOrNull { sameCycle(it.amount, match.amount) }
+                    ?: sameDay.firstOrNull { mentionsAmount(text, it.amount) }?.also { byMention = true }
             }
         } catch (e: Exception) { null }
         val sourceKey = existing?.sourceKey ?: messageKey
@@ -210,9 +239,11 @@ object ReminderScanner {
             ruleId = rule.id,
             name = rule.name,
             dueAt = due?.let { midnightMs(it) } ?: 0L,
-            amount = match.amount,
+            // Found by its amount being mentioned: the message also gives another figure, and the
+            // one on file (read first) stays the bill's amount.
+            amount = if (byMention) existing?.amount else match.amount,
             currency = match.currency?.ifBlank { null } ?: rule.defaultCurrency,
-            amountRaw = match.amountRaw.orEmpty(),
+            amountRaw = if (byMention) existing?.amountRaw.orEmpty() else match.amountRaw.orEmpty(),
             dueRaw = match.dueDateRaw.orEmpty(),
             notes = existing?.notes ?: rule.notes,
             category = existing?.category ?: rule.category,
@@ -383,6 +414,25 @@ object ReminderScanner {
      *  (given the same rule and due date): equal amounts to the cent, or no amount on one side. */
     internal fun sameCycle(onFile: Double?, incoming: Double?): Boolean =
         onFile == null || incoming == null || kotlin.math.abs(onFile - incoming) < 0.005
+
+    /** A number in a message: digits with grouping and decimals, not touching a date or time
+     *  separator, so "5-Mar-2027" and "10:30" aren't read as amounts. */
+    private val AMOUNT_TOKEN = Regex("""(?<![\d.,/:\-])\d[\d,.]*(?<![.,])(?![\d/:\-])""")
+
+    /** Words that make the number after them something other than a bill amount: a card's last
+     *  digits ("ending 1500", "XX1500"), its limit, an account or reference number. */
+    private val NOT_AN_AMOUNT = Regex("(?i)(ending( in| with)?|\\bx{2,}|\\*{2,}|limit( of| is)?|a/c( no)?|acc(oun)?t( no)?|ref(erence)?( no)?)[\\s.:#-]*$")
+
+    /** Whether [text] states [amount] anywhere. A bare whole number under 32 never counts: it is as
+     *  likely a day of the month as an amount. */
+    internal fun mentionsAmount(text: String, amount: Double?): Boolean {
+        if (amount == null) return false
+        if (amount < 32 && amount == kotlin.math.floor(amount)) return false
+        return AMOUNT_TOKEN.findAll(text).any { t ->
+            !NOT_AN_AMOUNT.containsMatchIn(text.substring(maxOf(0, t.range.first - 14), t.range.first)) &&
+                ReminderPolicy.parseAmount(t.value)?.let { sameCycle(amount, it) } == true
+        }
+    }
 
     /**
      * Whether a message from the statement's own source is the statement rather than a payment.

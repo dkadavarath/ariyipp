@@ -14,8 +14,8 @@ import com.noti.logger.config.Settings
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.push.CompanionStatus
 import com.noti.logger.push.NotiStatusSender
-import com.noti.shared.Diag
 import com.noti.shared.DeviceStatusPolicy
+import com.noti.shared.Diag
 import com.noti.shared.Role
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

@@ -1,9 +1,9 @@
 package com.noti.shared
 
+import java.io.File
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeNotNull
 import org.junit.Test
-import java.io.File
 
 /**
  * Verifies the on-device OAuth + FCM send code path against LIVE FCM, using the real service-account

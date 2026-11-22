@@ -3,7 +3,7 @@ package com.noti.sender.status
 import android.content.Context
 import com.noti.sender.config.SenderSettings
 import com.noti.shared.DeviceStatusPolicy
-import com.noti.shared.MessageCrypto
+import com.noti.shared.Envelope
 import com.noti.shared.Wire
 import com.noti.shared.WireMessage
 
@@ -20,23 +20,19 @@ import com.noti.shared.WireMessage
  */
 object StatusPushHandler {
 
-    const val PAYLOAD_KEY = "payload"
+    const val PAYLOAD_KEY = com.noti.shared.Envelope.PAYLOAD_KEY
 
     fun parse(context: Context, data: Map<String, String>): WireMessage? {
-        val ciphertext = data[PAYLOAD_KEY]?.takeIf { it.isNotBlank() } ?: return null
+        if (!SenderSettings.get(context).statusSharingEnabled) return null
+        return Envelope.open(data, SenderSettings.get(context).relayKey, Wire.Direction.MAIN_TO_COMPANION)
+            ?.let { from(context, it.message) }
+    }
+
+    /** The status request or config [message] is, if it is one this phone takes. */
+    fun from(context: Context, message: WireMessage): WireMessage? {
         val s = SenderSettings.get(context)
         if (!s.statusSharingEnabled) return null
-        val key = s.relayKey.takeIf { it.isNotBlank() } ?: return null
-        val plaintext = try {
-            MessageCrypto.decrypt(ciphertext, key)
-        } catch (e: Exception) {
-            return null
-        }
-        val wire = try {
-            Wire.decodeFrom(plaintext, com.noti.shared.Wire.Direction.MAIN_TO_COMPANION)
-        } catch (e: Exception) {
-            return null
-        }
+        val wire = message
         return when (wire) {
             is WireMessage.StatusRequest -> wire
             is WireMessage.StatusConfig ->

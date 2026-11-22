@@ -29,6 +29,7 @@ class NotiApp : Application() {
         // Cheap, and needed before any reminder work runs: the clock-app alarm route can only be
         // attempted while an activity is on screen (see AppForeground).
         com.noti.logger.reminder.AppForeground.register(this)
+        com.noti.logger.reminder.ReminderExtractor.attach(this)
 
         // Tell the :sender library which role this phone plays, before any of its receivers,
         // services or workers can run in this process: they relay only while it's the companion.
@@ -61,6 +62,10 @@ class NotiApp : Application() {
     }
 
     private fun initialize(appContext: Context) {
+        // Open the database here, off the main thread: the first open unwraps the key and checks
+        // the files (and once, encrypts an old plaintext one). A screen asking first would do it
+        // on the main thread, or wait on this one there.
+        try { com.noti.logger.data.NotiDatabase.get(appContext) } catch (_: Exception) { }
         // The theme cache read at launch (see Theming): refresh it now the settings are open anyway.
         if (Theming.syncCache(appContext)) {
             android.os.Handler(android.os.Looper.getMainLooper()).post { Theming.applyNightMode(appContext) }

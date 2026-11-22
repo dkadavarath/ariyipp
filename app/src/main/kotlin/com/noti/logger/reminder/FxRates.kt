@@ -4,14 +4,14 @@ import android.content.Context
 import android.telephony.TelephonyManager
 import com.noti.logger.config.Settings
 import com.noti.shared.Diag
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Currency
 import java.util.Locale
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Exchange rates for the Reminders total, which is shown in the user's default currency ([home]).

@@ -76,8 +76,13 @@ class SecurityUiTest {
     }
 
     @Test fun numbers_match_across_formats() {
-        assertTrue(SendGuard.isKnown("+971501234567", listOf("0501234567", "HDFCBK")))
-        assertTrue(SendGuard.isKnown("hdfcbk", listOf("HDFCBK")))
-        assertFalse(SendGuard.isKnown("+971509999999", listOf("0501234567")))
+        assertTrue(SendGuard.isKnown("+971501234567", listOf("0501234567", "HDFCBK"), "ae"))
+        assertTrue(SendGuard.isKnown("hdfcbk", listOf("HDFCBK"), "ae"))
+        assertFalse(SendGuard.isKnown("+971509999999", listOf("0501234567"), "ae"))
+        // Same last 7 digits, another country: not the same number.
+        assertFalse(SendGuard.isKnown("+441501234567", listOf("+971501234567"), "ae"))
+        assertFalse(SendGuard.isKnown("+441501234567", listOf("0501234567"), "ae"))
+        // Written differently, same number.
+        assertTrue(SendGuard.isKnown("+971 50 123 4567", listOf("00971501234567"), "ae"))
     }
 }

@@ -4,10 +4,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.longOrNull
 
 /** Which role a device plays in the pair. Stored per-device; chosen at onboarding, switchable later. */
 @Serializable
@@ -27,7 +28,10 @@ sealed interface WireMessage {
      *  [part]/[parts] carry body chunking for long SMS: when the encrypted payload would exceed
      *  FCM's 4096-byte data cap, the sender splits the body into [parts] slices and ships one
      *  Relay each ([part] = 0-based index). Single-message relays keep the defaults, which are
-     *  omitted on the wire (encodeDefaults = false). */
+     *  omitted on the wire (encodeDefaults = false).
+     *  [from] and [sim] are the sender and SIM name on their own: [title] ("<from> on <sim>") is
+     *  for display and older Mains, and splitting it back apart at " on " went wrong for a SIM
+     *  named, say, "Work on Etisalat". Blank from a companion that predates them. */
     @Serializable
     @SerialName("relay")
     data class Relay(
@@ -37,6 +41,8 @@ sealed interface WireMessage {
         val time: Long = 0,
         val part: Int = 0,
         val parts: Int = 1,
+        val from: String = "",
+        val sim: String = "",
     ) : WireMessage
 
     /** Main → Companion: send this SMS from the SIM. [msgId] is Main's local row id for this
@@ -244,11 +250,24 @@ object Wire {
     enum class Direction(val tag: String) { MAIN_TO_COMPANION("m2c"), COMPANION_TO_MAIN("c2m") }
 
     private const val DIR_FIELD = "d"
+    private const val SENT_FIELD = "s"
 
-    /** [message] tagged as travelling [direction]: `{"t":..., "d":"m2c", ...}`. */
-    fun encodeFor(message: WireMessage, direction: Direction): String {
+    /**
+     * [message] tagged as travelling [direction] and stamped with the sender's clock:
+     * `{"t":..., "d":"m2c", "s":1700000000000, ...}`. Like the tag, the stamp is inside the
+     * encrypted payload: it's what tells a replayed copy from a new message (see ReplayGuard).
+     */
+    fun encodeFor(message: WireMessage, direction: Direction, sentAt: Long = System.currentTimeMillis()): String {
         val obj = json.encodeToJsonElement(WireMessage.serializer(), message).jsonObject
-        return JsonObject(obj + (DIR_FIELD to JsonPrimitive(direction.tag))).toString()
+        return JsonObject(obj + (DIR_FIELD to JsonPrimitive(direction.tag)) + (SENT_FIELD to JsonPrimitive(sentAt))).toString()
+    }
+
+    /** The sender's clock when [text] was sent; 0 when it carries no stamp (a peer before v1.46)
+     *  or doesn't parse. */
+    fun sentAt(text: String): Long = try {
+        (json.parseToJsonElement(text).jsonObject[SENT_FIELD] as? JsonPrimitive)?.longOrNull ?: 0L
+    } catch (e: Exception) {
+        0L
     }
 
     /** A push that didn't carry the tag at all: from a peer on a version before tags. */
@@ -266,7 +285,7 @@ object Wire {
         val obj = json.parseToJsonElement(text).jsonObject
         val tag = (obj[DIR_FIELD] as? JsonPrimitive)?.contentOrNull ?: throw UntaggedException()
         if (tag != expected.tag) throw WrongDirectionException()
-        return json.decodeFromJsonElement(WireMessage.serializer(), JsonObject(obj - DIR_FIELD))
+        return json.decodeFromJsonElement(WireMessage.serializer(), JsonObject(obj - DIR_FIELD - SENT_FIELD))
     }
 
     /** True when [text] decodes as a wire message but carries no direction tag. */

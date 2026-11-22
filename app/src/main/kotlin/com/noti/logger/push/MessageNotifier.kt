@@ -5,7 +5,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.RemoteInput
@@ -36,8 +35,13 @@ object MessageNotifier {
     /** The notification id for stored message [messageId]. Pure. */
     fun idFor(messageId: Long): Int = ID_BASE + (messageId % ID_SPAN).toInt()
 
-    // Messages that couldn't be stored have no row id: these take ids below the derived range.
-    private val fallbackId = AtomicInteger(10_000 + (System.currentTimeMillis() % 50_000).toInt())
+    // Messages that couldn't be stored have no row id: these take ids below the derived range, in
+    // 60,000-99,999, clear of the fixed ids (1001-1007, 42, 47xx, 47,001-47,003). It once started
+    // anywhere up to 60,000 and counted up through the companion's and the reminders' ids.
+    private const val FALLBACK_BASE = 60_000
+    private const val FALLBACK_SPAN = 40_000
+    private val fallbackSeq = AtomicInteger((System.currentTimeMillis() % FALLBACK_SPAN).toInt())
+    private fun nextFallbackId() = FALLBACK_BASE + Math.floorMod(fallbackSeq.getAndIncrement(), FALLBACK_SPAN)
 
     /**
      * Posts [title]/[body] as a heads-up notification; returns the notification id used. When
@@ -53,7 +57,7 @@ object MessageNotifier {
     ): Int {
         ensureChannel(context)
         val settings = Settings.get(context)
-        val id = if (messageId > 0) idFor(messageId) else fallbackId.getAndIncrement()
+        val id = if (messageId > 0) idFor(messageId) else nextFallbackId()
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
@@ -86,15 +90,18 @@ object MessageNotifier {
         return id
     }
 
-    /** Re-posts the notification to clear the inline-reply spinner when a reply couldn't be sent. */
+    /** Re-posts the notification to clear the inline-reply spinner when a reply couldn't be sent.
+     *  Shows what was typed, and a tap opens the chat with it back in the message box: the reply
+     *  used to be dropped here, leaving it to be typed again from memory. */
     fun showReplyFailed(context: Context, sender: String, id: Int, replyText: String) {
         ensureChannel(context)
+        val body = context.getString(R.string.notif_reply_failed_body, replyText)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.notif_reply_failed_title, sender))
-            .setContentText(context.getString(R.string.notif_reply_failed_body))
-            .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(R.string.notif_reply_failed_body)))
-            .setContentIntent(contentIntent(context, sender, -1L, id))
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setContentIntent(contentIntent(context, sender, -1L, id, draft = replyText))
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -181,6 +188,7 @@ object MessageNotifier {
         sender: String,
         messageId: Long,
         requestCode: Int,
+        draft: String? = null,
     ): PendingIntent {
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         // Deep-link into the exact chat, with the Messages list beneath it, so Back from the chat lands
@@ -191,6 +199,7 @@ object MessageNotifier {
             val chat = Intent(context, ChatActivity::class.java)
                 .putExtra(ChatActivity.EXTRA_SENDER, sender)
                 .putExtra(ChatActivity.EXTRA_HIGHLIGHT_ID, messageId)
+                .apply { draft?.let { putExtra(ChatActivity.EXTRA_DRAFT, it) } }
             return TaskStackBuilder.create(context)
                 .addNextIntent(list)
                 .addNextIntent(chat)

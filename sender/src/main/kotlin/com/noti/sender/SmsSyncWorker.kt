@@ -16,11 +16,11 @@ import androidx.work.WorkerParameters
 import com.noti.sender.config.SenderSettings
 import com.noti.sender.sms.SmsInbox
 import com.noti.shared.Diag
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.util.concurrent.TimeUnit
 
 /**
  * The single relay path: scans the SMS provider for rows past a per-leg high-water `_id` and relays
@@ -49,7 +49,14 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         }
         // One scan at a time in-process, so a broadcast scan and the periodic scan can't both read the
         // same rows before either mark advances.
-        val result = scanMutex.withLock { scanAndRelay(ctx) }
+        val result = scanMutex.withLock {
+            running = when {
+                UNIQUE_NEXT in tags -> UNIQUE_NEXT
+                UNIQUE in tags -> UNIQUE
+                else -> OTHER // periodic or follow-up: never replaced by [enqueue]
+            }
+            try { scanAndRelay(ctx) } finally { running = null }
+        }
         // A broadcast-triggered scan that found nothing usually means the default SMS app hadn't
         // written the row yet (cold start, slow OEM). Look again shortly rather than leaving the
         // message for the 15-minute backstop.
@@ -65,64 +72,84 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
 
     private fun scanAndRelay(ctx: Context): Result {
         val s = SenderSettings.get(ctx)
-        var retry = false
+        // Each leg has its own mark, so one leg failing and retrying never re-sends the other.
+        val fcm = if (SenderPipeline.isConfigured(s)) relayLeg(ctx, MainLeg(ctx, s)) else LegResult.DONE
+        val n8n = if (s.n8nEnabled && s.n8nUrl.isNotBlank()) relayLeg(ctx, WebhookLeg(ctx, s)) else LegResult.DONE
+        return if (fcm == LegResult.RETRY || n8n == LegResult.RETRY) Result.retry() else Result.success()
+    }
 
-        // ---- ippu (FCM) leg ----
-        if (SenderPipeline.isConfigured(s)) {
-            if (s.lastRelayedSmsId == -1L) {
-                s.lastRelayedSmsId = SmsInbox.newestId(ctx)
-                s.lastRelayedSmsDate = SmsInbox.dateOf(ctx, s.lastRelayedSmsId)
-                Diag.log("relay: baseline at id ${s.lastRelayedSmsId} - new SMS will relay to main")
-            } else {
-                if (s.lastRelayedSmsDate == 0L) s.lastRelayedSmsDate = SmsInbox.dateOf(ctx, s.lastRelayedSmsId)
-                val rows = SmsInbox.pending(ctx, s.lastRelayedSmsId, s.lastRelayedSmsDate)
-                if (rows.isNotEmpty()) foundRows = true
-                if (rows.isNotEmpty()) Diag.log("relay: ${rows.size} new SMS → main")
-                for (sms in rows) {
-                    when (SenderPipeline.pushToIppu(ctx, sms)) {
-                        SenderPipeline.SendOutcome.DELIVERED,
-                        SenderPipeline.SendOutcome.PERMANENT -> {
-                            s.lastRelayedSmsId = sms.id; s.lastRelayedSmsDate = sms.receivedMillis
-                        }
-                        // BLOCKED holds the mark too: skipping would lose the SMS for good.
-                        SenderPipeline.SendOutcome.TRANSIENT,
-                        SenderPipeline.SendOutcome.BLOCKED -> { retry = true; break }
-                        SenderPipeline.SendOutcome.NOT_CONFIGURED -> break
-                    }
+    private enum class LegResult { DONE, RETRY }
+
+    /** Where one leg sends, and its own mark (the last SMS it sent: provider id and time). */
+    private abstract class Leg {
+        abstract val label: String
+        abstract val destination: String
+        abstract val baselineNote: String?
+        abstract var markId: Long
+        abstract var markDate: Long
+        abstract fun send(sms: com.noti.sender.sms.CapturedSms): SenderPipeline.SendOutcome
+    }
+
+    private class MainLeg(private val ctx: Context, private val s: SenderSettings) : Leg() {
+        override val label = "relay"
+        override val destination = "main"
+        override val baselineNote = "new SMS will relay to main"
+        override var markId by s::lastRelayedSmsId
+        override var markDate by s::lastRelayedSmsDate
+        override fun send(sms: com.noti.sender.sms.CapturedSms) = SenderPipeline.pushToIppu(ctx, sms)
+    }
+
+    private class WebhookLeg(private val ctx: Context, private val s: SenderSettings) : Leg() {
+        override val label = "webhook"
+        override val destination = "n8n"
+        override val baselineNote: String? = null
+        override var markId by s::lastWebhookSmsId
+        override var markDate by s::lastWebhookSmsDate
+        override fun send(sms: com.noti.sender.sms.CapturedSms) = SenderPipeline.pushToWebhook(ctx, sms)
+    }
+
+    /**
+     * One leg's pass over the inbox: the first time, set the mark at the newest SMS (no backfill);
+     * after that, send everything past it, in order, moving the mark after each one sent (or
+     * skipped as unsendable). A transient failure, or a setup the destination refuses (BLOCKED),
+     * stops the pass with the mark held, so nothing is skipped.
+     */
+    private fun relayLeg(ctx: Context, leg: Leg): LegResult {
+        if (leg.markId == -1L) {
+            leg.markId = SmsInbox.newestId(ctx)
+            leg.markDate = SmsInbox.dateOf(ctx, leg.markId)
+            Diag.log("${leg.label}: baseline at id ${leg.markId}" + (leg.baselineNote?.let { " - $it" } ?: ""))
+            return LegResult.DONE
+        }
+        if (leg.markDate == 0L) leg.markDate = SmsInbox.dateOf(ctx, leg.markId)
+        val rows = SmsInbox.pending(ctx, leg.markId, leg.markDate)
+        if (rows.isEmpty()) return LegResult.DONE
+        foundRows = true
+        Diag.log("${leg.label}: ${rows.size} new SMS → ${leg.destination}")
+        for (sms in rows) {
+            when (leg.send(sms)) {
+                SenderPipeline.SendOutcome.DELIVERED,
+                SenderPipeline.SendOutcome.PERMANENT -> {
+                    val (id, date) = SmsInbox.advance(leg.markId, leg.markDate, sms)
+                    leg.markId = id; leg.markDate = date
                 }
+                // BLOCKED holds the mark too: skipping would lose the SMS for good.
+                SenderPipeline.SendOutcome.TRANSIENT,
+                SenderPipeline.SendOutcome.BLOCKED -> return LegResult.RETRY
+                SenderPipeline.SendOutcome.NOT_CONFIGURED -> return LegResult.DONE
             }
         }
-
-        // ---- webhook (n8n) leg - independent high-water mark ----
-        if (s.n8nEnabled && s.n8nUrl.isNotBlank()) {
-            if (s.lastWebhookSmsId == -1L) {
-                s.lastWebhookSmsId = SmsInbox.newestId(ctx)
-                s.lastWebhookSmsDate = SmsInbox.dateOf(ctx, s.lastWebhookSmsId)
-                Diag.log("webhook: baseline at id ${s.lastWebhookSmsId}")
-            } else {
-                if (s.lastWebhookSmsDate == 0L) s.lastWebhookSmsDate = SmsInbox.dateOf(ctx, s.lastWebhookSmsId)
-                val rows = SmsInbox.pending(ctx, s.lastWebhookSmsId, s.lastWebhookSmsDate)
-                if (rows.isNotEmpty()) foundRows = true
-                if (rows.isNotEmpty()) Diag.log("webhook: ${rows.size} new SMS → n8n")
-                for (sms in rows) {
-                    when (SenderPipeline.pushToWebhook(ctx, sms)) {
-                        SenderPipeline.SendOutcome.DELIVERED,
-                        SenderPipeline.SendOutcome.PERMANENT -> {
-                            s.lastWebhookSmsId = sms.id; s.lastWebhookSmsDate = sms.receivedMillis
-                        }
-                        SenderPipeline.SendOutcome.TRANSIENT,
-                        SenderPipeline.SendOutcome.BLOCKED -> { retry = true; break }
-                        SenderPipeline.SendOutcome.NOT_CONFIGURED -> break
-                    }
-                }
-            }
-        }
-
-        return if (retry) Result.retry() else Result.success()
+        return LegResult.DONE
     }
 
     companion object {
         private const val UNIQUE = "sms-scan"
+        private const val UNIQUE_NEXT = "sms-scan-next"
+
+        private const val OTHER = "other"
+
+        /** The name of the scan sending right now in this process, if any - see [enqueue]. */
+        @Volatile private var running: String? = null
         // Its own name: enqueueing under UNIQUE with REPLACE from inside a running scan would
         // cancel that scan.
         private const val FOLLOW_UP = "sms-scan-follow-up"
@@ -161,20 +188,27 @@ class SmsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         fun scanSoon(context: Context) = enqueue(context, 2L, followUp = 0)
 
         private fun enqueue(context: Context, delaySeconds: Long, followUp: Int = -1) {
-            // REPLACE so a burst (or a duplicate broadcast) collapses to one scan of the latest state.
+            // REPLACE so a burst (or a duplicate broadcast) collapses to one scan of the latest state,
+            // and a scan waiting out a retry backoff is retried now. But never a scan in the middle
+            // of sending: cancelling it there sent an SMS FCM had taken, but the mark hadn't yet
+            // recorded, a second time. While one runs, the next goes under the other name and waits
+            // for it on [scanMutex].
+            val name = if (running == UNIQUE) UNIQUE_NEXT else UNIQUE
             WorkManager.getInstance(context)
-                .enqueueUniqueWork(UNIQUE, ExistingWorkPolicy.REPLACE, request(delaySeconds, followUp))
+                .enqueueUniqueWork(name, ExistingWorkPolicy.REPLACE, request(name, delaySeconds, followUp))
         }
 
         private fun enqueueFollowUp(context: Context, attempt: Int) {
             WorkManager.getInstance(context).enqueueUniqueWork(
                 FOLLOW_UP, ExistingWorkPolicy.REPLACE,
-                request(FOLLOW_UP_DELAYS_S[attempt], attempt + 1),
+                request(FOLLOW_UP, FOLLOW_UP_DELAYS_S[attempt], attempt + 1),
             )
         }
 
-        private fun request(delaySeconds: Long, followUp: Int) =
+        /** Tagged with its unique [name], so a running scan knows which one it is. */
+        private fun request(name: String, delaySeconds: Long, followUp: Int) =
             OneTimeWorkRequestBuilder<SmsSyncWorker>()
+                .addTag(name)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .apply { if (delaySeconds > 0) setInitialDelay(delaySeconds, TimeUnit.SECONDS) }
                 .setInputData(androidx.work.workDataOf(KEY_FOLLOW_UP to followUp))

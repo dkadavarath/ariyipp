@@ -28,6 +28,7 @@ object DbKeyStore {
     private const val ALIAS = "noti_db_key_wrap_v1"
     private const val FORMAT = 1
     private const val IV_LEN = 12
+    private const val ASIDE = ".unreadable-"
 
     @Volatile private var cached: ByteArray? = null
 
@@ -50,8 +51,19 @@ object DbKeyStore {
         // Make both copies whole again: the file from settings (v1.6 installs, or a lost file), and
         // settings from the file (after a settings reset).
         if (fromFile == null) {
-            if (file.exists()) file.renameTo(File(file.path + ".unreadable-" + System.currentTimeMillis()))
+            // Moved aside, not replaced: a keystore that failed this once may read it next time,
+            // and [asideKeys] keeps offering it to the database set aside with it.
+            if (file.exists()) {
+                val aside = File(file.path + ASIDE + System.currentTimeMillis())
+                // Aged from now, not from when the key was made: a rename keeps the old file time,
+                // and [asideKeys] would have deleted a months-old key before ever trying it.
+                if (file.renameTo(aside)) aside.setLastModified(System.currentTimeMillis())
+            }
             writeAtomically(file, wrap(key))
+        }
+        // A settings copy that disagrees is kept too: it may be the key of a set-aside database.
+        if (fromSettings != null && !fromSettings.contentEquals(key)) {
+            try { writeAtomically(File(file.path + ASIDE + System.currentTimeMillis() + "-settings"), wrap(fromSettings)) } catch (ignored: Exception) { /* best effort: the spare of a spare */ }
         }
         if (fromSettings == null || !fromSettings.contentEquals(key)) {
             try {
@@ -62,6 +74,23 @@ object DbKeyStore {
         }
         cached = key
         return key.copyOf()
+    }
+
+    /**
+     * Earlier keys still on file: key files that couldn't be read when they were set aside, and
+     * settings copies that disagreed. Each is tried again now - the keystore may answer today - and
+     * the ones that read are offered to databases set aside as unreadable (DbEncryption). Files
+     * older than [keepMs] are deleted, readable or not, along with the databases they'd open.
+     */
+    fun asideKeys(context: Context, keepMs: Long, now: Long = System.currentTimeMillis()): List<ByteArray> {
+        val dir = context.noBackupFilesDir
+        val files = dir.listFiles { f -> f.name.startsWith(FILE + ASIDE) && !f.name.endsWith(".tmp") } ?: return emptyList()
+        val out = ArrayList<ByteArray>()
+        for (f in files) {
+            if (now - f.lastModified() > keepMs) { f.delete(); continue }
+            try { out.add(unwrap(f.readBytes())) } catch (ignored: Exception) { /* still unreadable: next start */ }
+        }
+        return out
     }
 
     /** Test hook: forget the in-memory copy. */

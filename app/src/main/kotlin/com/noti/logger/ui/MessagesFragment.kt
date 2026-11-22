@@ -7,21 +7,21 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import android.widget.ImageView
-import androidx.appcompat.widget.PopupMenu
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
-import com.google.android.material.appbar.CollapsingToolbarLayout
-import com.google.android.material.checkbox.MaterialCheckBox
-import com.google.android.material.color.MaterialColors
+import androidx.appcompat.widget.PopupMenu
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import android.widget.EditText
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.appbar.CollapsingToolbarLayout
+import com.google.android.material.checkbox.MaterialCheckBox
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.noti.logger.R
 import com.noti.logger.config.Settings
@@ -29,16 +29,16 @@ import com.noti.logger.data.ConversationSummary
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.util.Avatars
 import com.noti.logger.util.ChatTime
-import com.noti.sender.util.Haptics
 import com.noti.logger.util.Motion
 import com.noti.logger.util.SoftItemAnimator
+import com.noti.sender.util.Haptics
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.concurrent.TimeUnit
 
 /** Last-known unfiltered conversation list, kept warm across tab switches - MainActivity recreates
  *  this Fragment on every switch, so without this, returning to Messages would show an empty list
@@ -177,8 +177,10 @@ class MessagesFragment : Fragment(R.layout.fragment_messages) {
     private fun observeConversations() {
         val query = search.text?.toString().orEmpty().trim()
         listJob?.cancel()
+        val app = requireContext().applicationContext
         listJob = viewLifecycleOwner.lifecycleScope.launch {
-            val dao = NotiDatabase.get(requireContext()).relayedMessageDao()
+            // The first open of the database (key, file checks) never on the main thread.
+            val dao = withContext(Dispatchers.IO) { NotiDatabase.get(app).relayedMessageDao() }
             val flow = if (query.isEmpty()) dao.conversationsFlow() else dao.searchConversationsFlow(query)
             flow.map { list ->
                 // Read the muted set once per emission instead of decrypting it per row in onBind.

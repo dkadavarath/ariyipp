@@ -10,6 +10,12 @@ import com.noti.logger.config.TriggerMode
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.NotificationEntity
 import com.noti.logger.work.UploadWorker
+import java.io.ByteArrayOutputStream
+import java.net.ServerSocket
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.zip.GZIPInputStream
+import kotlin.concurrent.thread
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -17,12 +23,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.ByteArrayOutputStream
-import java.net.ServerSocket
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import java.util.zip.GZIPInputStream
-import kotlin.concurrent.thread
 
 /**
  * Full upload pipeline E2E on-device: real Room DB + real Settings + real UploadWorker +

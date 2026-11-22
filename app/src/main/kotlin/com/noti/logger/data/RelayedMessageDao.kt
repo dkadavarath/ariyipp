@@ -170,6 +170,10 @@ interface RelayedMessageDao {
     @Query("SELECT COUNT(*) FROM relayed_messages WHERE dedupe = :key")
     fun countByDedupe(key: String): Int
 
+    /** A page of every stored message after row [afterId], by id (for streaming a backup). */
+    @Query("SELECT * FROM relayed_messages WHERE id > :afterId ORDER BY id ASC LIMIT :limit")
+    fun messagesAfterId(afterId: Long, limit: Int): List<RelayedMessageEntity>
+
     /** Every stored message (for export/backup). */
     @Query("SELECT * FROM relayed_messages ORDER BY receivedAt ASC, id ASC")
     fun allMessages(): List<RelayedMessageEntity>

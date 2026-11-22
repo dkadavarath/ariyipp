@@ -165,30 +165,36 @@ You'll import two files, which do different jobs:
 ### 2. Get the service-account key
 
 The service-account key is what lets a phone **send** a push (compose a message, forward an SMS);
-`google-services.json` only lets a phone *receive* one. It's a standard
-[Google Cloud service account](https://cloud.google.com/iam/docs/service-account-overview): a
-non-human identity Firebase creates automatically for every project, scoped to that project's
-Admin SDK APIs (which includes sending FCM messages via the HTTP v1 API ariyipp uses).
+`google-services.json` only lets a phone *receive* one. It's the key of a
+[Google Cloud service account](https://cloud.google.com/iam/docs/service-account-overview), a
+non-human identity in your project. The phones only ever use it to send FCM messages, so give it
+a service account that can do that and nothing else.
 
-1. In the [Firebase console](https://console.firebase.google.com), open your project, then
-   **⚙️ (the gear icon next to "Project Overview") → Project settings → Service accounts**.
-2. You'll see a **Firebase Admin SDK** panel with a service account already listed, something like
-   `firebase-adminsdk-xxxxx@<your-project-id>.iam.gserviceaccount.com`. That's expected; Firebase
-   creates it automatically per project, you don't create your own. Click **Generate new private
-   key**, then confirm with **Generate key** in the dialog that follows.
-3. A JSON file downloads immediately. That file **is** the service-account key. See
-   [Add the Firebase Admin SDK to your server](https://firebase.google.com/docs/admin/setup#initialize-sdk)
-   for the full reference on this file's format and what it grants (ariyipp reads the same file, it
-   just runs the calls from the phone instead of a server).
-4. **Treat this file like a password.** Anyone holding it can send push messages as your project,
-   though not read your messages, since ariyipp's own AES-256-GCM encryption (not this key) is what
-   protects message content; this key only proves the *sender's* identity to Google. If you ever
-   suspect it's leaked, come back to this same **Service accounts** tab and generate a new one; the
-   old key can be individually revoked from
-   [Google Cloud Console → IAM & Admin → Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts)
-   (open the service account, **Keys** tab) without affecting the app; just re-import the new key on
-   both phones afterward.
-5. Confirm the send API is actually enabled: still in **Project settings**, open the **Cloud
+Don't use the **Firebase Admin SDK** account that Firebase lists under Project settings → Service
+accounts (`firebase-adminsdk-xxxxx@...`). It is set up for a server running the whole Admin SDK
+and can read and change much more of your project than push messages, and its key would sit on
+two phones.
+
+1. Open [Google Cloud Console → IAM & Admin → Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts)
+   and pick your Firebase project at the top.
+2. Click **Create service account**. Name it something like `ariyipp-push`, then **Create and
+   continue**.
+3. Under **Grant this service account access to project**, choose the role **Firebase Cloud
+   Messaging API Admin** (`roles/firebasecloudmessaging.admin`). That's the only role it needs.
+   Click **Continue**, then **Done**.
+4. Open the new account, go to the **Keys** tab, and choose **Add key → Create new key → JSON**. A
+   JSON file downloads: that file **is** the service-account key you import on both phones.
+5. **Treat this file like a password.** Anyone holding it can send push messages as your project,
+   though not read your messages: ariyipp's own AES-256-GCM encryption (not this key) protects
+   message content, and this key only proves the *sender's* identity to Google. If you ever suspect
+   it's leaked, delete the key on the same **Keys** tab, create a new one, and import it on both
+   phones.
+
+Already set up with the Firebase Admin SDK key? It keeps working. To switch, create the account
+above, import its key on both phones, then delete the old key from the `firebase-adminsdk`
+account's **Keys** tab.
+
+6. Confirm the send API is actually enabled: in the Firebase console's **Project settings**, open the **Cloud
    Messaging** tab and check that **Firebase Cloud Messaging API (V1)** shows **Enabled**. New
    projects have it on by default. If it shows disabled, click that row's **Manage API in Google
    Cloud Console** link and enable it there (see Google's

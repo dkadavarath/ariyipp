@@ -18,20 +18,29 @@ object SmsInbox {
     )
 
     /**
-     * What a relay leg still has to send: rows past [markId], plus the row *at* [markId] when it is
-     * newer than [markDate] - the newest SMS was deleted and the next one reused its id, so `>`
-     * alone would skip it for good. Oldest first.
+     * What a relay leg still has to send: rows past [markId], and rows received after [markDate]
+     * whatever their id. The provider reuses the ids of deleted newest rows: relay 98-100, delete
+     * them (old OTPs, say), and the next SMS are 98 and 99 - below the mark, so `> markId` alone
+     * never sent them. Ordered by when they arrived.
      */
     fun pending(context: Context, markId: Long, markDate: Long): List<CapturedSms> {
-        val after = since(context, markId)
-        if (markDate <= 0 || markId <= 0) return after
-        val atMark = query(context, "${Telephony.Sms._ID} = ?", arrayOf(markId.toString())).firstOrNull()
-        return if (isReused(atMark, markDate)) listOf(atMark!!) + after else after
+        if (markDate <= 0) return since(context, markId)
+        return query(
+            context, "${Telephony.Sms._ID} > ? OR ${Telephony.Sms.DATE} > ?",
+            arrayOf(markId.toString(), markDate.toString()),
+            order = "${Telephony.Sms.DATE} ASC, ${Telephony.Sms._ID} ASC",
+        )
     }
 
-    /** True when the row now at the mark is a different, newer message than the one relayed. Pure. */
-    fun isReused(atMark: CapturedSms?, markDate: Long): Boolean =
-        atMark != null && markDate > 0 && atMark.receivedMillis > markDate
+    /** Whether [sms] is still to send for a leg at ([markId], [markDate]) - the test [pending]
+     *  asks the provider. Pure. */
+    fun isPending(sms: CapturedSms, markId: Long, markDate: Long): Boolean =
+        sms.id > markId || (markDate > 0 && sms.receivedMillis > markDate)
+
+    /** The leg's mark after [sms] went: both parts only ever move forward, so sending a reused
+     *  (lower) id doesn't pull the id back and resend everything above it. Pure. */
+    fun advance(markId: Long, markDate: Long, sms: CapturedSms): Pair<Long, Long> =
+        maxOf(markId, sms.id) to maxOf(markDate, sms.receivedMillis)
 
     /** The highest `_id` received before [dateMs] (0 if none): a repush from here covers every SMS
      *  received at or after [dateMs]. */
@@ -51,7 +60,12 @@ object SmsInbox {
     fun since(context: Context, sinceId: Long): List<CapturedSms> =
         query(context, "${Telephony.Sms._ID} > ?", arrayOf(sinceId.toString()))
 
-    private fun query(context: Context, selection: String, args: Array<String>): List<CapturedSms> {
+    private fun query(
+        context: Context,
+        selection: String,
+        args: Array<String>,
+        order: String = "${Telephony.Sms._ID} ASC",
+    ): List<CapturedSms> {
         val out = ArrayList<CapturedSms>()
         // SIM labels resolved once per subscription, not per row: simLabel() ends in an
         // EncryptedSharedPreferences read (simName), which would otherwise decrypt 1-2 times
@@ -60,7 +74,7 @@ object SmsInbox {
         val cursor = context.contentResolver.query(
             Telephony.Sms.Inbox.CONTENT_URI, COLUMNS,
             selection, args,
-            "${Telephony.Sms._ID} ASC",
+            order,
         ) ?: return out
         cursor.use { c ->
             val iId = c.getColumnIndex(Telephony.Sms._ID)
@@ -98,6 +112,10 @@ object SmsInbox {
 
     private fun simLabel(context: Context, subId: Int): String {
         if (subId < 0) return ""
+        // Naming the SIM needs to read the phone's subscriptions; without that, no name.
+        if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_PHONE_STATE) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) return ""
         return try {
             val sm = context.getSystemService(SubscriptionManager::class.java) ?: return ""
             val slot = sm.getActiveSubscriptionInfo(subId)?.simSlotIndex ?: return ""

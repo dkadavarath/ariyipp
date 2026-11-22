@@ -18,6 +18,9 @@ class SmsStatusReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val msgId = intent.getLongExtra(SmsSender.EXTRA_MSG_ID, 0)
         if (msgId <= 0) return
+        val parts = intent.getIntExtra(SmsSender.EXTRA_PARTS, 1)
+        val part = intent.getIntExtra(SmsSender.EXTRA_PART, 0)
+        val ok = resultCode == Activity.RESULT_OK
         val status = when (intent.action) {
             SmsSender.ACTION_SMS_SENT ->
                 if (resultCode == Activity.RESULT_OK) WireMessage.DeliveryAck.SMS_SENT else WireMessage.DeliveryAck.FAILED
@@ -29,10 +32,13 @@ class SmsStatusReceiver : BroadcastReceiver() {
             else -> return
         }
 
+        val action = intent.action ?: return
         val app = context.applicationContext
         val pending = goAsync()
         Thread {
             try {
+                // A long SMS reports per part: ack once, for the whole message (see SmsPartTally).
+                if (parts > 1 && !SmsPartTally.record(app, action, msgId, part, parts, ok)) return@Thread
                 SenderPipeline.pushAckToIppu(app, msgId, status)
                 Diag.log("delivery ack sent: msgId=$msgId status=$status")
             } finally {

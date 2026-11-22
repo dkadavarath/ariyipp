@@ -7,7 +7,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.noti.sender.R
 import com.noti.sender.config.SenderSettings
-import com.noti.shared.MessageCrypto
+import com.noti.shared.Envelope
 import com.noti.shared.WebhookUrlPolicy
 import com.noti.shared.Wire
 import com.noti.shared.WireMessage
@@ -23,24 +23,19 @@ import com.noti.shared.WireMessage
  */
 object WebhookConfigHandler {
 
-    const val PAYLOAD_KEY = "payload"
+    const val PAYLOAD_KEY = com.noti.shared.Envelope.PAYLOAD_KEY
 
     fun parse(context: Context, data: Map<String, String>): WireMessage.WebhookConfig? {
-        val ciphertext = data[PAYLOAD_KEY]?.takeIf { it.isNotBlank() } ?: return null
+        if (!SenderSettings.get(context).acceptRemoteConfig) return null
+        return Envelope.open(data, SenderSettings.get(context).relayKey, Wire.Direction.MAIN_TO_COMPANION)
+            ?.let { from(context, it.message) }
+    }
+
+    /** The webhook config [message] is, if it is one this phone takes (see the class doc). */
+    fun from(context: Context, message: WireMessage): WireMessage.WebhookConfig? {
         val s = SenderSettings.get(context)
         if (!s.acceptRemoteConfig) return null
-        val key = s.relayKey.takeIf { it.isNotBlank() } ?: return null
-        val plaintext = try {
-            MessageCrypto.decrypt(ciphertext, key)
-        } catch (e: Exception) {
-            return null
-        }
-        val wire = try {
-            Wire.decodeFrom(plaintext, com.noti.shared.Wire.Direction.MAIN_TO_COMPANION)
-        } catch (e: Exception) {
-            return null
-        }
-        val cfg = wire as? WireMessage.WebhookConfig ?: return null
+        val cfg = message as? WireMessage.WebhookConfig ?: return null
         // Reject a stale/replayed config: only a version newer than the last one applied can take
         // effect, so a captured older push can't roll back to a stale URL or auth token.
         if (cfg.configVersion <= s.lastWebhookConfigVersion) return null

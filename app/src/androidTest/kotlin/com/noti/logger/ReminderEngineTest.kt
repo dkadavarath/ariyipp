@@ -14,6 +14,8 @@ import com.noti.logger.reminder.ParkingTracker
 import com.noti.logger.reminder.ReminderPolicy
 import com.noti.logger.reminder.ReminderScanner
 import com.noti.logger.reminder.ReminderScheduler
+import java.time.LocalDate
+import java.time.LocalDateTime
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -21,8 +23,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.time.LocalDate
-import java.time.LocalDateTime
 
 /**
  * The reminder engine end to end on the device database: the scanner's bill and payment paths,
@@ -71,6 +71,7 @@ class ReminderEngineTest {
     private fun wipe() {
         db.billOccurrenceDao().deleteAll()
         db.reminderRuleDao().deleteAll()
+        com.noti.logger.reminder.ReminderTrigger.invalidateWatched()
         db.parkingSessionDao().deleteAll()
         db.relayedMessageDao().deleteConversation(sender)
     }
@@ -91,6 +92,15 @@ class ReminderEngineTest {
         sms("Statement card 9876: total Rs 340.50 due by 5-Mar-2027")
         rescan()
         assertEquals(setOf(1200.0, 340.5), bills().mapNotNull { it.amount }.toSet())
+    }
+
+    @Test fun a_reminder_leading_with_the_minimum_due_is_the_same_bill() {
+        db.reminderRuleDao().insert(card())
+        sms("Statement: total Rs 18,402.75 due by 5-Mar-2027")
+        sms("Statement reminder: Rs 920.00 min due of total 18,402.75 due by 5-Mar-2027")
+        rescan()
+        val bill = bills().single()
+        assertEquals("the amount read first stays", 18402.75, bill.amount!!, 0.001)
     }
 
     @Test fun a_rescan_keeps_what_you_corrected_and_fills_the_rest() {
@@ -165,6 +175,22 @@ class ReminderEngineTest {
         // A rebuild doesn't arm it again.
         ReminderScheduler.rebuildAll(ctx)
         assertEquals(s.remindAt, db.parkingSessionDao().byId(s.id)!!.rangFor)
+    }
+
+    @Test fun an_ongoing_countdown_is_kept_only_when_what_the_rule_reads_changes() {
+        db.reminderRuleDao().insert(ReminderRuleEntity(
+            name = "Park app", type = "PARKING", source = "NOTIFICATION", sourcePackage = "com.example.park",
+            matchPattern = "Parking", zonePattern = """Zone (\w+)""", expiryPattern = """until (\d{1,2}:\d{2})""",
+            dateFormat = "H:mm",
+        ))
+        com.noti.logger.reminder.ReminderTrigger.invalidateWatched()
+        val sig = { text: String -> com.noti.logger.reminder.ReminderTrigger.ongoingSignature(ctx, "com.example.park", text) }
+        val first = sig("Parking Zone A1 until 14:30 - 23 min left")
+        assertTrue(first != null)
+        assertEquals("a countdown tick is the same", first, sig("Parking Zone A1 until 14:30 - 22 min left"))
+        assertTrue("a renewal is new", first != sig("Parking Zone A1 until 15:30 - 82 min left"))
+        assertEquals("not the rule's at all", null, sig("Now playing: a song"))
+        assertEquals("another app", null, com.noti.logger.reminder.ReminderTrigger.ongoingSignature(ctx, "com.other", "Parking Zone A1 until 14:30"))
     }
 
     // ---- Scheduler ----

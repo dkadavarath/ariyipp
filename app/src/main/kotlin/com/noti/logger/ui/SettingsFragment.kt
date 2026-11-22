@@ -4,7 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -81,11 +80,17 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
     private fun purge() {
         val ctx = requireContext().applicationContext
-        val retDays = Settings.get(ctx).retentionDays
-        val cutoff = System.currentTimeMillis() - retDays * 86_400_000L
-        val dao = NotiDatabase.get(ctx).notificationDao()
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val deleted = dao.purgeUploadedOlderThan(cutoff)
+            val settings = Settings.get(ctx)
+            val dao = NotiDatabase.get(ctx).notificationDao()
+            // With a webhook, only rows already uploaded go (the rest are still owed to it). With
+            // none, nothing is ever marked uploaded, so that purge deleted nothing: rows go by age,
+            // keeping at least a day for reminder rules, as capture's own pruning does.
+            val deleted = if (settings.webhookUrl.isBlank()) {
+                dao.purgeOlderThan(System.currentTimeMillis() - settings.retentionDays.coerceAtLeast(1) * 86_400_000L)
+            } else {
+                dao.purgeUploadedOlderThan(System.currentTimeMillis() - settings.retentionDays * 86_400_000L)
+            }
             withContext(Dispatchers.Main) {
                 Toast.makeText(ctx, getString(R.string.purge_result, deleted), Toast.LENGTH_SHORT).show()
             }

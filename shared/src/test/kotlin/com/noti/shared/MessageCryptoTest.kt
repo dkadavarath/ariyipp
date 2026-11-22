@@ -1,9 +1,5 @@
 package com.noti.shared
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertThrows
-import org.junit.Test
 import java.io.ByteArrayOutputStream
 import java.security.GeneralSecurityException
 import java.security.SecureRandom
@@ -12,6 +8,10 @@ import java.util.zip.GZIPOutputStream
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertThrows
+import org.junit.Test
 
 class MessageCryptoTest {
 

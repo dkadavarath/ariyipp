@@ -2,7 +2,7 @@ package com.noti.sender.sms
 
 import android.content.Context
 import com.noti.sender.config.SenderSettings
-import com.noti.shared.MessageCrypto
+import com.noti.shared.Envelope
 import com.noti.shared.Wire
 import com.noti.shared.WireMessage
 
@@ -13,19 +13,9 @@ import com.noti.shared.WireMessage
  */
 object HubTokenHandler {
 
-    fun parse(context: Context, data: Map<String, String>): WireMessage.Token? {
-        val ciphertext = data[HeartbeatHandler.PAYLOAD_KEY]?.takeIf { it.isNotBlank() } ?: return null
-        val key = SenderSettings.get(context).relayKey.takeIf { it.isNotBlank() } ?: return null
-        val plaintext = try {
-            MessageCrypto.decrypt(ciphertext, key)
-        } catch (e: Exception) {
-            return null
-        }
-        val wire = try {
-            Wire.decodeFrom(plaintext, com.noti.shared.Wire.Direction.MAIN_TO_COMPANION)
-        } catch (e: Exception) {
-            return null
-        }
-        return (wire as? WireMessage.Token)?.takeIf { it.endpoint.isNotBlank() }
-    }
+    fun parse(context: Context, data: Map<String, String>): WireMessage.Token? =
+        Envelope.open(data, SenderSettings.get(context).relayKey, Wire.Direction.MAIN_TO_COMPANION)?.let { from(it.message) }
+
+    /** The endpoint announcement [message] is, if it is one with an endpoint. */
+    fun from(message: WireMessage): WireMessage.Token? = (message as? WireMessage.Token)?.takeIf { it.endpoint.isNotBlank() }
 }

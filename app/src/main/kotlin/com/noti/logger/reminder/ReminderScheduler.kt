@@ -4,7 +4,6 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import com.noti.logger.config.Settings
 import com.noti.logger.data.NotiDatabase
 import com.noti.shared.Diag

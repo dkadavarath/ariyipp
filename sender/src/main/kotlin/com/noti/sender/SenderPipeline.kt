@@ -2,17 +2,17 @@ package com.noti.sender
 
 import android.content.Context
 import com.noti.sender.config.SenderSettings
+import com.noti.sender.net.WebhookPoster
+import com.noti.sender.sms.CapturedSms
 import com.noti.shared.Diag
+import com.noti.shared.Envelope
 import com.noti.shared.FcmLabel
 import com.noti.shared.FcmSendResult
 import com.noti.shared.FcmSender
-import com.noti.sender.net.WebhookPoster
-import com.noti.sender.sms.CapturedSms
-import com.noti.shared.MessageCrypto
-import com.noti.shared.Wire
-import com.noti.shared.WireMessage
 import com.noti.shared.UploadBatch
 import com.noti.shared.UploadItem
+import com.noti.shared.Wire
+import com.noti.shared.WireMessage
 import com.noti.shared.epochMillisToIso
 
 /**
@@ -32,7 +32,7 @@ object SenderPipeline {
 
     /** The encrypted FCM data payload for ippu: AES-GCM over the serialized wire message. */
     fun encryptForFcm(message: WireMessage, keyBase64: String): String =
-        MessageCrypto.encrypt(Wire.encodeFor(message, com.noti.shared.Wire.Direction.COMPANION_TO_MAIN), keyBase64)
+        Envelope.seal(message, Wire.Direction.COMPANION_TO_MAIN, keyBase64)
 
     /**
      * FCM v1 caps a data message at 4096 bytes, and our envelope (token ~150-250 chars + JSON
@@ -94,6 +94,8 @@ object SenderPipeline {
             body = sms.body,
             dedupe = dedupeKey(sms),
             time = sms.receivedMillis,
+            from = sms.from,
+            sim = sms.sim,
         )
 
     /** Content key ippu uses as a secondary dedup (e.g. against the full repush). */
@@ -148,7 +150,8 @@ object SenderPipeline {
 
     /** Encrypted FCM push of one SMS to ippu. Logs a reason only on failure (quiet on success).
      *  Bodies too large for one FCM data message are sent as part-relays (see [encryptedPayloads]);
-     *  the send stops at the first failed leg so retries re-send from that part. */
+     *  the send stops at the first failed leg, and a retry sends every part again from the first -
+     *  harmless, Main keeps one copy of each part by its index (see RelayParts). */
     fun pushToIppu(context: Context, sms: CapturedSms): SendOutcome {
         val s = SenderSettings.get(context)
         if (!isConfigured(s)) return SendOutcome.NOT_CONFIGURED
@@ -183,7 +186,7 @@ object SenderPipeline {
             return SendOutcome.NOT_CONFIGURED
         }
         return try {
-            val payload = MessageCrypto.encrypt(Wire.encodeFor(WireMessage.Token(s.myFcmToken), com.noti.shared.Wire.Direction.COMPANION_TO_MAIN), s.relayKey)
+            val payload = Envelope.seal(WireMessage.Token(s.myFcmToken), Wire.Direction.COMPANION_TO_MAIN, s.relayKey)
             val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload), label = FcmLabel.TOKEN_TO_MAIN)
             when {
                 res.ok -> { Diag.log("endpoint announced to main (id ${FcmLabel.messageId(res.detail)})"); SendOutcome.DELIVERED }
@@ -206,7 +209,7 @@ object SenderPipeline {
             return SendOutcome.NOT_CONFIGURED
         }
         return try {
-            val payload = MessageCrypto.encrypt(Wire.encodeFor(WireMessage.DeliveryAck(msgId, status, reason.take(200)), com.noti.shared.Wire.Direction.COMPANION_TO_MAIN), s.relayKey)
+            val payload = Envelope.seal(WireMessage.DeliveryAck(msgId, status, reason.take(200)), Wire.Direction.COMPANION_TO_MAIN, s.relayKey)
             val res = fcmSender(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload), label = FcmLabel.ACK)
             when {
                 res.ok -> SendOutcome.DELIVERED

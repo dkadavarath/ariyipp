@@ -66,14 +66,12 @@ class KeepAliveService : Service() {
     }
 
     private fun ensureChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val mgr = getSystemService(NotificationManager::class.java)
-            if (mgr.getNotificationChannel(CHANNEL) == null) {
-                mgr.createNotificationChannel(
-                    NotificationChannel(CHANNEL, "Relay running", NotificationManager.IMPORTANCE_LOW)
-                        .apply { description = "Keeps SMS forwarding alive in the background" }
-                )
-            }
+        val mgr = getSystemService(NotificationManager::class.java)
+        if (mgr.getNotificationChannel(CHANNEL) == null) {
+            mgr.createNotificationChannel(
+                NotificationChannel(CHANNEL, "Relay running", NotificationManager.IMPORTANCE_LOW)
+                    .apply { description = "Keeps SMS forwarding alive in the background" }
+            )
         }
     }
 

@@ -52,15 +52,27 @@ class RelayHardeningTest {
     private fun sms(id: Long, at: Long) = CapturedSms("+1", "x", at, at, "", id)
 
     @Test
-    fun `a newer message at the mark id is a reused id`() {
-        assertTrue(SmsInbox.isReused(sms(7, 2_000), markDate = 1_000))
+    fun `reused ids below the mark are still sent`() {
+        // 98-100 relayed (mark 100 at time 1000), then deleted; the next SMS reuse 98 and 99.
+        assertTrue(SmsInbox.isPending(sms(98, 2_000), markId = 100, markDate = 1_000))
+        assertTrue(SmsInbox.isPending(sms(99, 2_100), markId = 100, markDate = 1_000))
+        assertTrue(SmsInbox.isPending(sms(100, 2_200), markId = 100, markDate = 1_000))
     }
 
     @Test
-    fun `the relayed message itself at the mark is not reused`() {
-        assertFalse(SmsInbox.isReused(sms(7, 1_000), markDate = 1_000))
-        assertFalse(SmsInbox.isReused(null, markDate = 1_000))
-        assertFalse(SmsInbox.isReused(sms(7, 2_000), markDate = 0)) // unknown: old behaviour
+    fun `what was relayed is not sent again`() {
+        assertFalse(SmsInbox.isPending(sms(100, 1_000), markId = 100, markDate = 1_000))
+        assertFalse(SmsInbox.isPending(sms(97, 900), markId = 100, markDate = 1_000))
+        // No date known (an old install): ids only, the old behaviour.
+        assertFalse(SmsInbox.isPending(sms(99, 2_000), markId = 100, markDate = 0))
+        assertTrue(SmsInbox.isPending(sms(101, 0), markId = 100, markDate = 0))
+    }
+
+    @Test
+    fun `the mark only moves forward`() {
+        // Sending reused id 98 doesn't pull the mark back to 98 (which would resend 99 and 100).
+        assertEquals(100L to 2_000L, SmsInbox.advance(100, 1_000, sms(98, 2_000)))
+        assertEquals(101L to 2_000L, SmsInbox.advance(100, 2_000, sms(101, 1_500)))
     }
 
     // ---- Catch-up window ----

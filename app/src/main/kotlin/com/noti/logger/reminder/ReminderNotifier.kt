@@ -41,10 +41,21 @@ object ReminderNotifier {
     /** "I matched a message but couldn't read the zone or the time - please fill it in." */
     const val CHANNEL_ATTENTION = "reminder_attention"
 
-    /** Notification ids are derived from row ids so each reminder replaces only itself. */
-    private const val BILL_BASE = 51_000
-    private const val PARKING_BASE = 52_000
-    private const val ATTENTION_BASE = 53_000
+    /** Notification ids are derived from row ids so each reminder replaces only itself. Each kind
+     *  has a range of its own, above the relayed messages' (MessageNotifier: 100,000 up to about
+     *  1.0 billion): with 1,000 apart, bill 1,001 took parking session 1's id and replaced it. */
+    private const val BILL_BASE = 1_100_000_000
+    private const val PARKING_BASE = 1_400_000_000
+    private const val ATTENTION_BASE = 1_700_000_000
+    private const val SPAN = 300_000_000L
+
+    /** The id offset a reminder had before v1.46 (base + id), for one still showing from then;
+     *  only below 1,000, where that scheme's ranges didn't run into each other. */
+    private fun legacy(id: Long): Int? = id.takeIf { it in 0 until 1_000 }?.toInt()
+
+    private fun billNid(id: Long) = BILL_BASE + (id % SPAN).toInt()
+    private fun parkingNid(id: Long) = PARKING_BASE + (id % SPAN).toInt()
+    private fun attentionNid(id: Long) = ATTENTION_BASE + (id % SPAN).toInt()
 
     fun ensureChannels(context: Context) {
         val mgr = context.getSystemService(NotificationManager::class.java) ?: return
@@ -96,7 +107,7 @@ object ReminderNotifier {
         ensureChannels(context)
         val body = listOf(amountLine, dueLine).filter { it.isNotBlank() }.joinToString(" · ")
         post(
-            context, BILL_BASE + billId.toInt(), CHANNEL_BILLS, name, body,
+            context, billNid(billId), CHANNEL_BILLS, name, body,
             openTab(context, "bill:$billId"), NotificationCompat.CATEGORY_REMINDER,
         )
     }
@@ -134,7 +145,7 @@ object ReminderNotifier {
             .setAutoCancel(false)
             .build()
         try {
-            NotificationManagerCompat.from(context).notify(PARKING_BASE + sessionId.toInt(), note)
+            NotificationManagerCompat.from(context).notify(parkingNid(sessionId), note)
         } catch (e: SecurityException) {
             // POST_NOTIFICATIONS not granted - the Reminders tab still shows the session.
         }
@@ -157,19 +168,25 @@ object ReminderNotifier {
     fun showNeedsDetails(context: Context, sessionId: Long, name: String, missing: String) {
         ensureChannels(context)
         post(
-            context, ATTENTION_BASE + sessionId.toInt(), CHANNEL_ATTENTION,
+            context, attentionNid(sessionId), CHANNEL_ATTENTION,
             context.getString(R.string.rm_attention_title, name),
             context.getString(R.string.rm_attention_body, missing),
             openTab(context, "parking:$sessionId"), NotificationCompat.CATEGORY_REMINDER,
         )
     }
 
-    fun cancelBill(context: Context, billId: Long) =
-        NotificationManagerCompat.from(context).cancel(BILL_BASE + billId.toInt())
+    fun cancelBill(context: Context, billId: Long) {
+        NotificationManagerCompat.from(context).cancel(billNid(billId))
+        legacy(billId)?.let { NotificationManagerCompat.from(context).cancel(51_000 + it) }
+    }
 
     fun cancelParking(context: Context, sessionId: Long) {
-        NotificationManagerCompat.from(context).cancel(PARKING_BASE + sessionId.toInt())
-        NotificationManagerCompat.from(context).cancel(ATTENTION_BASE + sessionId.toInt())
+        NotificationManagerCompat.from(context).cancel(parkingNid(sessionId))
+        NotificationManagerCompat.from(context).cancel(attentionNid(sessionId))
+        legacy(sessionId)?.let {
+            NotificationManagerCompat.from(context).cancel(52_000 + it)
+            NotificationManagerCompat.from(context).cancel(53_000 + it)
+        }
     }
 
     private fun post(

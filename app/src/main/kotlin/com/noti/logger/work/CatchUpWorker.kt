@@ -12,14 +12,14 @@ import androidx.work.WorkerParameters
 import com.noti.logger.config.Settings
 import com.noti.logger.data.NotiDatabase
 import com.noti.shared.Diag
+import com.noti.shared.Envelope
 import com.noti.shared.FcmLabel
 import com.noti.shared.FcmSender
-import com.noti.shared.MessageCrypto
 import com.noti.shared.Wire
 import com.noti.shared.WireMessage
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.concurrent.TimeUnit
 
 /**
  * Main → companion: asks for the SMS since the newest one this phone holds. Run when FCM reports
@@ -35,7 +35,7 @@ class CatchUpWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         val newest = NotiDatabase.get(applicationContext).relayedMessageDao().newestIncomingAt()
         val since = sinceFor(newest)
         try {
-            val payload = MessageCrypto.encrypt(Wire.encodeFor(WireMessage.CatchUp(since), com.noti.shared.Wire.Direction.MAIN_TO_COMPANION), s.relayKey)
+            val payload = Envelope.seal(WireMessage.CatchUp(since), Wire.Direction.MAIN_TO_COMPANION, s.relayKey)
             val res = FcmSender.forServiceAccount(s.serviceAccountJson)
                 .send(s.sndiFcmToken, mapOf("payload" to payload), label = FcmLabel.CATCH_UP)
             when {

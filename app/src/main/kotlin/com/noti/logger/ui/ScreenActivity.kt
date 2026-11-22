@@ -8,8 +8,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.noti.logger.R
-import com.noti.sender.util.Haptics
 import com.noti.logger.util.Theming
+import com.noti.sender.util.Haptics
 
 /**
  * Base for the settings sub-screens: applies the Material You color choice, standard up-navigation,

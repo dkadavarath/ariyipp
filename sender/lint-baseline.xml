@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 9.5.0" type="baseline" client="gradle" dependencies="false" name="AGP (9.5.0)" variant="all" version="9.5.0">
+
+    <issue
+        id="InlinedApi"
+        message="Field requires API level 33 (current min is 26): `android.Manifest.permission#POST_NOTIFICATIONS`"
+        errorLine1="                    Manifest.permission.POST_NOTIFICATIONS.takeIf { android.os.Build.VERSION.SDK_INT >= 33 },"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/ui/StatusFragment.kt"
+            line="42"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="PluralsCandidate"
+        message="Formatting %d followed by words (&quot;sent&quot;): This should probably be a plural rather than a string"
+        errorLine1="    &lt;string name=&quot;repush_note_done&quot;>Repush complete - %1$d sent&lt;/string>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="32"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="PluralsCandidate"
+        message="Formatting %d followed by words (&quot;failed&quot;): This should probably be a plural rather than a string"
+        errorLine1="    &lt;string name=&quot;repush_note_failed_suffix&quot;> (%1$d failed)&lt;/string>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="33"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="This folder configuration (`v26`) is unnecessary; `minSdkVersion` is 26. Merge all the resources in this folder into `mipmap-anydpi`.">
+        <location
+            file="src/main/res/mipmap-anydpi-v26"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX function `createBitmap` instead?"
+        errorLine1="        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565)"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/ui/QrCodes.kt"
+            line="14"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Bitmap.set` instead?"
+        errorLine1="                bmp.setPixel(x, y, if (matrix[x, y]) Color.BLACK else Color.WHITE)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/ui/QrCodes.kt"
+            line="17"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs.edit().putString(KEY_SA_JSON, value).apply()"
+        errorLine2="            ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/config/SenderSettings.kt"
+            line="34"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            val edit = prefs.edit().putString(KEY_RELAY_KEY, trimmed)"
+        errorLine2="                       ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/config/SenderSettings.kt"
+            line="56"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs.edit().putString(KEY_NOTI_TOKEN, trimmed).apply()"
+        errorLine2="            ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/config/SenderSettings.kt"
+            line="78"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(value) { prefs.edit().putString(KEY_N8N_URL, value.trim()).apply() }"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/config/SenderSettings.kt"
+            line="103"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(value) { prefs.edit().putString(KEY_SIM1_NAME, value.trim()).apply() }"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/config/SenderSettings.kt"
+            line="117"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(value) { prefs.edit().putString(KEY_SIM2_NAME, value.trim()).apply() }"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/config/SenderSettings.kt"
+            line="121"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(value) { prefs.edit().putString(KEY_THEME_MODE, value.name).apply() }"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/config/SenderSettings.kt"
+            line="137"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(value) { prefs.edit().putInt(KEY_SEND_LIMIT_HOUR, value.coerceIn(1, 1000)).apply() }"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/config/SenderSettings.kt"
+            line="156"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(value) { prefs.edit().putInt(KEY_SEND_LIMIT_DAY, value.coerceIn(1, 10_000)).apply() }"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/config/SenderSettings.kt"
+            line="160"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(value) { prefs.edit().putString(KEY_SEND_TIMES, value.joinToString(&quot;,&quot;)).apply() }"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/config/SenderSettings.kt"
+            line="165"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(value) { prefs.edit().putString(KEY_RECENT_COMMANDS, value.entries.joinToString(&quot;,&quot;) { &quot;${it.key}:${it.value}&quot; }).commit() }"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/config/SenderSettings.kt"
+            line="178"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs.edit().putLong(KEY_NOTI_TOKEN_SENT_AT, value.sentAt).putLong(KEY_NOTI_TOKEN_SEEN_AT, value.seenAt)"
+        errorLine2="            ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/config/SenderSettings.kt"
+            line="220"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs.edit().putLong(KEY_PEER_STAMP_SENT_AT, value.sentAt).putLong(KEY_PEER_STAMP_SEEN_AT, value.seenAt)"
+        errorLine2="            ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/config/SenderSettings.kt"
+            line="230"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(value) { prefs.edit().putInt(KEY_STATUS_BATTERY_PCT, DeviceStatusPolicy.clampBatteryPct(value)).apply() }"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/config/SenderSettings.kt"
+            line="280"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(value) { prefs.edit().putInt(KEY_STATUS_WIFI_MIN, DeviceStatusPolicy.clampWifiLossMinutes(value)).apply() }"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/config/SenderSettings.kt"
+            line="285"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(value) { prefs.edit().putInt(KEY_STATUS_POLL_SEC, DeviceStatusPolicy.clampPollSeconds(value)).apply() }"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/config/SenderSettings.kt"
+            line="290"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="                    ?: UUID.randomUUID().toString().also { prefs.edit().putString(KEY_DEVICE_ID, it).apply() }"
+        errorLine2="                                                           ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/config/SenderSettings.kt"
+            line="317"
+            column="60"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/sms/SmsPartTally.kt"
+            line="21"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        val edit = prefs.edit()"
+        errorLine2="                   ~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/sms/SmsPartTally.kt"
+            line="38"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                    .setData(Uri.parse(&quot;package:${requireContext().packageName}&quot;))"
+        errorLine2="                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/ui/StatusFragment.kt"
+            line="162"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Int.toDrawable` instead?"
+        errorLine1="        activity.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.BLACK))"
+        errorLine2="                                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/util/Theming.kt"
+            line="49"
+            column="48"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Number formatting does not take into account locale settings. Consider using `String.format` instead."
+        errorLine1="        perHour.setText(s.sendLimitPerHour.toString())"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/ui/SecurityActivity.kt"
+            line="24"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Number formatting does not take into account locale settings. Consider using `String.format` instead."
+        errorLine1="        perDay.setText(s.sendLimitPerDay.toString())"
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/com/noti/sender/ui/SecurityActivity.kt"
+            line="25"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="RtlEnabled"
+        message="The project references RTL attributes, but does not explicitly enable or disable RTL support with `android:supportsRtl` in the manifest">
+        <location
+            file="src/main/AndroidManifest.xml"/>
+    </issue>
+
+</issues>

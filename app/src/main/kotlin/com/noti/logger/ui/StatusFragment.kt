@@ -16,15 +16,15 @@ import com.noti.logger.R
 import com.noti.logger.config.Settings
 import com.noti.logger.push.Heartbeat
 import com.noti.logger.util.Motion
-import com.noti.sender.ui.StatusRow
-import com.noti.sender.ui.StatusRow.Tone
-import com.noti.sender.R as DesignR
 import com.noti.logger.work.HeartbeatWorker
 import com.noti.logger.work.UploadScheduler
+import com.noti.sender.R as DesignR
+import com.noti.sender.ui.StatusRow
+import com.noti.sender.ui.StatusRow.Tone
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.concurrent.TimeUnit
 
 /**
  * Last-known Status screen state, kept warm across tab switches - MainActivity recreates this
@@ -87,7 +87,8 @@ class StatusFragment : Fragment(R.layout.fragment_status) {
         }
         view.findViewById<View>(R.id.btn_ignore_battery).setOnClickListener { ignoreBatteryOptimization() }
         view.findViewById<View>(R.id.btn_sync_now).setOnClickListener {
-            UploadScheduler.enqueueOneShot(requireContext())
+            val app = requireContext().applicationContext
+            Thread { UploadScheduler.enqueueOneShot(app, manual = true) }.start()
             Toast.makeText(requireContext(), R.string.sync_enqueued, Toast.LENGTH_SHORT).show()
         }
         view.findViewById<View>(R.id.btn_hb_retry).setOnClickListener {

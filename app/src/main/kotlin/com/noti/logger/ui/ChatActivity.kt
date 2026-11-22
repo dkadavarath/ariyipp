@@ -21,13 +21,17 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.noti.logger.R
 import com.noti.logger.config.Settings
@@ -40,10 +44,6 @@ import com.noti.logger.util.ChatTime
 import com.noti.logger.util.Motion
 import com.noti.logger.util.SoftItemAnimator
 import com.noti.logger.util.Theming
-import com.google.android.material.color.MaterialColors
-import androidx.core.content.ContextCompat
-import androidx.core.graphics.ColorUtils
-import androidx.core.widget.addTextChangedListener
 import com.noti.shared.WireMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -74,6 +74,7 @@ class ChatActivity : AppCompatActivity() {
     private var colorSurfaceVariant = 0
     private var colorOnPrimary = 0
     private var colorOnSurface = 0
+
     // In-bubble timestamp colours: dimmed against each bubble fill.
     private var colorTimeOnPrimary = 0
     private var colorTimeOnSurface = 0
@@ -81,6 +82,7 @@ class ChatActivity : AppCompatActivity() {
     /** The body TextView's max width in px (set in onCreate, applied per bind) - it caps the
      *  whole bubble (see ChatBubbleLayout). */
     private var bodyMaxPx = 0
+
     // Distinct accent for a "delivered" (blue) read-receipt tick, against the outgoing bubble fill.
     private var colorTickDelivered = 0
     private lateinit var tickReceived: android.graphics.drawable.Drawable
@@ -179,10 +181,12 @@ class ChatActivity : AppCompatActivity() {
         // (user pressed Home with the chat open) silently cleared unread state for messages nobody
         // had seen. onResume's load() catches up on return; drop(1) skips the restart's replay.
         lifecycleScope.launch {
+            // The first open of the database (key, file checks) never on the main thread.
+            val dao = withContext(Dispatchers.IO) { NotiDatabase.get(this@ChatActivity).relayedMessageDao() }
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                NotiDatabase.get(this@ChatActivity).relayedMessageDao().changeToken()
+                dao.changeToken()
                     .distinctUntilChanged()
-                    .drop(1) // onCreate's/onResume's load() covers the initial state
+                    .drop(1) // onResume's load() covers the initial state
                     .collect {
                         // Refresh the whole window shown, however deep: it used to reload only the
                         // newest page (dropping its oldest row each time) or, once older pages
@@ -209,11 +213,13 @@ class ChatActivity : AppCompatActivity() {
         val sendButton = findViewById<View>(R.id.btn_send)
         sendButton.setOnClickListener { sendComposed() }
         val composeField = findViewById<android.widget.EditText>(R.id.et_compose)
+        // A reply that couldn't be sent from the notification comes back here to try again.
+        if (savedInstanceState == null) intent.getStringExtra(EXTRA_DRAFT)?.let { composeField.setText(it) }
         updateSendEnabled(sendButton, composeField.text?.isNotBlank() == true, animate = false)
         composeField.addTextChangedListener(afterTextChanged = {
             updateSendEnabled(sendButton, it?.isNotBlank() == true, animate = true)
         })
-        load()
+        // The first load is onResume's, which always follows.
     }
 
     /** The send action only reads as "live" once there's something to send: it eases up to full
@@ -260,7 +266,7 @@ class ChatActivity : AppCompatActivity() {
                     }
                 id
             }
-            load(scrollToEnd = true)
+            load(scrollToEnd = true, keepWindow = true)
             val ok = withContext(Dispatchers.IO) { NotiCommandSender.send(applicationContext, sender, text, msgId = msgId) }
             if (!ok) {
                 android.widget.Toast.makeText(this@ChatActivity, R.string.chat_send_failed, android.widget.Toast.LENGTH_SHORT).show()
@@ -271,7 +277,9 @@ class ChatActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         com.noti.sender.ui.ScreenGuard.apply(this, com.noti.sender.ui.ScreenGuard.Kind.MESSAGES)
-        load()
+        // Back from elsewhere: keep the pages scrolled back through (the first time, nothing is
+        // shown yet and this is the newest page).
+        load(keepWindow = true)
     }
 
     /** The oldest message shown, as the key for the next page and for live refreshes. */
@@ -457,8 +465,32 @@ class ChatActivity : AppCompatActivity() {
             .show()
     }
 
-    /** Hands a tapped link to whatever the user browses with. Only ever http/https - see [ChatLinks]. */
+    /**
+     * A tap on a link: say where it goes before going. Messages arrive from anyone, and a link
+     * whose text reads like your bank's can lead anywhere; the dialog names the real host.
+     */
+    private fun confirmOpenLink(url: String) {
+        val host = try { Uri.parse(url).host } catch (e: Exception) { null }
+        if (!ChatLinks.isWeb(url) || host.isNullOrBlank()) {
+            Toast.makeText(this, R.string.msg_link_failed, Toast.LENGTH_SHORT).show()
+            return
+        }
+        MaterialAlertDialogBuilder(this)
+            // In its ASCII form: a look-alike made of other alphabets' letters shows up as xn--.
+            .setTitle(getString(R.string.msg_link_confirm_title, try { java.net.IDN.toASCII(host) } catch (e: Exception) { host }))
+            .setMessage(url)
+            .setPositiveButton(R.string.msg_open_link) { _, _ -> openLink(url) }
+            .setNeutralButton(R.string.msg_copy_link) { _, _ -> copyText(url, R.string.msg_link_copied) }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    /** Hands a link to whatever the user browses with. Only ever http/https - see [ChatLinks]. */
     private fun openLink(url: String) {
+        if (!ChatLinks.isWeb(url)) {
+            Toast.makeText(this, R.string.msg_link_failed, Toast.LENGTH_SHORT).show()
+            return
+        }
         try {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
         } catch (e: Exception) {
@@ -520,7 +552,7 @@ class ChatActivity : AppCompatActivity() {
             withContext(Dispatchers.IO) {
                 NotiDatabase.get(this@ChatActivity).relayedMessageDao().deleteMessage(id)
             }
-            load()
+            load(keepWindow = true) // stay where the deleted message was
         }
     }
 
@@ -747,7 +779,7 @@ class ChatActivity : AppCompatActivity() {
             }
             false
         }
-        holder.body.setOnClickListener { ChatLinks.linkAt(holder.body, touchX, touchY)?.let { openLink(it) } }
+        holder.body.setOnClickListener { ChatLinks.linkAt(holder.body, touchX, touchY)?.let { confirmOpenLink(it) } }
         holder.body.setOnLongClickListener {
             com.noti.sender.util.Haptics.longPress(it)
             onMessageLongPress(m, ChatLinks.linkAt(holder.body, touchX, touchY))
@@ -820,6 +852,9 @@ class ChatActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_SENDER = "sender"
         const val EXTRA_HIGHLIGHT_ID = "highlight_id"
+
+        /** Text to put in the message box: an unsent notification reply. */
+        const val EXTRA_DRAFT = "draft"
 
         /** Newest-page size for the scroll-up pagination (and the stride for older pages). */
         private const val PAGE_SIZE = 300

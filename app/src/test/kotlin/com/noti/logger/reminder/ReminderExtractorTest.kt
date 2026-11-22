@@ -1,12 +1,12 @@
 package com.noti.logger.reminder
 
+import java.time.LocalDate
+import java.time.LocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.LocalDate
-import java.time.LocalDateTime
 
 class ReminderExtractorTest {
 

@@ -14,12 +14,12 @@ import com.noti.logger.R
 import com.noti.logger.backup.Backup
 import com.noti.sender.util.Haptics
 import com.noti.shared.BackupCrypto
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Encrypted backup & restore. The backup is a single passphrase-encrypted file written through the
@@ -90,8 +90,15 @@ class BackupActivity : ScreenActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             var ok = false
             val result = try {
-                val jsonText = Backup.export(applicationContext)
-                val blob = BackupCrypto.encrypt(jsonText.toByteArray(Charsets.UTF_8), pass)
+                // Written straight to bytes and encrypted from that buffer, without the copies a
+                // String in between took (see Backup.exportTo); then the plaintext is wiped.
+                val buf = PlainBuffer()
+                val blob = try {
+                    Backup.exportTo(applicationContext, buf)
+                    BackupCrypto.encrypt(buf.bytes(), 0, buf.size(), pass)
+                } finally {
+                    buf.wipe()
+                }
                 contentResolver.openOutputStream(uri)?.use { it.write(blob) }
                     ?: throw IllegalStateException("could not open file")
                 ok = true
@@ -120,7 +127,7 @@ class BackupActivity : ScreenActivity() {
         setStatus(getString(R.string.restore_working))
         lifecycleScope.launch(Dispatchers.IO) {
             val plain = try {
-                String(BackupCrypto.decrypt(blob, pass), Charsets.UTF_8)
+                BackupCrypto.decrypt(blob, pass)
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) { setStatus(""); toast(getString(R.string.restore_bad_pass)); feedback(false) }
                 return@launch
@@ -137,12 +144,12 @@ class BackupActivity : ScreenActivity() {
         }
     }
 
-    private fun applyRestore(jsonText: String) {
+    private fun applyRestore(jsonText: ByteArray) {
         setStatus(getString(R.string.restore_working))
         lifecycleScope.launch(Dispatchers.IO) {
             var ok = false
             val result = try {
-                Backup.import(applicationContext, jsonText)
+                try { Backup.import(applicationContext, jsonText) } finally { java.util.Arrays.fill(jsonText, 0.toByte()) }
                 ok = true
                 getString(R.string.restore_done)
             } catch (e: Exception) {
@@ -201,4 +208,38 @@ class BackupActivity : ScreenActivity() {
     }
 
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()
+
+    /**
+     * A byte buffer whose contents can be read without a copy and wiped after. It grows itself,
+     * zeroing each array it outgrows: ByteArrayOutputStream's own growth leaves every earlier
+     * array, plaintext and all, behind on the heap.
+     */
+    private class PlainBuffer : java.io.OutputStream() {
+        private var buf = ByteArray(1 shl 16)
+        private var count = 0
+
+        override fun write(b: Int) {
+            ensure(count + 1)
+            buf[count++] = b.toByte()
+        }
+
+        override fun write(b: ByteArray, off: Int, len: Int) {
+            ensure(count + len)
+            System.arraycopy(b, off, buf, count, len)
+            count += len
+        }
+
+        private fun ensure(needed: Int) {
+            if (needed <= buf.size) return
+            var size = buf.size
+            while (size < needed) size = if (size > Int.MAX_VALUE / 2) Int.MAX_VALUE else size * 2
+            val grown = buf.copyOf(size)
+            java.util.Arrays.fill(buf, 0.toByte())
+            buf = grown
+        }
+
+        fun bytes(): ByteArray = buf
+        fun size(): Int = count
+        fun wipe() { java.util.Arrays.fill(buf, 0.toByte()); count = 0 }
+    }
 }

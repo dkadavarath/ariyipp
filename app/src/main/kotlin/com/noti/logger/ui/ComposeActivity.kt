@@ -4,10 +4,9 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.ContactsContract
 import android.widget.EditText
-import androidx.appcompat.widget.PopupMenu
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContract
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.widget.PopupMenu
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.noti.logger.R

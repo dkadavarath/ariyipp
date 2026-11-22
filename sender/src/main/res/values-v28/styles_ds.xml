@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 9+ can pick a weight of the system font: the big titles a weight up (see
+         values/styles_ds.xml for why not "sans-serif-medium"). -->
+    <style name="TextAppearance.Noti.HeadlineMedium" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="android:letterSpacing">0</item>
+        <item name="android:textFontWeight">500</item>
+    </style>
+    <style name="TextAppearance.Noti.TitleLarge" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:letterSpacing">0</item>
+        <item name="android:textFontWeight">500</item>
+    </style>
+</resources>

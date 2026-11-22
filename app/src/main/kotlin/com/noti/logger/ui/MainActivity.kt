@@ -19,12 +19,12 @@ import com.noti.logger.R
 import com.noti.logger.config.Settings
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.util.BackToExit
-import com.noti.sender.util.Haptics
 import com.noti.logger.util.Motion
 import com.noti.logger.util.Theming
-import com.noti.shared.Role
-import com.noti.sender.ui.StatusFragment as CompanionStatusFragment
 import com.noti.sender.ui.SettingsFragment as CompanionSettingsFragment
+import com.noti.sender.ui.StatusFragment as CompanionStatusFragment
+import com.noti.sender.util.Haptics
+import com.noti.shared.Role
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

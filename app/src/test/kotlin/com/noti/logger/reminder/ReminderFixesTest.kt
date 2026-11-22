@@ -3,16 +3,16 @@ package com.noti.logger.reminder
 import com.noti.logger.data.BillOccurrenceEntity
 import com.noti.logger.data.BillOccurrenceEntity.Companion.EDITED_AMOUNT
 import com.noti.logger.data.BillOccurrenceEntity.Companion.EDITED_DUE
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
 
 /** The reminder fixes R2-R9: one test group per finding. */
 class ReminderFixesTest {

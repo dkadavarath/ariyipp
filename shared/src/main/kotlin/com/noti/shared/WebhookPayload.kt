@@ -1,8 +1,8 @@
 package com.noti.shared
 
+import java.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import java.time.Instant
 
 /**
  * The webhook wire format, shared by noti and the sender app so both POST the identical JSON shape:

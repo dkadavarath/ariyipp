@@ -18,15 +18,15 @@ import com.noti.logger.data.ReminderRuleEntity
 import com.noti.logger.reminder.ReminderScanner
 import com.noti.logger.ui.MainActivity
 import com.noti.shared.Role
+import java.io.File
+import java.time.LocalDate
+import java.time.ZoneId
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
-import java.time.LocalDate
-import java.time.ZoneId
 
 /**
  * The Reminders tab in both layouts, against the real fragment. Compact must hold every entry to

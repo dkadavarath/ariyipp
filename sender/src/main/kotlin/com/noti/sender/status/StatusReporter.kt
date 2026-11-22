@@ -2,10 +2,10 @@ package com.noti.sender.status
 
 import android.content.Context
 import com.noti.sender.config.SenderSettings
-import com.noti.shared.Diag
 import com.noti.shared.DeviceStatusPolicy
+import com.noti.shared.Diag
+import com.noti.shared.Envelope
 import com.noti.shared.FcmSender
-import com.noti.shared.MessageCrypto
 import com.noti.shared.Wire
 import com.noti.shared.WireMessage
 import kotlinx.coroutines.CoroutineScope
@@ -70,7 +70,7 @@ object StatusReporter {
         if (s.serviceAccountJson.isBlank() || s.notiFcmToken.isBlank() || s.relayKey.isBlank()) return false
         return try {
             val report = StatusCollector.snapshot(context, trigger)
-            val payload = MessageCrypto.encrypt(Wire.encodeFor(report, com.noti.shared.Wire.Direction.COMPANION_TO_MAIN), s.relayKey)
+            val payload = Envelope.seal(report, Wire.Direction.COMPANION_TO_MAIN, s.relayKey)
             val res = FcmSender.forServiceAccount(s.serviceAccountJson).send(s.notiFcmToken, mapOf("payload" to payload), label = com.noti.shared.FcmLabel.STATUS_REPORT)
             if (!res.ok) Diag.log("status → HTTP ${res.httpCode} (${res.detail.take(40)})")
             else if (WireMessage.StatusReport.isAlert(trigger)) Diag.log("status alert sent to main (trigger $trigger)")

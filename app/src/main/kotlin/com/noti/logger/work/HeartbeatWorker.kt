@@ -14,9 +14,9 @@ import androidx.work.workDataOf
 import com.noti.logger.push.Heartbeat
 import com.noti.shared.Diag
 import com.noti.shared.HeartbeatPolicy
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.concurrent.TimeUnit
 
 /**
  * Drives the liveness heartbeat. The periodic run sends a routine beat; if the peer has gone quiet

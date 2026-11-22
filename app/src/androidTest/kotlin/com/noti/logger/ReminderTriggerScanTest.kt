@@ -25,7 +25,7 @@ class ReminderTriggerScanTest {
     private val db get() = NotiDatabase.get(ctx)
     private val now = System.currentTimeMillis()
     private var savedEnabled = false
-    private val pkg = "test.trigger.${now}"
+    private val pkg = "test.trigger.$now"
 
     private val card = ReminderRuleEntity(
         name = "ICICI card", type = "BILL", source = "SMS", sourceSender = "ICICIB",

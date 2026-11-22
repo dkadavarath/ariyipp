@@ -99,15 +99,13 @@
     </style>
 
     <!-- Type: the big titles a weight up, in the system font itself (weight 500 where the platform
-         supports choosing one, Android 9+). Asking for "sans-serif-medium" instead can pull in
+         supports choosing one, Android 9+: the weight is set in values-v28). Asking for "sans-serif-medium" instead can pull in
          Roboto on phones whose system font is something else, mixing two fonts on one screen. -->
     <style name="TextAppearance.Noti.HeadlineMedium" parent="TextAppearance.Material3.HeadlineMedium">
         <item name="android:letterSpacing">0</item>
-        <item name="android:textFontWeight">500</item>
     </style>
     <style name="TextAppearance.Noti.TitleLarge" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:letterSpacing">0</item>
-        <item name="android:textFontWeight">500</item>
     </style>
 
     <!-- All text at the font's own spacing. Material 3 tracks most of its type scale out (+0.5sp

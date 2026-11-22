@@ -1,5 +1,6 @@
 package com.noti.logger.reminder
 
+import android.content.Context
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -88,10 +89,43 @@ object ReminderExtractor {
     /** How long a fallback (backtracking) pattern may spend on one message. */
     const val MATCH_BUDGET_MS = 250L
 
-    /** Patterns that ran out of time, so the editor can say which; persisted for the process. */
-    private val slow = java.util.Collections.synchronizedSet(HashSet<String>())
+    /** Patterns that ran out of time, so the editor can say which. Kept on disk ([attach]): a
+     *  runaway match can't be stopped, only abandoned, and each abandoned one keeps a thread busy
+     *  until it finishes - so a pattern is allowed to do that once per install, not once per start. */
+    private val slow = java.util.Collections.synchronizedSet(LinkedHashSet<String>())
+    private const val SLOW_PREFS = "reminder_slow_patterns"
+    private const val SLOW_KEY = "patterns"
+    private const val SLOW_KEEP = 50
+    @Volatile private var appContext: Context? = null
+    @Volatile private var prefs: android.content.SharedPreferences? = null
 
-    fun isSlow(pattern: String?): Boolean = pattern != null && pattern in slow
+    /** Remember slow patterns on disk from now on. Only stores the context: the file is read on
+     *  first use, off the main thread (matching never runs on it). Plain preferences: these are
+     *  the user's own rule patterns, already in the encrypted database. */
+    fun attach(context: Context) { appContext = context.applicationContext }
+
+    private fun loaded() {
+        if (prefs != null) return
+        val ctx = appContext ?: return
+        synchronized(slow) {
+            if (prefs != null) return
+            val p = ctx.getSharedPreferences(SLOW_PREFS, Context.MODE_PRIVATE)
+            p.getStringSet(SLOW_KEY, null)?.let { slow.addAll(it) }
+            prefs = p
+        }
+    }
+
+    private fun rememberSlow(pattern: String): Boolean {
+        val added = synchronized(slow) {
+            if (!slow.add(pattern)) return false
+            while (slow.size > SLOW_KEEP) slow.remove(slow.first())
+            true
+        }
+        if (added) prefs?.edit()?.putStringSet(SLOW_KEY, HashSet(slow))?.apply()
+        return added
+    }
+
+    fun isSlow(pattern: String?): Boolean = pattern != null && run { loaded(); pattern in slow }
 
     /** Fallback matching off the caller's thread, bounded. A runaway native match can't be
      *  stopped, only abandoned, so a slow pattern is skipped from then on rather than retried. */
@@ -100,13 +134,13 @@ object ReminderExtractor {
     }
 
     private fun <T> timed(pattern: String, block: () -> T): T? {
-        if (pattern in slow) return null
+        if (isSlow(pattern)) return null
         val f = pool.submit<T> { block() }
         return try {
             f.get(MATCH_BUDGET_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
         } catch (e: java.util.concurrent.TimeoutException) {
             f.cancel(true)
-            if (slow.add(pattern)) com.noti.shared.Diag.log("reminders: a pattern took over ${MATCH_BUDGET_MS} ms and was stopped - simplify it")
+            if (rememberSlow(pattern)) com.noti.shared.Diag.log("reminders: a pattern took over ${MATCH_BUDGET_MS} ms and was stopped - simplify it")
             null
         } catch (e: Exception) {
             null

@@ -2,7 +2,7 @@ package com.noti.sender.sms
 
 import android.content.Context
 import com.noti.sender.config.SenderSettings
-import com.noti.shared.MessageCrypto
+import com.noti.shared.Envelope
 import com.noti.shared.Wire
 import com.noti.shared.WireMessage
 
@@ -14,7 +14,7 @@ import com.noti.shared.WireMessage
  */
 object SmsCommandHandler {
 
-    const val PAYLOAD_KEY = "payload"
+    const val PAYLOAD_KEY = Envelope.PAYLOAD_KEY
 
     /** A command older than this - or claiming to be issued this far in the future - is rejected.
      *  Wide enough to tolerate real FCM/Doze delivery delay, narrow enough to bound how long a
@@ -41,23 +41,17 @@ object SmsCommandHandler {
         (check(context, data) as? Outcome.Accepted)?.cmd
 
     fun check(context: Context, data: Map<String, String>, now: Long = System.currentTimeMillis()): Outcome {
-        val ciphertext = data[PAYLOAD_KEY]?.takeIf { it.isNotBlank() } ?: return Outcome.NotCommand
+        if (!SenderSettings.get(context).acceptCommands) return Outcome.NotCommand
+        val opened = Envelope.open(data, SenderSettings.get(context).relayKey, Wire.Direction.MAIN_TO_COMPANION)
+            ?: return Outcome.NotCommand
+        return check(context, opened.message, now)
+    }
 
+    /** [check] of a push already opened (see Envelope). */
+    fun check(context: Context, message: WireMessage, now: Long = System.currentTimeMillis()): Outcome {
         val settings = SenderSettings.get(context)
         if (!settings.acceptCommands) return Outcome.NotCommand
-        val key = settings.relayKey.takeIf { it.isNotBlank() } ?: return Outcome.NotCommand
-
-        val plaintext = try {
-            MessageCrypto.decrypt(ciphertext, key)
-        } catch (e: Exception) {
-            return Outcome.NotCommand
-        }
-        val wire = try {
-            Wire.decodeFrom(plaintext, com.noti.shared.Wire.Direction.MAIN_TO_COMPANION)
-        } catch (e: Exception) {
-            return Outcome.NotCommand
-        }
-        val cmd = (wire as? WireMessage.Command)?.takeIf { it.to.isNotBlank() } ?: return Outcome.NotCommand
+        val cmd = (message as? WireMessage.Command)?.takeIf { it.to.isNotBlank() } ?: return Outcome.NotCommand
 
         // Replay protection is two checks that together leave no gap: a command older than
         // MAX_AGE_MS is refused outright, and every command accepted within RECENT_WINDOW_MS (longer

@@ -12,9 +12,9 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.noti.logger.config.Settings
 import com.noti.logger.reminder.ReminderScanner
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.concurrent.TimeUnit
 
 /**
  * Runs the rulebook on its schedule, on demand from the "Calculate now" button, and whenever a

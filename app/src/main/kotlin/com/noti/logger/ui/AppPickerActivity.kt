@@ -20,10 +20,10 @@ import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.android.material.textfield.TextInputEditText
 import com.noti.logger.R
-import com.noti.logger.util.Theming
 import com.noti.logger.util.AppIconLoader
 import com.noti.logger.util.AppInfo
 import com.noti.logger.util.InstalledApps
+import com.noti.logger.util.Theming
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 

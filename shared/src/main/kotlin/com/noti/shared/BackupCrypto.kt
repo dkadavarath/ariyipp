@@ -4,10 +4,10 @@ import java.nio.ByteBuffer
 import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
+import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
-import javax.crypto.SecretKeyFactory
 
 /**
  * Passphrase-based encryption for exported backups. A random salt derives an AES-256 key from the
@@ -37,7 +37,11 @@ object BackupCrypto {
     private const val MAX_ITERATIONS = 10_000_000
     private const val KEY_BITS = 256
 
-    fun encrypt(plaintext: ByteArray, passphrase: String): ByteArray {
+    fun encrypt(plaintext: ByteArray, passphrase: String): ByteArray = encrypt(plaintext, 0, plaintext.size, passphrase)
+
+    /** [encrypt] of `plaintext[offset until offset + length]`, so a caller's buffer needn't be
+     *  copied out first. */
+    fun encrypt(plaintext: ByteArray, offset: Int, length: Int, passphrase: String): ByteArray {
         val rnd = SecureRandom()
         val salt = ByteArray(SALT_LEN).also { rnd.nextBytes(it) }
         val iv = ByteArray(IV_LEN).also { rnd.nextBytes(it) }
@@ -45,7 +49,7 @@ object BackupCrypto {
             init(Cipher.ENCRYPT_MODE, deriveKey(passphrase, salt, ITERATIONS), GCMParameterSpec(TAG_BITS, iv))
         }
         val iterBytes = ByteBuffer.allocate(4).putInt(ITERATIONS).array()
-        return MAGIC_V2 + iterBytes + salt + iv + cipher.doFinal(plaintext)
+        return MAGIC_V2 + iterBytes + salt + iv + cipher.doFinal(plaintext, offset, length)
     }
 
     /** @throws Exception if the file isn't a noti backup or the passphrase is wrong (bad GCM tag). */

@@ -6,11 +6,11 @@ import android.service.notification.StatusBarNotification
 import com.noti.logger.config.Settings
 import com.noti.logger.config.TriggerMode
 import com.noti.logger.data.NotiDatabase
-import com.noti.logger.reminder.ReminderTrigger
 import com.noti.logger.data.NotificationEntity
 import com.noti.logger.redact.RawNotification
 import com.noti.logger.redact.RedactedResult
 import com.noti.logger.redact.RedactionRules
+import com.noti.logger.reminder.ReminderTrigger
 import com.noti.logger.util.AppLabelCache
 import com.noti.logger.util.contentHash
 import com.noti.logger.work.UploadScheduler
@@ -41,6 +41,12 @@ class NotiListenerService : NotificationListenerService() {
          *  rows go when the cap is still hit. */
         const val LOCAL_PURGE_INTERVAL_MS = 60 * 60 * 1000L
         const val LOCAL_TRIM_ROWS = 1_000
+    }
+
+    /** The last kept signature of each ongoing notification (touched only on [serialIo]); bounded,
+     *  oldest out, since keys of dismissed notifications are never told to us here. */
+    private val ongoingSeen = object : LinkedHashMap<String, String>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?) = size > 64
     }
 
     /** Last local-only age purge (in-memory; touched only on [serialIo]). */
@@ -76,6 +82,13 @@ class NotiListenerService : NotificationListenerService() {
         scope.cancel()
     }
 
+    /** A dismissed notification is forgotten: the app may post the same key again for a new
+     *  session that happens to read the same, and that must be stored. */
+    override fun onNotificationRemoved(sbn: StatusBarNotification) {
+        val key = sbn.key
+        scope.launch { ongoingSeen.remove(key) }
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val flags = sbn.notification.flags
         // Skip group summaries - redundant with their children.
@@ -99,7 +112,18 @@ class NotiListenerService : NotificationListenerService() {
         val subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
 
         scope.launch {
-            if (ongoing && !com.noti.logger.reminder.ReminderTrigger.watchesApp(applicationContext, packageName)) return@launch
+            // An ongoing one is kept only for what a rule reads out of it, and only when that
+            // changed: a countdown that re-posts every minute would otherwise be a row, a scan and
+            // an upload per tick. Recorded once it's stored, so a dropped update isn't "seen".
+            var ongoingSig: String? = null
+            if (ongoing) {
+                if (!ReminderTrigger.watchesApp(applicationContext, packageName)) return@launch
+                ongoingSig = ReminderTrigger.ongoingSignature(
+                    applicationContext, packageName,
+                    com.noti.logger.reminder.ReminderExtractor.notificationText(title, text, bigText, subText),
+                ) ?: return@launch
+                if (ongoingSeen[sbnKey] == ongoingSig) return@launch
+            }
             val settings = Settings.get(applicationContext)
             val raw = RawNotification(
                 packageName = packageName,
@@ -172,6 +196,7 @@ class NotiListenerService : NotificationListenerService() {
             )
 
             val rowId = dao.insert(entity)
+            if (ongoingSig != null && rowId != -1L) ongoingSeen[sbnKey] = ongoingSig
 
             // A rule may be about this app: run the rulebook now rather than at the next scan.
             if (rowId != -1L) {

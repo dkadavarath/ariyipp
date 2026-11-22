@@ -1,10 +1,10 @@
 package com.noti.logger.reminder
 
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.LocalDate
 
 /**
  * The auto-drafted rule must read the *right* values back out of the message it was drafted from -

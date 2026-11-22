@@ -45,6 +45,14 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
         val bill = dao.byId(billId) ?: return
         // Settled between scheduling and firing - say nothing.
         if (bill.status != BillStatus.ACTIVE) return
+        // Already reminded, or its reminder moved later since this alarm was set (a new due date,
+        // a longer lead) and nothing re-armed it yet: this alarm is stale. Re-arm instead of
+        // ringing early - as the parking alarm below already does.
+        if (bill.notified != 0) return
+        if (bill.remindAt > System.currentTimeMillis() + 60_000L) {
+            ReminderScheduler.scheduleBill(context, bill.id, bill.remindAt)
+            return
+        }
 
         val amountLine = ReminderFormat.amount(context, bill.amount, bill.currency, bill.amountRaw)
         val dueLine = if (bill.dueAt > 0) {

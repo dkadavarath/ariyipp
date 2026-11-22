@@ -1,0 +1,25 @@
+# Changes from detekt's defaults (--build-upon-default-config). The aim is likely bugs and real
+# smells, not style: formatting is ktlint's job.
+style:
+  MagicNumber:
+    active: false        # policy constants are named; the rest are UI dimensions and ids
+  MaxLineLength:
+    active: false        # ktlint
+  WildcardImport:
+    active: false
+  ReturnCount:
+    active: false        # guard-clause style throughout
+complexity:
+  TooManyFunctions:
+    ignorePrivate: true
+    thresholdInFiles: 25
+    thresholdInClasses: 25
+    thresholdInObjects: 25
+exceptions:
+  TooGenericExceptionCaught:
+    active: false        # Android APIs throw anything; failures are logged where it matters
+  SwallowedException:
+    active: false
+naming:
+  FunctionNaming:
+    excludes: ['**/test/**', '**/androidTest/**']   # backtick test names

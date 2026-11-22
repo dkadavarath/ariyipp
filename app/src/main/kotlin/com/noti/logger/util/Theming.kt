@@ -7,11 +7,10 @@ import android.graphics.Color
 import android.os.Build
 import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
-import com.noti.logger.R
 import com.noti.logger.config.Settings
 import com.noti.logger.config.ThemeMode
-import com.noti.sender.config.SenderSettings
 import com.noti.sender.R as DesignR
+import com.noti.sender.config.SenderSettings
 import com.noti.shared.Role
 
 /**

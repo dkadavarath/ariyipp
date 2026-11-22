@@ -2,10 +2,10 @@ package com.noti.logger.push
 
 import android.content.Context
 import com.noti.logger.config.Settings
-import com.noti.shared.Diag
 import com.noti.shared.DeviceStatusPolicy
+import com.noti.shared.Diag
+import com.noti.shared.Envelope
 import com.noti.shared.FcmSender
-import com.noti.shared.MessageCrypto
 import com.noti.shared.Wire
 import com.noti.shared.WireMessage
 
@@ -40,7 +40,7 @@ object NotiStatusSender {
         val s = Settings.get(context)
         if (!s.companionStatusEnabled || !s.peerPaired()) return false
         return try {
-            val payload = MessageCrypto.encrypt(Wire.encodeFor(message, com.noti.shared.Wire.Direction.MAIN_TO_COMPANION), s.relayKey)
+            val payload = Envelope.seal(message, Wire.Direction.MAIN_TO_COMPANION, s.relayKey)
             val res = FcmSender.forServiceAccount(s.serviceAccountJson).send(
                 s.sndiFcmToken, mapOf("payload" to payload),
                 label = if (message is WireMessage.StatusRequest) com.noti.shared.FcmLabel.STATUS_REQUEST

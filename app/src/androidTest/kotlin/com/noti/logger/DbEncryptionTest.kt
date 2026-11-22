@@ -8,6 +8,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.noti.logger.data.DbEncryption
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.reminder.DueDates
+import java.io.File
+import java.security.SecureRandom
+import java.time.LocalDate
+import java.time.ZoneId
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -16,10 +20,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
-import java.security.SecureRandom
-import java.time.LocalDate
-import java.time.ZoneId
 
 /**
  * S4: the one-off move of an installed v1.43 phone's plaintext v13 database into an encrypted v14
@@ -234,5 +234,50 @@ class DbEncryptionTest {
         assertTrue(file().exists())
         assertFalse(dir.listFiles()!!.any { it.name.startsWith("$name-unreadable-") })
         openRoom().also { assertEverythingThere(it) }.close()
+    }
+
+    @Test
+    fun a_set_aside_database_opens_again_with_an_earlier_key_file() {
+        // The keystore failed once: the key file was set aside and a new key made. The database
+        // went aside as unreadable. Once the old key file reads again, the database comes back,
+        // re-encrypted to the key in use now.
+        seedV13()
+        DbEncryption.prepare(ctx, key, name, oldKeys = { emptyList() })
+        val newKey = ByteArray(32).also { SecureRandom().nextBytes(it) }
+        DbEncryption.prepare(ctx, newKey, name, oldKeys = { emptyList() })
+        assertFalse(file().exists())
+        DbEncryption.prepare(ctx, newKey, name, oldKeys = { listOf(key) })
+        assertTrue(file().exists())
+        assertEquals(DbEncryption.Probe.OK, DbEncryption.probe(file(), newKey))
+        Room.databaseBuilder(ctx, NotiDatabase::class.java, name)
+            .openHelperFactory(SupportOpenHelperFactory(DbEncryption.passphrase(newKey)))
+            .addMigrations(NotiDatabase.migration13To14({ "AED" }, fallbackZone = ZoneId.of("Asia/Dubai")))
+            .build().also { assertEverythingThere(it) }.close()
+    }
+
+    @Test
+    fun a_set_aside_database_keeps_writes_still_in_its_log() {
+        seedV13()
+        DbEncryption.prepare(ctx, key, name, oldKeys = { emptyList() })
+        openRoom().close() // migrated to v14
+        // A write that is only in -wal: a connection with checkpoints off, left open.
+        DbEncryption.loadLibrary()
+        val live = net.zetetic.database.sqlcipher.SQLiteDatabase.openDatabase(
+            file().path, DbEncryption.passphrase(key), null, net.zetetic.database.sqlcipher.SQLiteDatabase.OPEN_READWRITE, null, null,
+        )
+        live.rawQuery("PRAGMA journal_mode = WAL", null).use { it.moveToFirst() }
+        live.rawQuery("PRAGMA wal_autocheckpoint = 0", null).use { it.moveToFirst() }
+        live.execSQL("INSERT INTO relayed_messages (sender, sim, body, receivedAt, outgoing, read, dedupe, status) VALUES ('+1', '', 'only in the log', 1, 0, 1, 'wal1', 0)")
+        assertTrue("the write sits in -wal", file("-wal").length() > 0)
+        try {
+            DbEncryption.prepare(ctx, ByteArray(32).also { SecureRandom().nextBytes(it) }, name, oldKeys = { emptyList() }) // key "lost"
+            assertTrue("its log went aside with it", dir.listFiles()!!.any { it.name.startsWith("$name-unreadable-") && it.name.endsWith("-wal") })
+            DbEncryption.prepare(ctx, key, name, oldKeys = { emptyList() }) // key back
+            val db = openRoom()
+            assertTrue(db.relayedMessageDao().allMessages().any { it.body == "only in the log" })
+            db.close()
+        } finally {
+            live.close()
+        }
     }
 }

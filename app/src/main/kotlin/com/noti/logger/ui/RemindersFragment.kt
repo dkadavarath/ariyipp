@@ -14,25 +14,25 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.card.MaterialCardView
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.color.MaterialColors
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.noti.logger.R
 import com.noti.logger.config.Settings
 import com.noti.logger.data.BillOccurrenceEntity
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.ParkingSessionEntity
 import com.noti.logger.reminder.BillStatus
-import com.noti.logger.reminder.ParkingTracker
 import com.noti.logger.reminder.FxRates
+import com.noti.logger.reminder.ParkingTracker
 import com.noti.logger.reminder.ReminderFormat
 import com.noti.logger.reminder.ReminderNotifier
 import com.noti.logger.reminder.ReminderPolicy
 import com.noti.logger.reminder.ReminderScheduler
 import com.noti.logger.util.Motion
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.format.DateTimeFormatter
 
 /**
  * The Reminders tab: what is outstanding, and what has been settled.

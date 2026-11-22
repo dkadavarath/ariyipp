@@ -3,8 +3,8 @@ package com.noti.logger.push
 import android.content.Context
 import com.noti.logger.config.Settings
 import com.noti.shared.Diag
+import com.noti.shared.Envelope
 import com.noti.shared.FcmSender
-import com.noti.shared.MessageCrypto
 import com.noti.shared.Wire
 import com.noti.shared.WireMessage
 
@@ -30,7 +30,7 @@ object NotiConfigSender {
             authToken = s.bearerToken,
             configVersion = System.currentTimeMillis(),
         )
-        val payload = MessageCrypto.encrypt(Wire.encodeFor(cfg, com.noti.shared.Wire.Direction.MAIN_TO_COMPANION), s.relayKey)
+        val payload = Envelope.seal(cfg, Wire.Direction.MAIN_TO_COMPANION, s.relayKey)
         return try {
             val res = FcmSender.forServiceAccount(s.serviceAccountJson).send(s.sndiFcmToken, mapOf("payload" to payload), label = com.noti.shared.FcmLabel.CONFIG)
             Diag.log(if (res.ok) "webhook config pushed to companion" else "push webhook → HTTP ${res.httpCode} (${res.detail.take(50)})")

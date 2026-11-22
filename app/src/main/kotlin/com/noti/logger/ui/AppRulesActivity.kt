@@ -79,10 +79,16 @@ class AppRulesActivity : ScreenActivity() {
 
                 val keywords = view.findViewById<EditText>(R.id.et_keywords)
                 val notes = view.findViewById<EditText>(R.id.et_notes)
-                rules[pkg]?.let {
+                // Every row's editors share the layout's ids, so the system can't restore them
+                // after a rotation; the edit in progress comes back from [onSaveInstanceState].
+                val kept = savedState?.getStringArray(STATE_PREFIX + pkg)
+                if (kept != null) {
+                    keywords.setText(kept[0]); notes.setText(kept[1])
+                } else rules[pkg]?.let {
                     keywords.setText(AppRules.formatKeywords(it.keywords))
                     notes.setText(it.notes)
                 }
+                keywords.isSaveEnabled = false; notes.isSaveEnabled = false
 
                 rows.add(Row(pkg, keywords, notes))
                 container.addView(view)
@@ -96,6 +102,19 @@ class AppRulesActivity : ScreenActivity() {
             for ((view, app) in icons) view.setImageDrawable(iconLoader.load(app))
         }
     }
+
+    override fun onSaveInstanceState(outState: android.os.Bundle) {
+        super.onSaveInstanceState(outState)
+        // Turned again before the rows were back: pass the earlier edit on as it was.
+        if (rows.isEmpty()) savedState?.let { old ->
+            for (k in old.keySet()) if (k.startsWith(STATE_PREFIX)) outState.putStringArray(k, old.getStringArray(k))
+        }
+        for (row in rows) {
+            outState.putStringArray(STATE_PREFIX + row.packageName, arrayOf(row.keywords.text.toString(), row.notes.text.toString()))
+        }
+    }
+
+    private companion object { const val STATE_PREFIX = "rule:" }
 
     private fun save(settings: Settings) {
         // Merge rather than replace: rules for apps not currently selected stay untouched.

@@ -41,6 +41,7 @@ class PushMessageHandlerTest {
         val s = Settings.get(ctx)
         s.relayKey = key
         s.pushInboundEnabled = true
+        s.peerStampMark = com.noti.shared.ReplayGuard.Mark(0, 0)
         clearAndWait()
     }
 
@@ -331,6 +332,108 @@ class PushMessageHandlerTest {
         assertEquals(before, s.sndiFcmToken)
     }
 
+    @Test
+    fun a_long_message_part_waits_on_disk_until_the_rest_arrives() {
+        val dir = java.io.File(ctx.noBackupFilesDir, "relay_parts")
+        val dedupe = "disk-${System.nanoTime()}"
+        fun part(i: Int) = c2m(WireMessage.Relay(title = "Bank", body = "half$i ", dedupe = dedupe, time = 1L, part = i, parts = 2))
+        fun groups() = dir.listFiles()?.filter { it.isDirectory }?.map { it.name }?.toSet().orEmpty()
+        val before = groups()
+        assertTrue(PushMessageHandler.handle(ctx, part(0)))
+        val waiting = (groups() - before).map { java.io.File(dir, it) }
+        assertTrue("the first part is kept on disk", waiting.isNotEmpty())
+        // Only ciphertext on disk: the body is nowhere in the clear.
+        assertFalse(waiting.flatMap { it.listFiles().orEmpty().toList() }.any { it.readText().contains("half0") })
+        assertTrue(PushMessageHandler.handle(ctx, part(1)))
+        assertTrue("assembled, so nothing left waiting", (groups() - before).isEmpty())
+        deleteConversation("Bank")
+    }
+
+    @Test
+    fun a_sim_name_with_on_in_it_stays_the_sim_name() {
+        val from = "+15550002222"
+        val msg = WireMessage.Relay(title = "$from on Work on Etisalat", body = "hi", from = from, sim = "Work on Etisalat", dedupe = "sim-${System.nanoTime()}", time = System.currentTimeMillis())
+        assertTrue(PushMessageHandler.handle(ctx, c2m(msg)))
+        val stored = com.noti.logger.data.NotiDatabase.get(ctx).relayedMessageDao().allMessages().first { it.dedupe == msg.dedupe }
+        assertEquals(from, stored.sender)
+        assertEquals("Work on Etisalat", stored.sim)
+        deleteConversation(from)
+    }
+
+    // ---- Replayed copies: the send stamp ----
+
+    private fun c2m(msg: WireMessage, sentAt: Long = System.currentTimeMillis()) = mapOf(
+        PushMessageHandler.PAYLOAD_KEY to MessageCrypto.encrypt(Wire.encodeFor(msg, Wire.Direction.COMPANION_TO_MAIN, sentAt), key),
+    )
+
+    @Test
+    fun a_replayed_heartbeat_off_is_ignored() {
+        val s = Settings.get(ctx)
+        val saved = Triple(s.peerHeartbeatOff, s.lastPeerBeatAtMs, s.heartbeatEnabled)
+        try {
+            s.peerHeartbeatOff = false
+            s.heartbeatEnabled = true
+            val now = System.currentTimeMillis()
+            // The "off" was sent, then an ordinary beat after it.
+            PushMessageHandler.handle(ctx, c2m(WireMessage.Heartbeat(off = true), now - 20 * 60_000))
+            PushMessageHandler.handle(ctx, c2m(WireMessage.Heartbeat(), now - 5 * 60_000))
+            assertFalse(s.peerHeartbeatOff)
+            s.lastPeerBeatAtMs = 1L
+            // A replay of the old "off" neither silences the alarm nor counts as a beat.
+            PushMessageHandler.handle(ctx, c2m(WireMessage.Heartbeat(off = true), now - 20 * 60_000))
+            assertFalse("a replayed 'off' must not silence the alarm", s.peerHeartbeatOff)
+            assertEquals("nor count as a beat", 1L, s.lastPeerBeatAtMs)
+            // Nor does a replayed relay count as proof of life.
+            PushMessageHandler.handle(ctx, c2m(WireMessage.Relay(title = "Bank", body = "replayed"), now - 10 * 60_000))
+            assertEquals("a replayed relay isn't proof of life", 1L, s.lastPeerBeatAtMs)
+        } finally {
+            s.peerHeartbeatOff = saved.first; s.lastPeerBeatAtMs = saved.second; s.heartbeatEnabled = saved.third
+        }
+    }
+
+    @Test
+    fun a_peer_whose_clock_is_an_hour_off_is_still_heard() {
+        val s = Settings.get(ctx)
+        val saved = s.lastPeerBeatAtMs to s.heartbeatEnabled
+        try {
+            s.heartbeatEnabled = true
+            s.lastPeerBeatAtMs = 1L
+            PushMessageHandler.handle(ctx, c2m(WireMessage.Heartbeat(), System.currentTimeMillis() - 60 * 60_000))
+            assertTrue("a beat from a phone an hour behind counts", s.lastPeerBeatAtMs > 1L)
+        } finally {
+            s.lastPeerBeatAtMs = saved.first; s.heartbeatEnabled = saved.second
+        }
+    }
+
+    @Test
+    fun a_new_pairing_forgets_the_old_peers_replay_marks() {
+        val s = Settings.get(ctx)
+        // The old peer's clock ran an hour ahead.
+        val ahead = System.currentTimeMillis() + 60 * 60_000L
+        s.peerStampMark = com.noti.shared.ReplayGuard.Mark(ahead, ahead)
+        s.sndiTokenMark = com.noti.shared.ReplayGuard.Mark(ahead, ahead)
+        s.relayKey = MessageCrypto.generateKeyBase64()
+        assertEquals(0L, s.peerStampMark.sentAt)
+        assertEquals(0L, s.sndiTokenMark.sentAt)
+        s.relayKey = key
+    }
+
+    @Test
+    fun an_older_endpoint_announcement_cannot_replace_a_newer_one() {
+        val s = Settings.get(ctx)
+        val saved = s.sndiFcmToken to s.sndiTokenMark
+        try {
+            s.sndiTokenMark = com.noti.shared.ReplayGuard.Mark(0, 0)
+            val now = System.currentTimeMillis()
+            assertTrue(PushMessageHandler.handle(ctx, c2m(WireMessage.Token("old-token"), now - 60_000)))
+            assertTrue(PushMessageHandler.handle(ctx, c2m(WireMessage.Token("new-token"), now)))
+            assertFalse(PushMessageHandler.handle(ctx, c2m(WireMessage.Token("old-token"), now - 60_000)))
+            assertEquals("new-token", s.sndiFcmToken)
+        } finally {
+            s.sndiFcmToken = saved.first; s.sndiTokenMark = saved.second
+        }
+    }
+
     // ---- Duplicates are copies, not look-alikes ----
 
     private fun relay(sender: String, body: String, dedupe: String, time: Long) = mapOf(
@@ -362,11 +465,12 @@ class PushMessageHandlerTest {
         try {
             s.heartbeatEnabled = true
             s.lastPeerBeatAtMs = 1L // long stale
-            com.noti.logger.push.Heartbeat.onBeatReceived(ctx, request = false, off = true)
+            val now = System.currentTimeMillis()
+            com.noti.logger.push.Heartbeat.onBeatReceived(ctx, request = false, off = true, sentAt = now - 1_000)
             assertTrue(s.peerHeartbeatOff)
             assertFalse(com.noti.logger.push.Heartbeat.isDisconnected(ctx))
             // Its next ordinary beat means it's back on.
-            com.noti.logger.push.Heartbeat.onBeatReceived(ctx, request = false)
+            com.noti.logger.push.Heartbeat.onBeatReceived(ctx, request = false, off = false, sentAt = now)
             assertFalse(s.peerHeartbeatOff)
         } finally {
             s.heartbeatEnabled = saved.first; s.lastPeerBeatAtMs = saved.second; s.peerHeartbeatOff = saved.third

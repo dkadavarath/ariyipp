@@ -10,8 +10,8 @@ import androidx.core.app.NotificationManagerCompat
 import com.noti.logger.R
 import com.noti.logger.config.Settings
 import com.noti.logger.ui.MainActivity
-import com.noti.shared.Diag
 import com.noti.shared.DeviceStatusPolicy
+import com.noti.shared.Diag
 import com.noti.shared.Wire
 import com.noti.shared.WireMessage
 

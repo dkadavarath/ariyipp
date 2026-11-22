@@ -2,15 +2,15 @@ package com.noti.logger.upload
 
 import com.noti.shared.UploadBatch
 import com.noti.shared.WebhookUrlPolicy
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.zip.GZIPOutputStream
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 sealed interface UploadOutcome {
     /**

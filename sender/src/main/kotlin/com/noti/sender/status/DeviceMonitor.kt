@@ -9,8 +9,8 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import com.noti.sender.config.SenderSettings
-import com.noti.shared.Diag
 import com.noti.shared.DeviceStatusPolicy
+import com.noti.shared.Diag
 import com.noti.shared.WireMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

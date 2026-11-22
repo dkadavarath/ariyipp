@@ -5,14 +5,15 @@ import com.noti.logger.config.AppRules
 import com.noti.logger.config.Settings
 import com.noti.logger.config.ThemeMode
 import com.noti.logger.config.TriggerMode
-import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.BillOccurrenceEntity
+import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.ParkingSessionEntity
 import com.noti.logger.data.RelayedMessageEntity
 import com.noti.logger.data.ReminderRuleEntity
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
 
 /**
  * The full contents of a backup: the meaningful settings (including the pairing secrets, so a
@@ -78,6 +79,7 @@ object Backup {
         val companionBatteryPct: Int? = null,
         val companionWifiLossMinutes: Int? = null,
         val companionPollSeconds: Int? = null,
+        val maskSensitive: Boolean? = null,
         val companionStatusLabels: Boolean? = null,
         val reminderEnabled: Boolean? = null,
         val reminderScanHours: Int? = null,
@@ -131,6 +133,9 @@ object Backup {
         val notes: String = "", val category: String = "", val remindDaysBefore: Int = -1,
         val issuedAt: Long = 0, val settleKey: String = "", val autoSettled: Int = 0,
         val editedFields: Int = 0,
+        /** Its rule's position in [Payload.reminderRules]: names can repeat, a position can't.
+         *  -1 in files from before it, which fall back to [ruleName]. */
+        val ruleIndex: Int = -1,
     )
 
     @Serializable
@@ -140,7 +145,16 @@ object Backup {
     )
 
     /** Serializes settings + messages + reminders to a JSON string (call off the main thread). */
-    fun export(context: Context): String {
+    fun export(context: Context): String =
+        java.io.ByteArrayOutputStream().also { exportTo(context, it) }.toString(Charsets.UTF_8.name())
+
+    /**
+     * Writes the backup JSON to [out] (call off the main thread). The message history - by far the
+     * largest part - is read and written a page at a time rather than held whole: before, it sat
+     * in memory as entities, as backup records and as one JSON string all at once, several copies
+     * of a history that can run to tens of megabytes.
+     */
+    fun exportTo(context: Context, out: java.io.OutputStream) {
         val s = Settings.get(context)
         val db = NotiDatabase.get(context)
         val dao = db.relayedMessageDao()
@@ -148,75 +162,50 @@ object Backup {
         val billDao = db.billOccurrenceDao()
         val parkingDao = db.parkingSessionDao()
         val rules = try { ruleDao.all() } catch (e: Exception) { emptyList() }
-        val payload = Payload(
-            version = VERSION,
-            settings = SettingsData(
-                webhookUrl = s.webhookUrl, bearerToken = s.bearerToken,
-                authHeaderName = s.authHeaderName, authHeaderPrefix = s.authHeaderPrefix, gzipEnabled = s.gzipEnabled,
-                triggerMode = s.triggerMode.name, intervalMinutes = s.intervalMinutes, thresholdCount = s.thresholdCount,
-                requireUnmetered = s.requireUnmetered, requireCharging = s.requireCharging,
-                includedPackages = s.includedPackages.toList(), excludedKeywords = s.excludedKeywords,
-                appRulesEncoded = AppRules.encode(s.appRules),
-                captureBody = s.captureBody, retentionDays = s.retentionDays, dedupeWindowSeconds = s.dedupeWindowSeconds,
-                pushInboundEnabled = s.pushInboundEnabled, relayKey = s.relayKey,
-                serviceAccountJson = s.serviceAccountJson, sndiFcmToken = s.sndiFcmToken,
-                themeMode = s.themeMode.name, dynamicColor = s.dynamicColor, amoled = s.amoled,
-                mutedSenders = s.mutedSenders.toList(),
-                chatRetentionDays = s.chatRetentionDays,
-                firebaseConfigJson = s.firebaseConfigJson,
-                otpCopyEnabled = s.otpCopyEnabled, suppressSystemNotifActions = s.suppressSystemNotifActions,
-                heartbeatEnabled = s.heartbeatEnabled,
-                companionStatusEnabled = s.companionStatusEnabled, companionAlertsEnabled = s.companionAlertsEnabled,
-                companionBatteryPct = s.companionBatteryPct, companionWifiLossMinutes = s.companionWifiLossMinutes,
-                companionPollSeconds = s.companionPollSeconds, companionStatusLabels = s.companionStatusLabels,
-                reminderEnabled = s.reminderEnabled, reminderScanHours = s.reminderScanHours,
-                reminderHour = s.reminderHour, reminderMinute = s.reminderMinute,
-                reminderDaysBefore = s.reminderDaysBefore, reminderSpacingMinutes = s.reminderSpacingMinutes,
-                parkingLeadMinutes = s.parkingLeadMinutes, parkingAlarmMode = s.parkingAlarmMode,
-                reminderHistoryDays = s.reminderHistoryDays,
-                remindersCompact = s.remindersCompact, remindersShowTotal = s.remindersShowTotal,
-                defaultCurrency = s.defaultCurrency,
-            ),
-            messages = dao.allMessages().map {
-                MessageData(it.sender, it.sim, it.body, it.receivedAt, it.outgoing, it.read, it.dedupe)
-            },
-            reminderRules = rules.map {
-                RuleData(
-                    it.name, it.type, it.source, it.sourcePackage, it.sourceSender, it.enabled,
-                    it.matchPattern, it.amountPattern, it.currencyPattern, it.datePattern,
-                    it.zonePattern, it.expiryPattern, it.dateFormat, it.dueMode,
-                    it.constantDay, it.anchorDay, it.offsetDays,
-                    it.recurrence, it.recurrenceEvery, it.anchorDate,
-                    it.defaultCurrency, it.skipNext, it.createdAt,
-                    it.notes, it.category, it.remindDaysBefore, it.defaultAmount,
-                    it.payEnabled, it.paySource, it.paySender, it.payPackage, it.payMatchPattern,
-                    it.payAmountPattern, it.payMatchAmount,
-                )
-            },
-            // Bills carry their rule's *name* rather than its id: ids are reassigned on restore, so
-            // a stored id would point at whatever rule happened to land in that row. The name is
-            // what survives a round trip and is what re-links them on the way back in.
-            bills = (billDao.active() + billDao.history(limit = Int.MAX_VALUE)).map { b ->
-                BillData(
-                    ruleName = rules.firstOrNull { it.id == b.ruleId }?.name ?: "",
-                    name = b.name, dueAt = b.dueAt, amount = b.amount, currency = b.currency,
-                    amountRaw = b.amountRaw, dueRaw = b.dueRaw, status = b.status,
-                    sourceKey = b.sourceKey, createdAt = b.createdAt, settledAt = b.settledAt,
-                    notes = b.notes, category = b.category, remindDaysBefore = b.remindDaysBefore,
-                    issuedAt = b.issuedAt, settleKey = b.settleKey, autoSettled = b.autoSettled,
-                    editedFields = b.editedFields,
-                )
-            },
-            parking = (parkingDao.active() + parkingDao.history(limit = Int.MAX_VALUE)).map {
+        val settings = settingsOf(s)
+        val reminderRules = rules.map { ruleOf(it) }
+        // Bills carry their rule's position and *name* rather than its id: ids are reassigned on
+        // restore, so a stored id would point at whatever rule happened to land in that row.
+        val bills = (billDao.active() + billDao.history(limit = Int.MAX_VALUE)).map { billOf(it, rules) }
+        val parking = (parkingDao.active() + parkingDao.history(limit = Int.MAX_VALUE)).map {
                 ParkingData(it.name, it.zone, it.expiresAt, it.active, it.renewals, it.startedAt, it.endedAt)
-            },
-        )
-        return json.encodeToString(payload)
+            }
+
+        // The same JSON a Payload encodes to, written in pieces so the messages can stream.
+        val w = out.bufferedWriter(Charsets.UTF_8)
+        w.write("{\"version\":$VERSION,\"settings\":")
+        w.write(json.encodeToString(settings))
+        w.write(",\"messages\":[")
+        var after = 0L
+        var first = true
+        do {
+            val page = dao.messagesAfterId(after, MESSAGE_PAGE)
+            for (m in page) {
+                if (!first) w.write(",")
+                first = false
+                w.write(json.encodeToString(MessageData(m.sender, m.sim, m.body, m.receivedAt, m.outgoing, m.read, m.dedupe)))
+            }
+            if (page.isNotEmpty()) after = page.last().id
+        } while (page.size == MESSAGE_PAGE)
+        w.write("],\"reminderRules\":")
+        w.write(json.encodeToString(reminderRules))
+        w.write(",\"bills\":")
+        w.write(json.encodeToString(bills))
+        w.write(",\"parking\":")
+        w.write(json.encodeToString(parking))
+        w.write("}")
+        w.flush()
     }
 
+    private const val MESSAGE_PAGE = 2_000
+
     /** Replaces settings + message history from a backup JSON string (call off the main thread). */
-    fun import(context: Context, jsonText: String) {
-        val payload = json.decodeFromString<Payload>(jsonText)
+    fun import(context: Context, jsonText: String) = import(context, jsonText.toByteArray(Charsets.UTF_8))
+
+    /** As above, from the decrypted file's bytes - read as a stream, not first copied into a String. */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    fun import(context: Context, jsonBytes: ByteArray) {
+        val payload = java.io.ByteArrayInputStream(jsonBytes).use { json.decodeFromStream<Payload>(it) }
         // Dates from a file older than VERSION 3 are the old phone's local midnight; convert them as
         // the v13 → v14 database migration does (the currency's zone, else nearest midnight).
         val home by lazy { com.noti.logger.reminder.FxRates.home(context) }
@@ -235,11 +224,7 @@ object Backup {
         val db = NotiDatabase.get(context)
         db.runInTransaction {
             if (failInsideTransactionForTest) throw IllegalStateException("simulated failure mid-restore")
-            val dao = db.relayedMessageDao()
-            val ruleDao = db.reminderRuleDao()
-            val billDao = db.billOccurrenceDao()
-            val parkingDao = db.parkingSessionDao()
-            dao.replaceAll(
+            db.relayedMessageDao().replaceAll(
                 payload.messages.map {
                     RelayedMessageEntity(
                         sender = it.sender, sim = it.sim, body = it.body, receivedAt = it.receivedAt,
@@ -256,102 +241,170 @@ object Backup {
             // possible reading of "restore".
             val hasReminders = payload.reminderRules.isNotEmpty() ||
                 payload.bills.isNotEmpty() || payload.parking.isNotEmpty()
-            if (hasReminders) {
-                ruleDao.deleteAll()
-                billDao.deleteAll()
-                parkingDao.deleteAll()
-
-                // Rules first, keeping name -> new id, because ids are reassigned here and a bill's
-                // stored rule id would otherwise point at whatever rule landed in that row.
-                val idByName = HashMap<String, Long>()
-                for (r in payload.reminderRules) {
-                    val id = ruleDao.insert(
-                        ReminderRuleEntity(
-                            name = r.name, type = r.type, source = r.source,
-                            sourcePackage = r.sourcePackage, sourceSender = r.sourceSender, enabled = r.enabled,
-                            matchPattern = r.matchPattern, amountPattern = r.amountPattern,
-                            currencyPattern = r.currencyPattern, datePattern = r.datePattern,
-                            zonePattern = r.zonePattern, expiryPattern = r.expiryPattern,
-                            dateFormat = r.dateFormat, dueMode = r.dueMode,
-                            constantDay = r.constantDay, anchorDay = r.anchorDay, offsetDays = r.offsetDays,
-                            recurrence = r.recurrence, recurrenceEvery = r.recurrenceEvery, anchorDate = legacyDate(r.anchorDate, r.defaultCurrency),
-                            defaultCurrency = r.defaultCurrency, skipNext = r.skipNext, createdAt = r.createdAt,
-                            notes = r.notes, category = r.category, remindDaysBefore = r.remindDaysBefore,
-                            defaultAmount = r.defaultAmount,
-                            payEnabled = r.payEnabled, paySource = r.paySource, paySender = r.paySender,
-                            payPackage = r.payPackage, payMatchPattern = r.payMatchPattern,
-                            payAmountPattern = r.payAmountPattern, payMatchAmount = r.payMatchAmount,
-                        )
-                    )
-                    if (id > 0) idByName[r.name] = id
-                }
-                for (b in payload.bills) {
-                    billDao.insert(
-                        BillOccurrenceEntity(
-                            ruleId = idByName[b.ruleName] ?: 0,
-                            name = b.name, dueAt = legacyDate(b.dueAt, b.currency), amount = b.amount, currency = b.currency,
-                            amountRaw = b.amountRaw, dueRaw = b.dueRaw, status = b.status,
-                            sourceKey = b.sourceKey, createdAt = b.createdAt, settledAt = b.settledAt,
-                            notes = b.notes, category = b.category, remindDaysBefore = b.remindDaysBefore,
-                            issuedAt = b.issuedAt, settleKey = b.settleKey, autoSettled = b.autoSettled,
-                            editedFields = b.editedFields,
-                        )
-                    )
-                }
-                for (p in payload.parking) {
-                    parkingDao.insert(
-                        ParkingSessionEntity(
-                            name = p.name, zone = p.zone, expiresAt = p.expiresAt,
-                            active = p.active, renewals = p.renewals,
-                            startedAt = p.startedAt, endedAt = p.endedAt,
-                        )
-                    )
-                }
-            }
+            if (hasReminders) restoreReminders(db, payload, ::legacyDate)
         }
         // 2. Only then the settings - a restore that couldn't write its data doesn't change them.
-        val s = Settings.get(context)
-        with(payload.settings) {
-            s.webhookUrl = webhookUrl; s.bearerToken = bearerToken
-            s.authHeaderName = authHeaderName; s.authHeaderPrefix = authHeaderPrefix; s.gzipEnabled = gzipEnabled
-            s.triggerMode = runCatching { TriggerMode.valueOf(triggerMode) }.getOrDefault(TriggerMode.PERIODIC)
-            s.intervalMinutes = intervalMinutes; s.thresholdCount = thresholdCount
-            s.requireUnmetered = requireUnmetered; s.requireCharging = requireCharging
-            s.includedPackages = includedPackages.toSet(); s.excludedKeywords = excludedKeywords
-            s.appRules = AppRules.decode(appRulesEncoded)
-            s.captureBody = captureBody; s.retentionDays = retentionDays; s.dedupeWindowSeconds = dedupeWindowSeconds
-            s.pushInboundEnabled = pushInboundEnabled; s.relayKey = relayKey
-            s.serviceAccountJson = serviceAccountJson; s.sndiFcmToken = sndiFcmToken
-            s.themeMode = runCatching { ThemeMode.valueOf(themeMode) }.getOrDefault(ThemeMode.SYSTEM)
-            s.dynamicColor = dynamicColor; s.amoled = amoled
-            s.mutedSenders = mutedSenders.toSet()
-            s.chatRetentionDays = chatRetentionDays
-            firebaseConfigJson?.takeIf { it.isNotBlank() }?.let { s.firebaseConfigJson = it }
-            otpCopyEnabled?.let { s.otpCopyEnabled = it }
-            suppressSystemNotifActions?.let { s.suppressSystemNotifActions = it }
-            heartbeatEnabled?.let { s.heartbeatEnabled = it }
-            companionStatusEnabled?.let { s.companionStatusEnabled = it }
-            companionAlertsEnabled?.let { s.companionAlertsEnabled = it }
-            companionBatteryPct?.let { s.companionBatteryPct = it }
-            companionWifiLossMinutes?.let { s.companionWifiLossMinutes = it }
-            companionPollSeconds?.let { s.companionPollSeconds = it }
-            companionStatusLabels?.let { s.companionStatusLabels = it }
-            reminderEnabled?.let { s.reminderEnabled = it }
-            reminderScanHours?.let { s.reminderScanHours = it }
-            reminderHour?.let { s.reminderHour = it }
-            reminderMinute?.let { s.reminderMinute = it }
-            reminderDaysBefore?.let { s.reminderDaysBefore = it }
-            reminderSpacingMinutes?.let { s.reminderSpacingMinutes = it }
-            parkingLeadMinutes?.let { s.parkingLeadMinutes = it }
-            // Only a mode this version knows - a newer file's unknown mode keeps the current one.
-            parkingAlarmMode?.takeIf { m -> runCatching { com.noti.logger.reminder.ParkingAlarmMode.valueOf(m) }.isSuccess }
-                ?.let { s.parkingAlarmMode = it }
-            reminderHistoryDays?.let { s.reminderHistoryDays = it }
-            remindersCompact?.let { s.remindersCompact = it }
-            remindersShowTotal?.let { s.remindersShowTotal = it }
-            defaultCurrency?.let { s.defaultCurrency = it; s.fxAttemptAtMs = 0L }
-        }
+        applySettings(Settings.get(context), payload.settings)
         reapply(context)
+    }
+
+    /** The settings worth carrying, from [s]. */
+    private fun settingsOf(s: Settings) = SettingsData(
+        webhookUrl = s.webhookUrl, bearerToken = s.bearerToken,
+        authHeaderName = s.authHeaderName, authHeaderPrefix = s.authHeaderPrefix, gzipEnabled = s.gzipEnabled,
+        triggerMode = s.triggerMode.name, intervalMinutes = s.intervalMinutes, thresholdCount = s.thresholdCount,
+        requireUnmetered = s.requireUnmetered, requireCharging = s.requireCharging,
+        includedPackages = s.includedPackages.toList(), excludedKeywords = s.excludedKeywords,
+        appRulesEncoded = AppRules.encode(s.appRules),
+        captureBody = s.captureBody, retentionDays = s.retentionDays, dedupeWindowSeconds = s.dedupeWindowSeconds,
+        pushInboundEnabled = s.pushInboundEnabled, relayKey = s.relayKey,
+        serviceAccountJson = s.serviceAccountJson, sndiFcmToken = s.sndiFcmToken,
+        themeMode = s.themeMode.name, dynamicColor = s.dynamicColor, amoled = s.amoled,
+        mutedSenders = s.mutedSenders.toList(),
+        chatRetentionDays = s.chatRetentionDays,
+        firebaseConfigJson = s.firebaseConfigJson,
+        otpCopyEnabled = s.otpCopyEnabled, suppressSystemNotifActions = s.suppressSystemNotifActions,
+        heartbeatEnabled = s.heartbeatEnabled,
+        companionStatusEnabled = s.companionStatusEnabled, companionAlertsEnabled = s.companionAlertsEnabled,
+        companionBatteryPct = s.companionBatteryPct, companionWifiLossMinutes = s.companionWifiLossMinutes,
+        companionPollSeconds = s.companionPollSeconds, maskSensitive = s.maskSensitive, companionStatusLabels = s.companionStatusLabels,
+        reminderEnabled = s.reminderEnabled, reminderScanHours = s.reminderScanHours,
+        reminderHour = s.reminderHour, reminderMinute = s.reminderMinute,
+        reminderDaysBefore = s.reminderDaysBefore, reminderSpacingMinutes = s.reminderSpacingMinutes,
+        parkingLeadMinutes = s.parkingLeadMinutes, parkingAlarmMode = s.parkingAlarmMode,
+        reminderHistoryDays = s.reminderHistoryDays,
+        remindersCompact = s.remindersCompact, remindersShowTotal = s.remindersShowTotal,
+        defaultCurrency = s.defaultCurrency,
+    )
+
+    private fun ruleOf(it: ReminderRuleEntity) =
+        RuleData(
+            it.name, it.type, it.source, it.sourcePackage, it.sourceSender, it.enabled,
+            it.matchPattern, it.amountPattern, it.currencyPattern, it.datePattern,
+            it.zonePattern, it.expiryPattern, it.dateFormat, it.dueMode,
+            it.constantDay, it.anchorDay, it.offsetDays,
+            it.recurrence, it.recurrenceEvery, it.anchorDate,
+            it.defaultCurrency, it.skipNext, it.createdAt,
+            it.notes, it.category, it.remindDaysBefore, it.defaultAmount,
+            it.payEnabled, it.paySource, it.paySender, it.payPackage, it.payMatchPattern,
+            it.payAmountPattern, it.payMatchAmount,
+        )
+
+    private fun billOf(b: BillOccurrenceEntity, rules: List<ReminderRuleEntity>) =
+        BillData(
+            ruleName = rules.firstOrNull { it.id == b.ruleId }?.name ?: "",
+            ruleIndex = rules.indexOfFirst { it.id == b.ruleId },
+            name = b.name, dueAt = b.dueAt, amount = b.amount, currency = b.currency,
+            amountRaw = b.amountRaw, dueRaw = b.dueRaw, status = b.status,
+            sourceKey = b.sourceKey, createdAt = b.createdAt, settledAt = b.settledAt,
+            notes = b.notes, category = b.category, remindDaysBefore = b.remindDaysBefore,
+            issuedAt = b.issuedAt, settleKey = b.settleKey, autoSettled = b.autoSettled,
+            editedFields = b.editedFields,
+        )
+
+    /** The reminder tables replaced by the backup's (inside [import]'s transaction). */
+    private fun restoreReminders(db: NotiDatabase, payload: Payload, legacyDate: (Long, String) -> Long) {
+        val ruleDao = db.reminderRuleDao()
+        val billDao = db.billOccurrenceDao()
+        val parkingDao = db.parkingSessionDao()
+        ruleDao.deleteAll()
+        billDao.deleteAll()
+        parkingDao.deleteAll()
+
+        // Rules first, keeping name -> new id, because ids are reassigned here and a bill's
+        // stored rule id would otherwise point at whatever rule landed in that row.
+        val idByName = HashMap<String, Long>()
+        val idByIndex = ArrayList<Long>()
+        for (r in payload.reminderRules) {
+            val id = ruleDao.insert(
+                ReminderRuleEntity(
+                    name = r.name, type = r.type, source = r.source,
+                    sourcePackage = r.sourcePackage, sourceSender = r.sourceSender, enabled = r.enabled,
+                    matchPattern = r.matchPattern, amountPattern = r.amountPattern,
+                    currencyPattern = r.currencyPattern, datePattern = r.datePattern,
+                    zonePattern = r.zonePattern, expiryPattern = r.expiryPattern,
+                    dateFormat = r.dateFormat, dueMode = r.dueMode,
+                    constantDay = r.constantDay, anchorDay = r.anchorDay, offsetDays = r.offsetDays,
+                    recurrence = r.recurrence, recurrenceEvery = r.recurrenceEvery, anchorDate = legacyDate(r.anchorDate, r.defaultCurrency),
+                    defaultCurrency = r.defaultCurrency, skipNext = r.skipNext, createdAt = r.createdAt,
+                    notes = r.notes, category = r.category, remindDaysBefore = r.remindDaysBefore,
+                    defaultAmount = r.defaultAmount,
+                    payEnabled = r.payEnabled, paySource = r.paySource, paySender = r.paySender,
+                    payPackage = r.payPackage, payMatchPattern = r.payMatchPattern,
+                    payAmountPattern = r.payAmountPattern, payMatchAmount = r.payMatchAmount,
+                )
+            )
+            if (id > 0) idByName[r.name] = id // last wins, as before: only files without ruleIndex use it
+            idByIndex.add(id)
+        }
+        for (b in payload.bills) {
+            billDao.insert(
+                BillOccurrenceEntity(
+                    ruleId = idByIndex.getOrNull(b.ruleIndex)?.takeIf { it > 0 } ?: idByName[b.ruleName] ?: 0,
+                    name = b.name, dueAt = legacyDate(b.dueAt, b.currency), amount = b.amount, currency = b.currency,
+                    amountRaw = b.amountRaw, dueRaw = b.dueRaw, status = b.status,
+                    sourceKey = b.sourceKey, createdAt = b.createdAt, settledAt = b.settledAt,
+                    notes = b.notes, category = b.category, remindDaysBefore = b.remindDaysBefore,
+                    issuedAt = b.issuedAt, settleKey = b.settleKey, autoSettled = b.autoSettled,
+                    editedFields = b.editedFields,
+                )
+            )
+        }
+        for (p in payload.parking) {
+            parkingDao.insert(
+                ParkingSessionEntity(
+                    name = p.name, zone = p.zone, expiresAt = p.expiresAt,
+                    active = p.active, renewals = p.renewals,
+                    startedAt = p.startedAt, endedAt = p.endedAt,
+                )
+            )
+        }
+    }
+
+    /** Writes the backup's settings to [s]. Optional ones (null: a file from before them) leave
+     *  the current value alone. */
+    // A flat list of independent optional assignments - "complex" to detekt only by count.
+    @Suppress("CyclomaticComplexMethod")
+    private fun applySettings(s: Settings, d: SettingsData) = with(d) {
+        s.webhookUrl = webhookUrl; s.bearerToken = bearerToken
+        s.authHeaderName = authHeaderName; s.authHeaderPrefix = authHeaderPrefix; s.gzipEnabled = gzipEnabled
+        s.triggerMode = runCatching { TriggerMode.valueOf(triggerMode) }.getOrDefault(TriggerMode.PERIODIC)
+        s.intervalMinutes = intervalMinutes; s.thresholdCount = thresholdCount
+        s.requireUnmetered = requireUnmetered; s.requireCharging = requireCharging
+        s.includedPackages = includedPackages.toSet(); s.excludedKeywords = excludedKeywords
+        s.appRules = AppRules.decode(appRulesEncoded)
+        s.captureBody = captureBody; s.retentionDays = retentionDays; s.dedupeWindowSeconds = dedupeWindowSeconds
+        s.pushInboundEnabled = pushInboundEnabled; s.relayKey = relayKey
+        s.serviceAccountJson = serviceAccountJson; s.sndiFcmToken = sndiFcmToken
+        s.themeMode = runCatching { ThemeMode.valueOf(themeMode) }.getOrDefault(ThemeMode.SYSTEM)
+        s.dynamicColor = dynamicColor; s.amoled = amoled
+        s.mutedSenders = mutedSenders.toSet()
+        s.chatRetentionDays = chatRetentionDays
+        firebaseConfigJson?.takeIf { it.isNotBlank() }?.let { s.firebaseConfigJson = it }
+        otpCopyEnabled?.let { s.otpCopyEnabled = it }
+        suppressSystemNotifActions?.let { s.suppressSystemNotifActions = it }
+        heartbeatEnabled?.let { s.heartbeatEnabled = it }
+        companionStatusEnabled?.let { s.companionStatusEnabled = it }
+        companionAlertsEnabled?.let { s.companionAlertsEnabled = it }
+        companionBatteryPct?.let { s.companionBatteryPct = it }
+        companionWifiLossMinutes?.let { s.companionWifiLossMinutes = it }
+        companionPollSeconds?.let { s.companionPollSeconds = it }
+        maskSensitive?.let { s.maskSensitive = it }
+        companionStatusLabels?.let { s.companionStatusLabels = it }
+        reminderEnabled?.let { s.reminderEnabled = it }
+        reminderScanHours?.let { s.reminderScanHours = it }
+        reminderHour?.let { s.reminderHour = it }
+        reminderMinute?.let { s.reminderMinute = it }
+        reminderDaysBefore?.let { s.reminderDaysBefore = it }
+        reminderSpacingMinutes?.let { s.reminderSpacingMinutes = it }
+        parkingLeadMinutes?.let { s.parkingLeadMinutes = it }
+        // Only a mode this version knows - a newer file's unknown mode keeps the current one.
+        parkingAlarmMode?.takeIf { m -> runCatching { com.noti.logger.reminder.ParkingAlarmMode.valueOf(m) }.isSuccess }
+            ?.let { s.parkingAlarmMode = it }
+        reminderHistoryDays?.let { s.reminderHistoryDays = it }
+        remindersCompact?.let { s.remindersCompact = it }
+        remindersShowTotal?.let { s.remindersShowTotal = it }
+        defaultCurrency?.let { s.defaultCurrency = it; s.fxAttemptAtMs = 0L }
     }
 
     /**

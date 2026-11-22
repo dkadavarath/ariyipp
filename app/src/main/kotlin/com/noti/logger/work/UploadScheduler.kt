@@ -41,15 +41,25 @@ object UploadScheduler {
             .build()
     }
 
-    fun enqueueOneShot(context: Context) {
+    /**
+     * Queue an upload. A [manual] one (the user tapped "upload now") replaces a run that is only
+     * waiting out a retry backoff, which can be many minutes after a few failures: that is exactly
+     * when someone taps it, having fixed the network or the webhook. A run already in progress is
+     * left alone either way. Blocking for [manual] (it asks WorkManager) - call off the main thread.
+     */
+    fun enqueueOneShot(context: Context, manual: Boolean = false) {
         val s = Settings.get(context)
         val request = OneTimeWorkRequestBuilder<UploadWorker>()
             .setConstraints(buildConstraints(s))
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
             .build()
-        WorkManager.getInstance(context).enqueueUniqueWork(
+        val wm = WorkManager.getInstance(context)
+        val running = manual && try {
+            wm.getWorkInfosForUniqueWork(ONE_SHOT_NAME).get().any { it.state == androidx.work.WorkInfo.State.RUNNING }
+        } catch (e: Exception) { true }
+        wm.enqueueUniqueWork(
             ONE_SHOT_NAME,
-            ExistingWorkPolicy.KEEP,
+            if (manual && !running) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP,
             request
         )
     }

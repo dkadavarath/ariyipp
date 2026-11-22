@@ -13,7 +13,6 @@ object HeartbeatPolicy {
     /** A beat older than this says nothing about liveness now, so FCM may drop it. */
     const val TTL_SECONDS = 30 * 60
 
-
     /** How often each device sends a beat to its peer. 15 min = WorkManager's periodic minimum. */
     const val INTERVAL_MINUTES = 15L
 

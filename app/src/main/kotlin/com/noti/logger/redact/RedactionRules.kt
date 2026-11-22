@@ -24,7 +24,9 @@ data class RedactionConfig(
     val excludedKeywords: List<String>,
     val captureBody: Boolean,
     /** Per-package keyword filters and notes, keyed by package name. */
-    val appRules: Map<String, AppRule> = emptyMap()
+    val appRules: Map<String, AppRule> = emptyMap(),
+    /** Mask one-time codes and card numbers in what's kept (see [SensitiveMask]). */
+    val maskSensitive: Boolean = true,
 )
 
 data class RawNotification(
@@ -81,11 +83,12 @@ class RedactionRules(private val config: RedactionConfig) {
                 subText = null
             )
         } else {
+            val mask: (String?) -> String? = if (config.maskSensitive) SensitiveMask::apply else { t -> t }
             RedactedResult.Kept(
-                title = raw.title,
-                text = appendNotes(raw.text, notes),
-                bigText = raw.bigText,
-                subText = raw.subText
+                title = mask(raw.title),
+                text = appendNotes(mask(raw.text), notes),
+                bigText = mask(raw.bigText),
+                subText = mask(raw.subText)
             )
         }
     }

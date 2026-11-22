@@ -83,6 +83,7 @@
     <string name="msg_copy_link">Copy link</string>
     <string name="msg_link_copied">Link copied</string>
     <string name="msg_link_failed">No app can open this link</string>
+    <string name="msg_link_confirm_title">Open a link to %1$s?</string>
     <string name="msg_select_text">Select text</string>
     <string name="msg_forward">Forward</string>
     <string name="msg_share">Share</string>
@@ -166,7 +167,7 @@
     <string name="notif_copy_label">One-time code</string>
     <string name="notif_code_copied">Code copied</string>
     <string name="notif_reply_failed_title">Reply not sent to %1$s</string>
-    <string name="notif_reply_failed_body">Tap to open the conversation and try again.</string>
+    <string name="notif_reply_failed_body">\"%1$s\" - tap to open the conversation and send it again.</string>
 
     <!-- Clear received messages (before a full repush from the companion) - temporary, removed next version -->
 
@@ -238,7 +239,6 @@
 
     <!-- Status headers -->
     <string name="status_permissions">Permissions</string>
-    <string name="status_sync">Sync</string>
     <string name="status_data">Notification capture</string>
 
     <!-- About screen -->
@@ -324,6 +324,8 @@
     <string name="auth_tip">Sends header \"[name]: [prefix][token]\". For custom Header Auth: set the name to your header (e.g. \"key\") and clear the prefix so the raw token is sent.</string>
     <string name="sw_require_charging">Require charging</string>
     <string name="sw_capture_body">Capture notification body</string>
+    <string name="sw_mask_sensitive">Mask codes and card numbers</string>
+    <string name="sw_mask_sensitive_desc">One-time codes and full card numbers in captured notifications are replaced with •••• before they are stored or uploaded. A card keeps its last 4 digits.</string>
     <string name="switch_gzip">Gzip upload body (off for webhook compatibility)</string>
 
     <!-- Toasts / feedback -->

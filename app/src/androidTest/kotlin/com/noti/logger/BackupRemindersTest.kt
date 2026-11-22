@@ -83,6 +83,35 @@ class BackupRemindersTest {
         return ruleId
     }
 
+    @Test fun bills_of_two_rules_with_the_same_name_stay_with_their_own_rule() {
+        wipe()
+        val a = db.reminderRuleDao().insert(ReminderRuleEntity(name = "Card", type = "BILL", source = "SMS", sourceSender = "AAA"))
+        val b = db.reminderRuleDao().insert(ReminderRuleEntity(name = "Card", type = "BILL", source = "SMS", sourceSender = "BBB"))
+        db.billOccurrenceDao().insert(BillOccurrenceEntity(ruleId = a, name = "from A", dueAt = 1_800_000_000_000L, sourceKey = "dup-a"))
+        db.billOccurrenceDao().insert(BillOccurrenceEntity(ruleId = b, name = "from B", dueAt = 1_800_000_000_000L, sourceKey = "dup-b"))
+        val json = Backup.export(ctx)
+        wipe()
+        Backup.import(ctx, json)
+        val rules = db.reminderRuleDao().all().associateBy { it.id }
+        val bills = db.billOccurrenceDao().active().associateBy { it.name }
+        assertEquals("AAA", rules.getValue(bills.getValue("from A").ruleId).sourceSender)
+        assertEquals("BBB", rules.getValue(bills.getValue("from B").ruleId).sourceSender)
+    }
+
+    @Test fun a_long_history_streams_out_and_back_whole() {
+        wipe()
+        val dao = db.relayedMessageDao()
+        val before = dao.allMessages().size
+        // More than one export page.
+        for (i in 1..4_500) dao.insert(com.noti.logger.data.RelayedMessageEntity(sender = "+1", sim = "", body = "m$i \"quoted\" \\ ünï", receivedAt = i.toLong(), dedupe = "s$i"))
+        val json = Backup.export(ctx)
+        Backup.import(ctx, json)
+        val all = dao.allMessages()
+        assertEquals(before + 4_500, all.size)
+        assertEquals("m4500 \"quoted\" \\ ünï", all.first { it.dedupe == "s4500" }.body)
+        dao.deleteConversation("+1")
+    }
+
     @Test fun rules_bills_history_and_manual_entries_all_come_back() {
         seed()
         val json = Backup.export(ctx)

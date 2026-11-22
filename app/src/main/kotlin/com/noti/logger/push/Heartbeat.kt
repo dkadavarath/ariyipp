@@ -13,10 +13,10 @@ import com.noti.logger.ui.MainActivity
 import com.noti.logger.work.HeartbeatWorker
 import com.noti.sender.config.SenderSettings
 import com.noti.shared.Diag
+import com.noti.shared.Envelope
 import com.noti.shared.FcmLabel
 import com.noti.shared.FcmSender
 import com.noti.shared.HeartbeatPolicy
-import com.noti.shared.MessageCrypto
 import com.noti.shared.Role
 import com.noti.shared.Wire
 import com.noti.shared.WireMessage
@@ -106,7 +106,7 @@ object Heartbeat {
         if (!enabled(context) && !off) return false
         val p = peer(context) ?: return false
         return try {
-            val payload = MessageCrypto.encrypt(Wire.encodeFor(WireMessage.Heartbeat(request && !off, off), if (Settings.get(context).role == Role.COMPANION) com.noti.shared.Wire.Direction.COMPANION_TO_MAIN else com.noti.shared.Wire.Direction.MAIN_TO_COMPANION), p.key)
+            val payload = Envelope.seal(WireMessage.Heartbeat(request && !off, off), if (Settings.get(context).role == Role.COMPANION) Wire.Direction.COMPANION_TO_MAIN else Wire.Direction.MAIN_TO_COMPANION, p.key)
             val res = FcmSender.forServiceAccount(p.serviceAccountJson)
                 .send(
                     p.token, mapOf("payload" to payload), label = p.label, highPriority = highPriority,
@@ -129,7 +129,19 @@ object Heartbeat {
      * grants even under Doze - a WorkManager hop here could be deferred past the asker's wait, which
      * is exactly the false alarm the force-check exists to prevent. The worker is only the fallback.
      */
-    fun onBeatReceived(context: Context, request: Boolean, off: Boolean = false) {
+    fun onBeatReceived(context: Context, request: Boolean, off: Boolean, sentAt: Long) {
+        if (!takeStamp(context, sentAt)) {
+            // Unstamped (an older peer), or older than something already heard from the peer: a
+            // replayed copy. Counting it would hide a peer that's really gone ("off" most of all).
+            if (sentAt > 0) Diag.log("heartbeat from ${peerLabel(context)} not counted - older than its last message")
+            // A force-check is still answered: it may just have been overtaken by a newer push,
+            // and the peer is waiting on the answer. A replayed one costs a single push.
+            if (sentAt > 0 && request) {
+                val app = context.applicationContext
+                Thread { send(app, request = false, highPriority = true, off = !enabled(app)) }.start()
+            }
+            return
+        }
         if (off) {
             // The peer is alive and has its heartbeat off: stop expecting beats from it.
             setPeerOff(context, true)
@@ -152,19 +164,43 @@ object Heartbeat {
         if (request && !send(context, request = false, highPriority = true)) HeartbeatWorker.answerNow(context)
     }
 
-    /**
-     * Any other authenticated push from the peer (a relayed SMS, an ack, a status report, a command)
-     * proves it is alive just as well as a beat does. Before this only beats counted, so an active
-     * companion could be streaming status to the open Diagnostics screen while being reported as
-     * not responding. Throttled; see [HeartbeatPolicy.ALIVE_WRITE_THROTTLE_MS].
-     */
     /** This phone's heartbeat was just switched off: tell the peer once, off the caller's thread. */
     fun announceOff(context: Context) {
         val app = context.applicationContext
         Thread { send(app, request = false, highPriority = false, off = true) }.apply { name = "heartbeat-off" }.start()
     }
 
-    fun notePeerAlive(context: Context) {
+    /**
+     * Whether a message from the peer stamped [sentAt] (Wire.sentAt) is newer than everything taken
+     * from it so far, and if so, take it as the newest. Only such a message says anything about the
+     * peer being alive now: a replayed copy decrypts just as well. An unstamped one is from a
+     * version before stamps, which gets the "update the other phone" notice.
+     */
+    @Synchronized
+    fun takeStamp(context: Context, sentAt: Long): Boolean {
+        val companion = Settings.get(context).role == Role.COMPANION
+        if (sentAt <= 0) {
+            com.noti.sender.PeerVersionNotice.onUnstamped(context, peerIsMain = companion)
+            return false
+        }
+        com.noti.sender.PeerVersionNotice.onStamped(context)
+        val now = System.currentTimeMillis()
+        val mark = if (companion) SenderSettings.get(context).peerStampMark else Settings.get(context).peerStampMark
+        if (!com.noti.shared.ReplayGuard.isNew(sentAt, mark, now)) return false
+        val next = com.noti.shared.ReplayGuard.next(mark, sentAt, now)
+        if (companion) SenderSettings.get(context).peerStampMark = next else Settings.get(context).peerStampMark = next
+        return true
+    }
+
+    /**
+     * Any other authenticated push from the peer (a relayed SMS, an ack, a status report, a command)
+     * proves it is alive just as well as a beat does - if it's new (see [takeStamp]). Before this
+     * only beats counted, so an active companion could be streaming status to the open Diagnostics
+     * screen while being reported as not responding. Throttled; see
+     * [HeartbeatPolicy.ALIVE_WRITE_THROTTLE_MS].
+     */
+    fun notePeerAlive(context: Context, sentAt: Long) {
+        if (!takeStamp(context, sentAt)) return
         if (!enabled(context) || !paired(context)) return
         val now = System.currentTimeMillis()
         if (!HeartbeatPolicy.shouldRecordAlive(lastBeatAtMs(context), now)) return

@@ -6,9 +6,13 @@ import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.noti.logger.redact.AppRule
-import com.noti.logger.reminder.ReminderPolicy
-import com.noti.shared.DeviceStatusPolicy
 import com.noti.logger.redact.RedactionConfig
+import com.noti.logger.reminder.ReminderPolicy
+import com.noti.sender.config.boolean
+import com.noti.sender.config.int
+import com.noti.sender.config.long
+import com.noti.sender.config.string
+import com.noti.shared.DeviceStatusPolicy
 import java.io.File
 import java.util.UUID
 
@@ -20,41 +24,21 @@ class Settings private constructor(private val prefs: SharedPreferences) {
 
     // ---- Webhook / auth ----
 
-    var webhookUrl: String
-        get() = prefs.getString(KEY_WEBHOOK_URL, "") ?: ""
-        set(value) {
-            prefs.edit().putString(KEY_WEBHOOK_URL, value).apply()
-        }
+    var webhookUrl: String by prefs.string(KEY_WEBHOOK_URL, "")
 
-    var bearerToken: String
-        get() = prefs.getString(KEY_BEARER_TOKEN, "") ?: ""
-        set(value) {
-            prefs.edit().putString(KEY_BEARER_TOKEN, value).apply()
-        }
+    var bearerToken: String by prefs.string(KEY_BEARER_TOKEN, "")
 
     /** Auth header name. Default "Authorization"; set to a custom header (e.g. "key") for n8n Header Auth. */
-    var authHeaderName: String
-        get() = prefs.getString(KEY_AUTH_HEADER_NAME, "Authorization") ?: "Authorization"
-        set(value) {
-            prefs.edit().putString(KEY_AUTH_HEADER_NAME, value).apply()
-        }
+    var authHeaderName: String by prefs.string(KEY_AUTH_HEADER_NAME, "Authorization")
 
     /** Value scheme prefixed to the token. Default "Bearer "; set to "" to send the raw token. */
-    var authHeaderPrefix: String
-        get() = prefs.getString(KEY_AUTH_HEADER_PREFIX, "Bearer ") ?: "Bearer "
-        set(value) {
-            prefs.edit().putString(KEY_AUTH_HEADER_PREFIX, value).apply()
-        }
+    var authHeaderPrefix: String by prefs.string(KEY_AUTH_HEADER_PREFIX, "Bearer ")
 
     /** Full auth header value actually sent on the wire: prefix + token. */
     fun authHeaderValue(): String = authHeaderPrefix + bearerToken
 
     /** Gzip the upload body. Default OFF - many webhook receivers don't decompress request bodies. */
-    var gzipEnabled: Boolean
-        get() = prefs.getBoolean(KEY_GZIP_ENABLED, false)
-        set(value) {
-            prefs.edit().putBoolean(KEY_GZIP_ENABLED, value).apply()
-        }
+    var gzipEnabled: Boolean by prefs.boolean(KEY_GZIP_ENABLED, false)
 
     /** Generated once and persisted; never changes for a given install. Memoized so the capture
      *  path doesn't decrypt it on every notification. */
@@ -96,25 +80,13 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putInt(KEY_INTERVAL_MINUTES, value.coerceAtLeast(15)).apply()
         }
 
-    var thresholdCount: Int
-        get() = prefs.getInt(KEY_THRESHOLD_COUNT, 20)
-        set(value) {
-            prefs.edit().putInt(KEY_THRESHOLD_COUNT, value).apply()
-        }
+    var thresholdCount: Int by prefs.int(KEY_THRESHOLD_COUNT, 20)
 
     // ---- Connectivity constraints ----
 
-    var requireUnmetered: Boolean
-        get() = prefs.getBoolean(KEY_REQUIRE_UNMETERED, false)
-        set(value) {
-            prefs.edit().putBoolean(KEY_REQUIRE_UNMETERED, value).apply()
-        }
+    var requireUnmetered: Boolean by prefs.boolean(KEY_REQUIRE_UNMETERED, false)
 
-    var requireCharging: Boolean
-        get() = prefs.getBoolean(KEY_REQUIRE_CHARGING, false)
-        set(value) {
-            prefs.edit().putBoolean(KEY_REQUIRE_CHARGING, value).apply()
-        }
+    var requireCharging: Boolean by prefs.boolean(KEY_REQUIRE_CHARGING, false)
 
     // ---- Redaction / privacy ----
 
@@ -159,13 +131,18 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             cachedRedaction = null
         }
 
+    /** Mask one-time codes and card numbers in captured notifications before they're stored or
+     *  uploaded (see SensitiveMask). On by default. */
+    var maskSensitive: Boolean
+        get() = prefs.getBoolean(KEY_MASK_SENSITIVE, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_MASK_SENSITIVE, value).apply()
+            cachedRedaction = null
+        }
+
     /** How long captured notification rows are kept. Notifications only - chat history has its
      *  own [chatRetentionDays]. */
-    var retentionDays: Int
-        get() = prefs.getInt(KEY_RETENTION_DAYS, 30)
-        set(value) {
-            prefs.edit().putInt(KEY_RETENTION_DAYS, value).apply()
-        }
+    var retentionDays: Int by prefs.int(KEY_RETENTION_DAYS, 30)
 
     /** How long relayed chat history is kept, in days; 0 (the default) keeps it forever. See
      *  [com.noti.logger.data.ChatRetention]. */
@@ -195,26 +172,14 @@ class Settings private constructor(private val prefs: SharedPreferences) {
     // ---- Inbound push (FCM relay receiver) ----
 
     /** Opt-in: show notifications pushed from the sender app. Default off. */
-    var pushInboundEnabled: Boolean
-        get() = prefs.getBoolean(KEY_PUSH_INBOUND_ENABLED, false)
-        set(value) {
-            prefs.edit().putBoolean(KEY_PUSH_INBOUND_ENABLED, value).apply()
-        }
+    var pushInboundEnabled: Boolean by prefs.boolean(KEY_PUSH_INBOUND_ENABLED, false)
 
     /** Add an in-app "Copy" action to a relayed-message notification when it contains a one-time code. */
-    var otpCopyEnabled: Boolean
-        get() = prefs.getBoolean(KEY_OTP_COPY, true)
-        set(value) {
-            prefs.edit().putBoolean(KEY_OTP_COPY, value).apply()
-        }
+    var otpCopyEnabled: Boolean by prefs.boolean(KEY_OTP_COPY, true)
 
     /** Ask the OS not to add its own auto-generated actions (e.g. its OTP-copy chip) to our
      *  notifications - leaving only the app's own actions. Default off. */
-    var suppressSystemNotifActions: Boolean
-        get() = prefs.getBoolean(KEY_SUPPRESS_SYS_ACTIONS, false)
-        set(value) {
-            prefs.edit().putBoolean(KEY_SUPPRESS_SYS_ACTIONS, value).apply()
-        }
+    var suppressSystemNotifActions: Boolean by prefs.boolean(KEY_SUPPRESS_SYS_ACTIONS, false)
 
     /** Pre-shared AES-256-GCM key (base64) for decrypting inbound relayed messages. Memoized like
      *  [deviceId] - it's read on every inbound push, and EncryptedSharedPreferences decrypts per read. */
@@ -230,24 +195,21 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         }
         set(value) {
             val trimmed = value.trim()
-            prefs.edit().putString(KEY_RELAY_KEY, trimmed).apply()
+            val edit = prefs.edit().putString(KEY_RELAY_KEY, trimmed)
+            // A new key is a new pairing, perhaps with another phone whose clock differs: the
+            // replay marks taken from the old one (ReplayGuard) would refuse it until its clock
+            // caught up with the old phone's.
+            if (trimmed != relayKey) edit.remove(KEY_SNDI_TOKEN_SENT_AT).remove(KEY_SNDI_TOKEN_SEEN_AT).remove(KEY_PEER_STAMP_SENT_AT).remove(KEY_PEER_STAMP_SEEN_AT).remove(KEY_PEER_STAMP_FLOOR).remove(KEY_SNDI_TOKEN_FLOOR)
+            edit.apply()
             cachedRelayKey = trimmed
         }
 
     /** This device's FCM registration token; copied to the sender app at pairing. Updated on refresh. */
-    var fcmToken: String
-        get() = prefs.getString(KEY_FCM_TOKEN, "") ?: ""
-        set(value) {
-            prefs.edit().putString(KEY_FCM_TOKEN, value).apply()
-        }
+    var fcmToken: String by prefs.string(KEY_FCM_TOKEN, "")
 
     /** Last token of ours the companion is known to have (set after a successful announce), so the
      *  process-start announce only fires when the token actually changed. */
-    var announcedToken: String
-        get() = prefs.getString(KEY_ANNOUNCED_TOKEN, "") ?: ""
-        set(value) {
-            prefs.edit().putString(KEY_ANNOUNCED_TOKEN, value).apply()
-        }
+    var announcedToken: String by prefs.string(KEY_ANNOUNCED_TOKEN, "")
 
     /** Service-account key (JSON) so noti can PUSH send-SMS commands to sndi (Phase B, reverse send).
      *  Memoized - it's a multi-KB blob re-read on every heartbeat/command send. */
@@ -268,11 +230,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
 
     /** Imported `google-services.json` contents, used to init Firebase (FCM) at runtime instead of
      *  at build time — see [com.noti.logger.push.FirebaseInit]. */
-    var firebaseConfigJson: String
-        get() = prefs.getString(KEY_FIREBASE_CONFIG_JSON, "") ?: ""
-        set(value) {
-            prefs.edit().putString(KEY_FIREBASE_CONFIG_JSON, value).apply()
-        }
+    var firebaseConfigJson: String by prefs.string(KEY_FIREBASE_CONFIG_JSON, "")
 
     /** sndi's FCM registration token - the target for send-SMS commands. */
     var sndiFcmToken: String
@@ -281,13 +239,31 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             prefs.edit().putString(KEY_SNDI_TOKEN, value.trim()).apply()
         }
 
+    /** When the companion sent the endpoint in [sndiFcmToken]: an older copy of an announcement is
+     *  a replay and can't put an old endpoint back (see ReplayGuard). */
+    var sndiTokenMark: com.noti.shared.ReplayGuard.Mark
+        get() = com.noti.shared.ReplayGuard.Mark(
+            prefs.getLong(KEY_SNDI_TOKEN_SENT_AT, 0L), prefs.getLong(KEY_SNDI_TOKEN_SEEN_AT, 0L), prefs.getLong(KEY_SNDI_TOKEN_FLOOR, 0L),
+        )
+        set(value) {
+            prefs.edit().putLong(KEY_SNDI_TOKEN_SENT_AT, value.sentAt).putLong(KEY_SNDI_TOKEN_SEEN_AT, value.seenAt)
+                .putLong(KEY_SNDI_TOKEN_FLOOR, value.floor).apply()
+        }
+
+    /** The newest message taken from the companion as proof of life: only a newer one counts again
+     *  (a replayed copy would otherwise hide a companion that's gone; see ReplayGuard). */
+    var peerStampMark: com.noti.shared.ReplayGuard.Mark
+        get() = com.noti.shared.ReplayGuard.Mark(
+            prefs.getLong(KEY_PEER_STAMP_SENT_AT, 0L), prefs.getLong(KEY_PEER_STAMP_SEEN_AT, 0L), prefs.getLong(KEY_PEER_STAMP_FLOOR, 0L),
+        )
+        set(value) {
+            prefs.edit().putLong(KEY_PEER_STAMP_SENT_AT, value.sentAt).putLong(KEY_PEER_STAMP_SEEN_AT, value.seenAt)
+                .putLong(KEY_PEER_STAMP_FLOOR, value.floor).apply()
+        }
+
     // ---- Status ----
 
-    var lastUploadAtMs: Long
-        get() = prefs.getLong(KEY_LAST_UPLOAD_AT_MS, 0L)
-        set(value) {
-            prefs.edit().putLong(KEY_LAST_UPLOAD_AT_MS, value).apply()
-        }
+    var lastUploadAtMs: Long by prefs.long(KEY_LAST_UPLOAD_AT_MS, 0L)
 
     var lastUploadResult: String?
         get() = prefs.getString(KEY_LAST_UPLOAD_RESULT, null)
@@ -297,9 +273,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
 
     /** When the "can't read messages from the companion" alert last fired. Persisted: every failed
      *  push wakes a fresh process, so an in-memory throttle let it fire on each one. */
-    var keyMismatchAlertAtMs: Long
-        get() = prefs.getLong(KEY_KEY_MISMATCH_AT, 0L)
-        set(value) { prefs.edit().putLong(KEY_KEY_MISMATCH_AT, value).apply() }
+    var keyMismatchAlertAtMs: Long by prefs.long(KEY_KEY_MISMATCH_AT, 0L)
 
     /** The database encryption key (base64, 32 bytes; see DbEncryption). Blank until first use. */
     val dbKey: String
@@ -313,62 +287,38 @@ class Settings private constructor(private val prefs: SharedPreferences) {
 
     /** Screenshot protection (see com.noti.sender.ui.ScreenGuard): pairing, key and backup screens
      *  (on by default) and chats, messages and reminders (off by default). */
-    var protectKeyScreens: Boolean
-        get() = prefs.getBoolean(KEY_PROTECT_KEYS, true)
-        set(value) { prefs.edit().putBoolean(KEY_PROTECT_KEYS, value).apply() }
+    var protectKeyScreens: Boolean by prefs.boolean(KEY_PROTECT_KEYS, true)
 
-    var protectMessages: Boolean
-        get() = prefs.getBoolean(KEY_PROTECT_MESSAGES, false)
-        set(value) { prefs.edit().putBoolean(KEY_PROTECT_MESSAGES, value).apply() }
+    var protectMessages: Boolean by prefs.boolean(KEY_PROTECT_MESSAGES, false)
 
     /** The webhook URL for which "the endpoint isn't confirming records" was last notified, so it's
      *  said once per endpoint rather than on every upload. */
-    var unconfirmedNotifiedUrl: String
-        get() = prefs.getString(KEY_UNCONFIRMED_NOTIFIED_URL, "") ?: ""
-        set(value) { prefs.edit().putString(KEY_UNCONFIRMED_NOTIFIED_URL, value).apply() }
+    var unconfirmedNotifiedUrl: String by prefs.string(KEY_UNCONFIRMED_NOTIFIED_URL, "")
 
     /** The Status screen's DB-status text as of the last time it was computed, so a cold app start
      *  can paint it immediately instead of showing nothing while Room re-queries. Blank = none yet. */
-    var statusCacheLastUpload: String
-        get() = prefs.getString(KEY_STATUS_CACHE_LAST_UPLOAD, "") ?: ""
-        set(value) {
-            prefs.edit().putString(KEY_STATUS_CACHE_LAST_UPLOAD, value).apply()
-        }
+    var statusCacheLastUpload: String by prefs.string(KEY_STATUS_CACHE_LAST_UPLOAD, "")
 
     /** When we last heard a heartbeat from the peer (companion). 0 = not baselined / not paired. */
     /** The peer said its heartbeat is off (WireMessage.Heartbeat.off); cleared by its next beat. */
-    var peerHeartbeatOff: Boolean
-        get() = prefs.getBoolean(KEY_PEER_HB_OFF, false)
-        set(value) { prefs.edit().putBoolean(KEY_PEER_HB_OFF, value).apply() }
+    var peerHeartbeatOff: Boolean by prefs.boolean(KEY_PEER_HB_OFF, false)
 
-    var lastPeerBeatAtMs: Long
-        get() = prefs.getLong(KEY_LAST_PEER_BEAT_MS, 0L)
-        set(value) {
-            prefs.edit().putLong(KEY_LAST_PEER_BEAT_MS, value).apply()
-        }
+    var lastPeerBeatAtMs: Long by prefs.long(KEY_LAST_PEER_BEAT_MS, 0L)
 
     /** Main is paired with a companion it can reach (endpoint + key + FCM key all present). */
     fun peerPaired(): Boolean =
         sndiFcmToken.isNotBlank() && relayKey.isNotBlank() && serviceAccountJson.isNotBlank()
 
     /** Whether the liveness heartbeat runs on this device (send + monitor). Default on. */
-    var heartbeatEnabled: Boolean
-        get() = prefs.getBoolean(KEY_HEARTBEAT_ENABLED, true)
-        set(value) {
-            prefs.edit().putBoolean(KEY_HEARTBEAT_ENABLED, value).apply()
-        }
+    var heartbeatEnabled: Boolean by prefs.boolean(KEY_HEARTBEAT_ENABLED, true)
 
     // ---- Companion device status ----
 
     /** Whether Main asks the companion for its status and honours its alerts. Default on. */
-    var companionStatusEnabled: Boolean
-        get() = prefs.getBoolean(KEY_CS_ENABLED, true)
-        set(value) { prefs.edit().putBoolean(KEY_CS_ENABLED, value).apply() }
+    var companionStatusEnabled: Boolean by prefs.boolean(KEY_CS_ENABLED, true)
 
     /** Whether the companion should raise battery/wifi alerts. Pushed down to it. */
-    var companionAlertsEnabled: Boolean
-        get() = prefs.getBoolean(KEY_CS_ALERTS, true)
-        set(value) { prefs.edit().putBoolean(KEY_CS_ALERTS, value).apply() }
+    var companionAlertsEnabled: Boolean by prefs.boolean(KEY_CS_ALERTS, true)
 
     var companionBatteryPct: Int
         get() = prefs.getInt(KEY_CS_BATTERY_PCT, DeviceStatusPolicy.DEFAULT_BATTERY_PCT)
@@ -384,30 +334,21 @@ class Settings private constructor(private val prefs: SharedPreferences) {
 
     /** The last snapshot received, as a wire-encoded [com.noti.shared.WireMessage.StatusReport], so
      *  the Status card can paint a cold start instead of showing nothing until the first poll. */
-    var lastCompanionStatus: String
-        get() = prefs.getString(KEY_CS_LAST, "") ?: ""
-        set(value) { prefs.edit().putString(KEY_CS_LAST, value).apply() }
+    var lastCompanionStatus: String by prefs.string(KEY_CS_LAST, "")
 
     /** Show the value under each companion indicator. Off leaves the icons alone, which is the
      *  most compact the strip gets. */
-    var companionStatusLabels: Boolean
-        get() = prefs.getBoolean(KEY_CS_LABELS, true)
-        set(value) { prefs.edit().putBoolean(KEY_CS_LABELS, value).apply() }
+    var companionStatusLabels: Boolean by prefs.boolean(KEY_CS_LABELS, true)
 
     /** When that snapshot arrived, on *this* device's clock - freshness must never be judged by
      *  comparing against the companion's clock. See [DeviceStatusPolicy.readoutSuspect]. */
-    var lastCompanionStatusAtMs: Long
-        get() = prefs.getLong(KEY_CS_LAST_AT, 0L)
-        set(value) { prefs.edit().putLong(KEY_CS_LAST_AT, value).apply() }
-
+    var lastCompanionStatusAtMs: Long by prefs.long(KEY_CS_LAST_AT, 0L)
 
     // ---- Reminder module ----
 
     /** The central on/off for the whole Reminder module: rulebook, scan, tab and reminders. Off by
      *  default - it is a distinct feature that shouldn't appear for anyone who didn't ask for it. */
-    var reminderEnabled: Boolean
-        get() = prefs.getBoolean(KEY_RM_ENABLED, false)
-        set(value) { prefs.edit().putBoolean(KEY_RM_ENABLED, value).apply() }
+    var reminderEnabled: Boolean by prefs.boolean(KEY_RM_ENABLED, false)
 
     /** How often the rulebook runs, in hours. 0 = never (manual "Calculate now" only). */
     var reminderScanHours: Int
@@ -441,56 +382,36 @@ class Settings private constructor(private val prefs: SharedPreferences) {
     /** Which backend rings a parking expiry - see [com.noti.logger.reminder.ParkingAlarmMode].
      *  Defaults to IN_APP because device testing showed the clock-app route is blocked from the
      *  background, which is where every real parking renewal arrives. */
-    var parkingAlarmMode: String
-        get() = prefs.getString(KEY_RM_PARK_ALARM, "IN_APP") ?: "IN_APP"
-        set(value) { prefs.edit().putString(KEY_RM_PARK_ALARM, value).apply() }
+    var parkingAlarmMode: String by prefs.string(KEY_RM_PARK_ALARM, "IN_APP")
 
     /** End of the window the last scan covered, so the next one resumes from exactly there and
      *  neither re-reads the whole table nor skips a message that arrived mid-scan. */
-    var lastReminderScanAtMs: Long
-        get() = prefs.getLong(KEY_RM_LAST_SCAN, 0L)
-        set(value) { prefs.edit().putLong(KEY_RM_LAST_SCAN, value).apply() }
+    var lastReminderScanAtMs: Long by prefs.long(KEY_RM_LAST_SCAN, 0L)
 
     /** Highest relayed-message row id the last scan covered; -1 = none yet (fall back to the time
      *  window). Reset by a restore, which reassigns row ids. */
-    var lastReminderScanSmsId: Long
-        get() = prefs.getLong(KEY_RM_LAST_SCAN_SMS_ID, -1L)
-        set(value) { prefs.edit().putLong(KEY_RM_LAST_SCAN_SMS_ID, value).apply() }
+    var lastReminderScanSmsId: Long by prefs.long(KEY_RM_LAST_SCAN_SMS_ID, -1L)
 
     /** Highest captured-notification row id the last scan covered; -1 = none yet (fall back to the
      *  time window). */
-    var lastReminderScanNotifId: Long
-        get() = prefs.getLong(KEY_RM_LAST_SCAN_NOTIF_ID, -1L)
-        set(value) { prefs.edit().putLong(KEY_RM_LAST_SCAN_NOTIF_ID, value).apply() }
+    var lastReminderScanNotifId: Long by prefs.long(KEY_RM_LAST_SCAN_NOTIF_ID, -1L)
 
     /** Reminders tab: one line per entry instead of a card with labelled buttons. A view
      *  preference for this phone, so it is not carried in backups. */
-    var remindersCompact: Boolean
-        get() = prefs.getBoolean(KEY_RM_COMPACT, false)
-        set(value) { prefs.edit().putBoolean(KEY_RM_COMPACT, value).apply() }
+    var remindersCompact: Boolean by prefs.boolean(KEY_RM_COMPACT, false)
 
     /** Reminders tab: the "due in the next 30 days" total at the top. */
-    var remindersShowTotal: Boolean
-        get() = prefs.getBoolean(KEY_RM_SHOW_TOTAL, true)
-        set(value) { prefs.edit().putBoolean(KEY_RM_SHOW_TOTAL, value).apply() }
+    var remindersShowTotal: Boolean by prefs.boolean(KEY_RM_SHOW_TOTAL, true)
 
     /** The currency the user chose for Reminders totals (ISO code), or "" to follow the phone's
      *  region - see [com.noti.logger.reminder.FxRates.home], which resolves the effective one. */
-    var defaultCurrency: String
-        get() = prefs.getString(KEY_DEFAULT_CURRENCY, "") ?: ""
-        set(value) { prefs.edit().putString(KEY_DEFAULT_CURRENCY, value).apply() }
+    var defaultCurrency: String by prefs.string(KEY_DEFAULT_CURRENCY, "")
 
     /** Cached exchange rates (the API's JSON, based on the default currency) for that total, when they were fetched,
      *  and when a fetch was last tried - see [com.noti.logger.reminder.FxRates]. */
-    var fxRatesJson: String
-        get() = prefs.getString(KEY_FX_JSON, "") ?: ""
-        set(value) { prefs.edit().putString(KEY_FX_JSON, value).apply() }
-    var fxFetchedAtMs: Long
-        get() = prefs.getLong(KEY_FX_AT, 0L)
-        set(value) { prefs.edit().putLong(KEY_FX_AT, value).apply() }
-    var fxAttemptAtMs: Long
-        get() = prefs.getLong(KEY_FX_TRIED, 0L)
-        set(value) { prefs.edit().putLong(KEY_FX_TRIED, value).apply() }
+    var fxRatesJson: String by prefs.string(KEY_FX_JSON, "")
+    var fxFetchedAtMs: Long by prefs.long(KEY_FX_AT, 0L)
+    var fxAttemptAtMs: Long by prefs.long(KEY_FX_TRIED, 0L)
 
     /** Days of settled bills to keep in history. */
     var reminderHistoryDays: Int
@@ -510,18 +431,10 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         }
 
     /** false = Default (blue brand theme); true = Material You dynamic color (Android 12+). */
-    var dynamicColor: Boolean
-        get() = prefs.getBoolean(KEY_DYNAMIC_COLOR, false)
-        set(value) {
-            prefs.edit().putBoolean(KEY_DYNAMIC_COLOR, value).apply()
-        }
+    var dynamicColor: Boolean by prefs.boolean(KEY_DYNAMIC_COLOR, false)
 
     /** Pure-black (AMOLED) surfaces when dark mode is active. No effect in light mode. */
-    var amoled: Boolean
-        get() = prefs.getBoolean(KEY_AMOLED, false)
-        set(value) {
-            prefs.edit().putBoolean(KEY_AMOLED, value).apply()
-        }
+    var amoled: Boolean by prefs.boolean(KEY_AMOLED, false)
 
     // ---- Muted conversations ----
 
@@ -564,7 +477,8 @@ class Settings private constructor(private val prefs: SharedPreferences) {
             includedPackages = includedPackages,
             excludedKeywords = excludedKeywords,
             captureBody = captureBody,
-            appRules = appRules
+            appRules = appRules,
+            maskSensitive = maskSensitive,
         ).also { cachedRedaction = it }
     }
 
@@ -590,6 +504,7 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_EXCLUDED_KEYWORDS = "excluded_keywords"
         private const val KEY_APP_RULES = "app_rules"
         private const val KEY_CAPTURE_BODY = "capture_body"
+        private const val KEY_MASK_SENSITIVE = "mask_sensitive"
         private const val KEY_RETENTION_DAYS = "retention_days"
         private const val KEY_CHAT_RETENTION_DAYS = "chat_retention_days"
         private const val KEY_DEDUPE_WINDOW_SECONDS = "dedupe_window_seconds"
@@ -603,6 +518,12 @@ class Settings private constructor(private val prefs: SharedPreferences) {
         private const val KEY_SA_JSON = "sa_json"
         private const val KEY_FIREBASE_CONFIG_JSON = "firebase_config_json"
         private const val KEY_SNDI_TOKEN = "sndi_token"
+        private const val KEY_SNDI_TOKEN_SENT_AT = "sndi_token_sent_at"
+        private const val KEY_SNDI_TOKEN_SEEN_AT = "sndi_token_seen_at"
+        private const val KEY_PEER_STAMP_SENT_AT = "peer_stamp_sent_at"
+        private const val KEY_PEER_STAMP_SEEN_AT = "peer_stamp_seen_at"
+        private const val KEY_PEER_STAMP_FLOOR = "peer_stamp_floor"
+        private const val KEY_SNDI_TOKEN_FLOOR = "sndi_token_floor"
         private const val KEY_LAST_UPLOAD_AT_MS = "last_upload_at_ms"
         private const val KEY_LAST_UPLOAD_RESULT = "last_upload_result"
         private const val KEY_UNCONFIRMED_NOTIFIED_URL = "unconfirmed_notified_url"

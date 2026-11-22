@@ -19,6 +19,17 @@ android {
     namespace = "com.noti.logger"
     compileSdk = 37
 
+    // Strict: a new lint warning fails the build. What was there when this was switched on is in
+    // lint-baseline.xml, to be worked down; the version-nag checks are off (they change with the
+    // day, not with the code - dependency updates are their own task).
+    lint {
+        abortOnError = true
+        warningsAsErrors = true
+        checkReleaseBuilds = true
+        baseline = file("lint-baseline.xml")
+        disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion")
+    }
+
     defaultConfig {
         applicationId = "com.noti.logger"
         minSdk = 26

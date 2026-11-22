@@ -47,6 +47,21 @@
                         android:layout_height="wrap_content"
                         android:text="@string/sw_capture_body" />
 
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/sw_mask_sensitive"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/sw_mask_sensitive" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/sw_mask_sensitive_desc"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
                     <com.google.android.material.textfield.TextInputLayout
                         style="@style/Widget.Noti.TextInput"
                         android:layout_width="match_parent"

@@ -3,8 +3,8 @@ package com.noti.logger.push
 import android.content.Context
 import com.noti.logger.config.Settings
 import com.noti.shared.Diag
+import com.noti.shared.Envelope
 import com.noti.shared.FcmSender
-import com.noti.shared.MessageCrypto
 import com.noti.shared.Wire
 import com.noti.shared.WireMessage
 
@@ -36,10 +36,7 @@ object NotiCommandSender {
             Diag.log("compose FAILED - not configured: missing $missing (Settings → Relay)")
             return false
         }
-        val payload = MessageCrypto.encrypt(
-            Wire.encodeFor(WireMessage.Command(to, body, sim, msgId, issuedAt = System.currentTimeMillis()), com.noti.shared.Wire.Direction.MAIN_TO_COMPANION),
-            s.relayKey,
-        )
+        val payload = Envelope.seal(WireMessage.Command(to, body, sim, msgId, issuedAt = System.currentTimeMillis()), Wire.Direction.MAIN_TO_COMPANION, s.relayKey)
         return try {
             val res = FcmSender.forServiceAccount(s.serviceAccountJson).send(s.sndiFcmToken, mapOf("payload" to payload), label = com.noti.shared.FcmLabel.COMMAND)
             Diag.log(

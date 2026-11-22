@@ -5,12 +5,12 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.reminder.DueDates
+import java.time.LocalDate
+import java.time.ZoneId
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.time.LocalDate
-import java.time.ZoneId
 
 /**
  * Migrations checked against the schemas Room itself exported (app/schemas), rather than a

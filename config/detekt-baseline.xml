@@ -1,0 +1,100 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:MainActivity.kt$MainActivity$chosen == null &amp;&amp; (settings.webhookUrl.isNotBlank() || settings.pushInboundEnabled || settings.relayKey.isNotBlank())</ID>
+    <ID>ComplexCondition:PushMessageHandler.kt$PushMessageHandler$incoming.parts &gt; 1 &amp;&amp; (incoming.parts &gt; MAX_PARTS || incoming.part &lt; 0 || incoming.part &gt;= incoming.parts)</ID>
+    <ID>ComplexCondition:ReminderRuleActivity.kt$ReminderRuleActivity$dateWasEmpty &amp;&amp; d.datePattern != null &amp;&amp; d.dateFormat != null &amp;&amp; text(R.id.et_format).isBlank()</ID>
+    <ID>ComplexCondition:ReminderRuleActivity.kt$ReminderRuleActivity$payOn &amp;&amp; !isParking() &amp;&amp; sameSource &amp;&amp; text(R.id.et_match).isBlank()</ID>
+    <ID>ComplexCondition:ReminderTrigger.kt$ReminderTrigger$paysWatched(r) &amp;&amp; r.paySource == SourceType.NOTIFICATION.name &amp;&amp; r.payPackage == pkg &amp;&amp; ReminderExtractor.matches(r.payMatchPattern, text)</ID>
+    <ID>ComplexCondition:ReminderTrigger.kt$ReminderTrigger$paysWatched(r) &amp;&amp; r.paySource == SourceType.NOTIFICATION.name &amp;&amp; r.payPackage.isNotBlank() &amp;&amp; r.payPackage != r.sourcePackage.takeIf { r.source == SourceType.NOTIFICATION.name }</ID>
+    <ID>ComplexCondition:SenderPipeline.kt$SenderPipeline$s.serviceAccountJson.isBlank() || s.notiFcmToken.isBlank() || s.relayKey.isBlank() || s.myFcmToken.isBlank()</ID>
+    <ID>ComplexCondition:StatusCollector.kt$StatusCollector$rssi == null || rssi == Int.MIN_VALUE || rssi &gt;= 0 || rssi &lt; -127</ID>
+    <ID>CyclomaticComplexMethod:ChatActivity.kt$ChatActivity$@android.annotation.SuppressLint("ClickableViewAccessibility") // the listener returns false; performClick() still runs private fun bindMessage(holder: MessageVH, row: Row.Msg)</ID>
+    <ID>CyclomaticComplexMethod:DbEncryption.kt$DbEncryption$private fun readoptOrCleanAside(db: File, key: ByteArray, oldKeys: () -&gt; List&lt;ByteArray&gt;)</ID>
+    <ID>CyclomaticComplexMethod:DbKeyStore.kt$DbKeyStore$@Synchronized fun key(context: Context): ByteArray</ID>
+    <ID>CyclomaticComplexMethod:DiagnosticsActivity.kt$DiagnosticsActivity$private fun renderCompanionStatus()</ID>
+    <ID>CyclomaticComplexMethod:FxRates.kt$FxRates$fun isoOf(currency: String, home: String): String?</ID>
+    <ID>CyclomaticComplexMethod:MainActivity.kt$MainActivity$override fun onCreate(savedInstanceState: Bundle?)</ID>
+    <ID>CyclomaticComplexMethod:NotiListenerService.kt$NotiListenerService$override fun onNotificationPosted(sbn: StatusBarNotification)</ID>
+    <ID>CyclomaticComplexMethod:NotiMessagingService.kt$NotiMessagingService$private fun handleCommand(message: RemoteMessage)</ID>
+    <ID>CyclomaticComplexMethod:PatternBuilder.kt$PatternBuilder$fun forSelection(sample: String, start: Int, end: Int, field: Field, preferAnchor: Boolean = false): Result?</ID>
+    <ID>CyclomaticComplexMethod:PushMessageHandler.kt$PushMessageHandler$fun handle(context: Context, data: Map&lt;String, String&gt;): Boolean</ID>
+    <ID>CyclomaticComplexMethod:PushMessageHandler.kt$PushMessageHandler$private fun showRelay(context: Context, settings: Settings, incoming: WireMessage.Relay, ciphertext: String, key: String): Boolean</ID>
+    <ID>CyclomaticComplexMethod:ReminderRuleActivity.kt$ReminderRuleActivity$private fun load(fillFields: Boolean = true)</ID>
+    <ID>CyclomaticComplexMethod:ReminderRuleActivity.kt$ReminderRuleActivity$private fun runTest()</ID>
+    <ID>CyclomaticComplexMethod:ReminderRuleActivity.kt$ReminderRuleActivity$private fun saveChecked(name: String)</ID>
+    <ID>CyclomaticComplexMethod:ReminderScanner.kt$ReminderScanner$@Synchronized fun scan(context: Context, fullRescan: Boolean = false): Result</ID>
+    <ID>CyclomaticComplexMethod:ReminderScanner.kt$ReminderScanner$fun rollManualRules(context: Context)</ID>
+    <ID>CyclomaticComplexMethod:ReminderScanner.kt$ReminderScanner$private fun applyBill(context: Context, rule: ReminderRuleEntity, text: String, atMs: Long, msgKey: String): Boolean</ID>
+    <ID>CyclomaticComplexMethod:ReminderScanner.kt$ReminderScanner$private fun payPass( context: Context, payRules: List&lt;ReminderRuleEntity&gt;, smsRows: List&lt;com.noti.logger.data.RelayedMessageEntity&gt;, readNotifs: (String) -&gt; List&lt;com.noti.logger.data.NotificationEntity&gt;, ): Pair&lt;Int, Boolean&gt;</ID>
+    <ID>CyclomaticComplexMethod:RemindersFragment.kt$RemindersFragment$private fun renderTotals(ctx: android.content.Context)</ID>
+    <ID>CyclomaticComplexMethod:RemindersFragment.kt$RemindersFragment$private fun showOverflowMenu(anchor: View)</ID>
+    <ID>CyclomaticComplexMethod:RemindersFragment.kt$RemindersFragment.RowAdapter$private fun bindBill(holder: VH, row: Row.Bill)</ID>
+    <ID>CyclomaticComplexMethod:RepushWorker.kt$RepushWorker$override suspend fun doWork(): Result</ID>
+    <ID>CyclomaticComplexMethod:UploadFailureTest.kt$UploadFailureTest$private fun startServerReturning(code: Int)</ID>
+    <ID>CyclomaticComplexMethod:UploadPipelineTest.kt$UploadPipelineTest$private fun startServer()</ID>
+    <ID>CyclomaticComplexMethod:UploadWorker.kt$UploadWorker$override suspend fun doWork(): Result</ID>
+    <ID>CyclomaticComplexMethod:Uploader.kt$Uploader$fun upload( url: String, authHeaderName: String, authHeaderValue: String, batch: UploadBatch, gzip: Boolean = false ): UploadOutcome</ID>
+    <ID>EmptyCatchBlock:BackupActivity.kt$BackupActivity${ }</ID>
+    <ID>EmptyCatchBlock:BackupRemindersTest.kt$BackupRemindersTest${ }</ID>
+    <ID>EmptyCatchBlock:DueDates.kt$DueDates${ }</ID>
+    <ID>EmptyCatchBlock:ParkingAlarmActivity.kt$ParkingAlarmActivity${ }</ID>
+    <ID>EmptyCatchBlock:ParkingTracker.kt$ParkingTracker${ }</ID>
+    <ID>EmptyCatchBlock:PeerVersionNotice.kt$PeerVersionNotice${ }</ID>
+    <ID>EmptyCatchBlock:ReminderAlarmReceiver.kt$ReminderAlarmReceiver${ }</ID>
+    <ID>EmptyCatchBlock:ReminderScheduler.kt$ReminderScheduler${ }</ID>
+    <ID>EmptyCatchBlock:SendGuard.kt$SendGuard${ }</ID>
+    <ID>EmptyElseBlock:PartialSuccessTest.kt$PartialSuccessTest$if (n &lt;= 0) break</ID>
+    <ID>EmptyFunctionBlock:AppForeground.kt$AppForeground.&lt;no name provided&gt;${}</ID>
+    <ID>EmptyFunctionBlock:LegacyDb.kt$LegacyDb.&lt;no name provided&gt;${}</ID>
+    <ID>EmptyFunctionBlock:MigrationTest.kt$MigrationTest.&lt;no name provided&gt;${}</ID>
+    <ID>EmptyFunctionBlock:ReminderRuleActivity.kt$ReminderRuleActivity.&lt;no name provided&gt;${}</ID>
+    <ID>LargeClass:ReminderRuleActivity.kt$ReminderRuleActivity : ScreenActivity</ID>
+    <ID>LongMethod:ChatActivity.kt$ChatActivity$override fun onCreate(savedInstanceState: Bundle?)</ID>
+    <ID>LongMethod:DiagnosticsActivity.kt$DiagnosticsActivity$private fun renderCompanionStatus()</ID>
+    <ID>LongMethod:MigrationTest.kt$MigrationTest$@Test fun migrate_1_to_2_preserves_rows_and_adds_contentHash()</ID>
+    <ID>LongMethod:NotiDatabase.kt$NotiDatabase.Companion.&lt;no name provided&gt;$override fun migrate(db: SupportSQLiteDatabase)</ID>
+    <ID>LongMethod:NotiListenerService.kt$NotiListenerService$override fun onNotificationPosted(sbn: StatusBarNotification)</ID>
+    <ID>LongMethod:RelayReceiveActivity.kt$RelayReceiveActivity$override fun onScreenCreated()</ID>
+    <ID>LongMethod:ReminderEditActivity.kt$ReminderEditActivity$private fun saveBill(name: String)</ID>
+    <ID>LongMethod:ReminderRuleActivity.kt$ReminderRuleActivity$private fun load(fillFields: Boolean = true)</ID>
+    <ID>LongMethod:ReminderRuleActivity.kt$ReminderRuleActivity$private fun saveChecked(name: String)</ID>
+    <ID>LongMethod:ReminderScanner.kt$ReminderScanner$private fun applyBill(context: Context, rule: ReminderRuleEntity, text: String, atMs: Long, msgKey: String): Boolean</ID>
+    <ID>LongMethod:ReminderSettingsActivity.kt$ReminderSettingsActivity$override fun onScreenCreated()</ID>
+    <ID>LongMethod:RepushWorker.kt$RepushWorker$override suspend fun doWork(): Result</ID>
+    <ID>LongMethod:UploadWorker.kt$UploadWorker$override suspend fun doWork(): Result</ID>
+    <ID>LongParameterList:DbEncryption.kt$DbEncryption$( context: Context, key: ByteArray, name: String = DB_NAME, onReset: () -&gt; Unit = {}, failAfter: Int = 0, oldKeys: () -&gt; List&lt;ByteArray&gt; = { DbKeyStore.asideKeys(context, ASIDE_KEEP_MS) }, )</ID>
+    <ID>LongParameterList:FcmSender.kt$FcmSender$( targetToken: String, data: Map&lt;String, String&gt;, validateOnly: Boolean = false, label: String? = null, highPriority: Boolean = true, collapseKey: String? = null, ttlSeconds: Int? = null, )</ID>
+    <ID>LongParameterList:FcmSender.kt$FcmSender.Companion$( targetToken: String, data: Map&lt;String, String&gt;, validateOnly: Boolean, label: String?, highPriority: Boolean = true, collapseKey: String? = null, ttlSeconds: Int? = null, )</ID>
+    <ID>LongParameterList:ParkingTracker.kt$ParkingTracker$(context: Context, sessionId: Long, name: String, zone: String, remindAtMs: Long, expiresAtMs: Long)</ID>
+    <ID>LongParameterList:RedactionRulesTest.kt$RedactionRulesTest$( packageName: String = "com.example.app", title: String? = "Hello", text: String? = "World", bigText: String? = null, subText: String? = null, category: String? = "msg" )</ID>
+    <ID>LongParameterList:ReminderExtractor.kt$ReminderExtractor$( text: String, matchPattern: String?, amountPattern: String?, currencyPattern: String?, datePattern: String?, dateFormat: String?, today: LocalDate = LocalDate.now(), )</ID>
+    <ID>LongParameterList:ReminderExtractor.kt$ReminderExtractor$( text: String, matchPattern: String?, zonePattern: String?, expiryPattern: String?, dateFormat: String?, now: LocalDateTime = LocalDateTime.now(), )</ID>
+    <ID>LongParameterList:ReminderNotifier.kt$ReminderNotifier$( context: Context, id: Int, channel: String, title: String, body: String, intent: PendingIntent, category: String, )</ID>
+    <ID>LongParameterList:ReminderPolicy.kt$ReminderPolicy$( anchorStart: LocalDate, recurrence: Recurrence, every: Int, offsetDays: Int, after: LocalDate?, today: LocalDate, )</ID>
+    <ID>LongParameterList:ReminderPolicy.kt$ReminderPolicy$( mode: DueMode, anchorDate: LocalDate, constantDay: Int = 1, anchorDay: Int = 1, offsetDays: Int = 0, extracted: LocalDate? = null, )</ID>
+    <ID>LongParameterList:ReminderScanner.kt$ReminderScanner$( context: Context, rule: ReminderRuleEntity, text: String, atMs: Long, msgKey: String, isStatement: Boolean, )</ID>
+    <ID>LongParameterList:RemindersFragment.kt$RemindersFragment.Totals$( val home: String, val inHome: Double, val bills: Int, val withoutAmount: Int, /** Amounts that couldn't be put into [home], by their own currency. */ val unconverted: Map&lt;String, Double&gt;, /** Whether any foreign amount went into [inHome] - only then is the rates date worth showing. */ val converted: Boolean, val ratesAtMs: Long, )</ID>
+    <ID>LongParameterList:SmsPartTally.kt$SmsPartTally$(context: Context, action: String, msgId: Long, part: Int, parts: Int, ok: Boolean, now: Long = System.currentTimeMillis())</ID>
+    <ID>LoopWithTooManyJumpStatements:InstalledApps.kt$InstalledApps$for</ID>
+    <ID>LoopWithTooManyJumpStatements:ReminderScanner.kt$ReminderScanner$for</ID>
+    <ID>LoopWithTooManyJumpStatements:RuleAutoParser.kt$RuleAutoParser$for</ID>
+    <ID>LoopWithTooManyJumpStatements:UploadWorker.kt$UploadWorker$while</ID>
+    <ID>MatchingDeclarationName:PayloadModels.kt$UploadResponseEntry</ID>
+    <ID>NestedBlockDepth:DbEncryption.kt$DbEncryption$private fun readoptOrCleanAside(db: File, key: ByteArray, oldKeys: () -&gt; List&lt;ByteArray&gt;)</ID>
+    <ID>NestedBlockDepth:MessageCrypto.kt$MessageCrypto$private fun gunzip(data: ByteArray): ByteArray</ID>
+    <ID>NestedBlockDepth:ReminderScanner.kt$ReminderScanner$private fun payPass( context: Context, payRules: List&lt;ReminderRuleEntity&gt;, smsRows: List&lt;com.noti.logger.data.RelayedMessageEntity&gt;, readNotifs: (String) -&gt; List&lt;com.noti.logger.data.NotificationEntity&gt;, ): Pair&lt;Int, Boolean&gt;</ID>
+    <ID>NestedBlockDepth:ReminderTrigger.kt$ReminderTrigger$private fun watchedRules(context: Context): Map&lt;String, List&lt;ReminderRuleEntity&gt;&gt;</ID>
+    <ID>NestedBlockDepth:RemindersFragment.kt$RemindersFragment$private fun computeTotals(ctx: android.content.Context): Totals</ID>
+    <ID>NestedBlockDepth:SendGuard.kt$SendGuard$private fun hasTexted(context: Context, to: String): Boolean</ID>
+    <ID>NestedBlockDepth:StatusCollector.kt$StatusCollector$private fun readCellular(context: Context): Cell</ID>
+    <ID>ThrowsCount:DbEncryption.kt$DbEncryption$private fun encrypt(db: File, key: ByteArray, failAfter: Int)</ID>
+    <ID>TooManyFunctions:NotificationDao.kt$NotificationDao</ID>
+    <ID>TooManyFunctions:RelayedMessageDao.kt$RelayedMessageDao</ID>
+    <ID>TooManyFunctions:ReminderDao.kt$BillOccurrenceDao</ID>
+    <ID>TooManyFunctions:ReminderDao.kt$ParkingSessionDao</ID>
+    <ID>UseCheckOrError:Backup.kt$Backup$throw IllegalStateException("simulated failure mid-restore")</ID>
+    <ID>UseCheckOrError:BackupActivity.kt$BackupActivity$throw IllegalStateException("could not open file")</ID>
+  </CurrentIssues>
+</SmellBaseline>

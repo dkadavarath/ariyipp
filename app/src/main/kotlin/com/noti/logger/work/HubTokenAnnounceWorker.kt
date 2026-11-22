@@ -10,8 +10,8 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.noti.logger.config.Settings
 import com.noti.shared.Diag
+import com.noti.shared.Envelope
 import com.noti.shared.FcmSender
-import com.noti.shared.MessageCrypto
 import com.noti.shared.Wire
 import com.noti.shared.WireMessage
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +30,7 @@ class HubTokenAnnounceWorker(ctx: Context, params: WorkerParameters) : Coroutine
         val token = s.fcmToken
         if (token.isBlank() || !s.peerPaired()) return@withContext Result.success()
         try {
-            val payload = MessageCrypto.encrypt(Wire.encodeFor(WireMessage.Token(token), com.noti.shared.Wire.Direction.MAIN_TO_COMPANION), s.relayKey)
+            val payload = Envelope.seal(WireMessage.Token(token), Wire.Direction.MAIN_TO_COMPANION, s.relayKey)
             val res = FcmSender.forServiceAccount(s.serviceAccountJson).send(s.sndiFcmToken, mapOf("payload" to payload), label = com.noti.shared.FcmLabel.TOKEN_TO_COMPANION)
             when {
                 res.ok -> {

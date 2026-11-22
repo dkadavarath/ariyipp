@@ -61,12 +61,14 @@
                 android:value="Keeps the SMS relay alive so incoming SMS are forwarded reliably." />
         </service>
 
-        <!-- Re-arm keep-alive + relay scan after reboot. -->
+        <!-- Re-arm keep-alive + relay scan after a reboot, and after an app update (which stops the
+             service, and starts nothing again by itself). -->
         <receiver
             android:name=".boot.BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 

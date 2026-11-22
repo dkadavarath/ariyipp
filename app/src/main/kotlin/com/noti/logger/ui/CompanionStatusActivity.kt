@@ -1,6 +1,5 @@
 package com.noti.logger.ui
 
-import android.view.View
 import android.widget.EditText
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.noti.logger.R

@@ -37,9 +37,15 @@ class PatternFromSelectionTest {
                 assertTrue("field should hold a pattern, was '$pattern'", pattern.isNotBlank())
                 // It must be a pattern, not the literal value pasted back in.
                 assertFalse("value must not be baked in", pattern == "12,480.50")
-                // And the live test should now report the extraction.
-                assertTrue(a.findViewById<TextView>(R.id.tv_test_result).text.toString().contains("12480.5"))
             }
+            // And the live test should now report the extraction (it runs off the main thread).
+            var result = ""
+            val deadline = System.currentTimeMillis() + 3_000
+            while (System.currentTimeMillis() < deadline && !result.contains("12480.5")) {
+                scenario.onActivity { a -> result = a.findViewById<TextView>(R.id.tv_test_result).text.toString() }
+                if (!result.contains("12480.5")) Thread.sleep(50)
+            }
+            assertTrue("test result was '$result'", result.contains("12480.5"))
         }
     }
 

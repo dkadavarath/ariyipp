@@ -12,13 +12,13 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.noti.logger.data.NotiDatabase
 import com.noti.logger.data.ReminderRuleEntity
 import com.noti.logger.ui.ReminderRulesActivity
+import java.io.File
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
 
 /** The rules list marks a rule with auto mark-paid on, on its existing sub-line - one line, and
  *  nothing added to a rule without it. Writes rules-list.png. */

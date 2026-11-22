@@ -32,10 +32,18 @@ object ChatLinks {
         val spannable = SpannableString(body)
         // Linkify's own WEB_URLS pattern rather than a hand-rolled one: it already knows the gTLD
         // list, where a URL stops against trailing punctuation, and how to give a bare "www." host
-        // a scheme. It only ever produces http/https, so a crafted message can't talk a tap into
-        // some other scheme.
-        return if (LinkifyCompat.addLinks(spannable, Linkify.WEB_URLS)) spannable else body
+        // a scheme. It also links rtsp:// and ftp://, so those spans are dropped again: a crafted
+        // message must not be able to talk a tap into anything but the browser.
+        if (!LinkifyCompat.addLinks(spannable, Linkify.WEB_URLS)) return body
+        for (span in spannable.getSpans(0, spannable.length, URLSpan::class.java)) {
+            if (!isWeb(span.url)) spannable.removeSpan(span)
+        }
+        return if (spannable.getSpans(0, spannable.length, URLSpan::class.java).isEmpty()) body else spannable
     }
+
+    /** An http or https URL - the only kind a chat link may open. */
+    fun isWeb(url: String): Boolean =
+        url.startsWith("https://", ignoreCase = true) || url.startsWith("http://", ignoreCase = true)
 
     /**
      * The URL under ([x], [y]) in [tv]'s own coordinates, or null if that point isn't on a link.
